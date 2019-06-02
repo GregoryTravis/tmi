@@ -4,6 +4,11 @@ module Main where
 
 import Util
 
+{-
+- External derivative of regular function?
+- Lam EDSL
+- Take the derivative of +
+-}
 class Deltable a da where
   (.+) :: a -> da -> a
   (.-) :: a -> a -> da
