@@ -72,6 +72,23 @@ instance Deltable [a] (ListDelta a) where
   -- Not plausible
   as .- _ = undefined
 
+-- Different instances for the derivative of map
+--map_d :: Deltable a da => (a -> b) -> [a] -> da -> [b]
+map_d :: (a -> b) -> [a] -> ListDelta a -> [b]
+map_d f as (Insert i na) = (map f as) .+ (Insert i (f na))
+map_d f as (Delete i) = map f (as .+ Delete i)
+
+main = do
+  lists
+  intsSumsProds
+  maps
+
+maps = do
+  let as = [1, 2, 3, 4, 5]
+  msp $ map_d (2*) as (Insert 2 21)
+  msp $ map_d (2*) as (Delete 3)
+  msp "hi"
+
 lists = do
   let a = [10, 20, 30, 40, 50]
       b = 21
@@ -84,7 +101,7 @@ lists = do
   msp $ [10, 20, 30, 40, 50] .+ Insert 2 21
   msp $ [10, 20, 30, 40, 50] .+ Delete 3
 
-main = do
+intsSumsProds = do
   --lists
   let a = 9 :: Int
       b = 11
@@ -108,6 +125,3 @@ main = do
   msp aaa
   msp ccc
   msp ddd
-{-
--}
-  msp "hi"
