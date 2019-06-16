@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Main where
 
 import Util
@@ -9,7 +10,7 @@ import Util
 - Lam EDSL
 - Take the derivative of +
 -}
-class Deltable a da where
+class Deltable a da | a -> da where
   (.+) :: a -> da -> a
   (.-) :: a -> a -> da
 
@@ -59,25 +60,54 @@ instance (Eq a, Eq b) => Deltable (Sum a b) (SumDelta a b) where
   _ .+ (SumDelta sd) = sd
   _ .- b = SumDelta b
 
-main = do
-  let a = 9 :: Int
-      b = 11 :: Int
-      c = (a .- b) :: Int
+-- Insert is interstice position; delete is array position
+data ListDelta a = Insert Int a | Delete Int
+  deriving Show
+
+instance Deltable [a] (ListDelta a) where
+  as .+ (Insert i na) | i < 0 || i > length as = undefined
+                      | otherwise = take i as ++ [na] ++ drop i as
+  as .+ (Delete i) | i < 0 || i >= length as = undefined
+                   | otherwise = take i as ++ drop (i+1) as
+  -- Not plausible
+  as .- _ = undefined
+
+lists = do
+  let a = [10, 20, 30, 40, 50]
+      b = 21
+      c = a .+ (Insert 2 b)
+      d' = 3
+      d = Delete d'
+      e = a .+ d
   msp c
+  msp e
+  msp $ [10, 20, 30, 40, 50] .+ Insert 2 21
+  msp $ [10, 20, 30, 40, 50] .+ Delete 3
+
+main = do
+  --lists
+  let a = 9 :: Int
+      b = 11
+      c = (a .- b)
+  msp c
+  --msp $ 9 .- 11
   let aa = Prod "asdf" "zxcv"
       bb2 = Prod "asdf" "vbnm"
       bb = Prod "qwer" "vbnm"
-      cc = (aa .- bb) :: ProdDelta String String
-      cc2 = (aa .- bb2) :: ProdDelta String String
+      cc = (aa .- bb)
+      cc2 = (aa .- bb2)
       dd2 = aa .+ cc2
   msp cc
   msp cc2
   msp dd2
-  let aaa = SumLeft 12 :: Sum Int String
-      bbb = SumRight "foo" :: Sum Int String
-      ccc = (aaa .- bbb) :: SumDelta Int String
+  msp $ (Prod "asdf" "zxcv") .- (Prod "asdf" "vbnm")
+  let aaa = SumLeft 12 :: Show a => Sum Int a
+      bbb = SumRight "foo"
+      ccc = (aaa .- bbb)
       ddd = aaa .+ ccc
   msp aaa
   msp ccc
   msp ddd
+{-
+-}
   msp "hi"
