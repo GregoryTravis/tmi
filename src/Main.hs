@@ -1,5 +1,10 @@
 module Main where
 
 import Delta
+import Exp
+import Tmi
 
-main = deltaDemo
+main = do
+  -- deltaDemo
+  -- expDemo
+  oldWebDemo
