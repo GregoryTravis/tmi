@@ -1,0 +1,4 @@
+createAccount foo
+createAccount bar
+deposit foo 100
+deposit bar 120

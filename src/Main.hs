@@ -8,3 +8,4 @@ main = do
   -- deltaDemo
   -- expDemo
   oldWebDemo
+  -- bankProcess

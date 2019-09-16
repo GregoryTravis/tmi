@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Tmi (oldWebDemo) where
+module Tmi
+( oldWebDemo
+, bankProcess) where
 
 import Control.Applicative
 import Control.Monad.State
@@ -272,9 +274,9 @@ bank args = do
   processBankCommand (map T.unpack args)
   return $ vconst $ WRRedirect "?q=%5B%22home%22%5D"
 
---bankProcess = do
+bankProcess = do
   --copyFile "init-history.db" "history.db"
-  --processLines "bank-commands.txt" processBankCommandString
+  processLines "bank-commands.txt" processBankCommandString
 
 bankPage :: [Text] -> WebTMI
 bankPage [] = do
