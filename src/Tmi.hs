@@ -3,47 +3,6 @@
 
 module Tmi (oldWebDemo) where
 
-{-
-+ add a persistent main
-+ finish bank commands
-+ annotations on deposit -- why are they necessary?
-+ why is vconst necessary in bank stuff
-+ can remove parens from left of <-- ?
-+ lower <-- precedence?
-+ use -->
-x can remove vconsts?
-+ rogistry
-- vsp is reading 'thedb' which should go away, and then vsp should read when the db has arrived
-- clean up
-- Use accessors like gloabals, and write funs that use them
-- Move more things into tmi-world
-- redirect to action, not string
-- don't write db if it hasn't changed
-- or a read-only TMI action
-- action with redirect to read; some kind of Val-returning action?
---
-- Move to a repo
-- nmain as a basic test using a trad test framework
-- real-time readout during bank stuff
-- timed bank command trickle
-- no thedb global, pass it through
-- bidi mmap
-- ====
-- Terse notation? F or --> (can have --> even if no Func), V; what about <-- for write???
-+ bidi head, tail, cons
-- Can you do TMI.., as in TMI.(.)
-- fromList? OverloadedLists extension + IsList
-- Rename to hide orig stuff and rename node stuff to look orig
-- How do features translate to node-lifted world?
-- How are errors
-- Read about lenses
-- Use lenses, applicative like god intended
-
-arrlookup_f :: Int -> [a] -> a
-arrlookup_b :: Int -> a -> [a] -> [a]
-
--}
-
 import Control.Applicative
 import Control.Monad.State
 import qualified Data.CaseInsensitive as CI
@@ -81,8 +40,6 @@ hoo :: String ---> (Int --> Float)
 hoo (Val _ _) (Val _ _) = vconst 3.4
 
 vconst v = uni $ const v
--- Probably should not allow writes to constants
---vconst v = Val (const v) (\_ db -> db)
 
 for (Val f r) = f
 rev (Val f r) = r
@@ -259,8 +216,6 @@ dest <-- src = do
   writes <- get
   put $ writes ++ [mkwrite dest src]
   return $ vconst ()
-
---io = liftIO
 
 applyWrites :: [Write] -> DB -> DB
 applyWrites writes db = foldl (&) db writes
