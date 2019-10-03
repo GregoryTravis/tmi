@@ -1,8 +1,13 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Tmi
-( oldWebDemo
+( Val(..)
+, (<--)
+, oldWebDemo
+, deltaTmiDemo
 , bankProcess) where
 
 import Control.Applicative
@@ -241,6 +246,20 @@ persistentRun action = do
       newHistoryS = sp newHistory
   writeFile "history.db" newHistoryS
   return result
+
+class Delta a d where
+  (.+) :: a -> d -> a
+  (.-) :: a -> a -> d
+
+data ListDelta a = Insert Int a | Delete Int
+deriving instance Show a => Show (ListDelta a)
+
+instance Delta [a] (ListDelta a) where
+  xs .+ (Insert i x) = (take i xs) ++ [x] ++ (drop i xs)
+  (.-) = undefined  -- slow
+
+deltaTmiDemo = do
+  msp $ ([1, 2, 3, 4] :: [Int]) .+ ((Insert 2 5) :: ListDelta Int)
 
 processLines:: String -> (String -> IO ()) -> IO ()
 processLines filename action = do
