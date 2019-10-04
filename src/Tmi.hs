@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -298,8 +299,12 @@ _deltaB = DVal b up_b up_db
         up_db deltaB db = up_b newArr db
           where newArr = (b db) .+ deltaB
 _deltaBB :: DVal [Int] (ListDelta Int)
+-- y not
+--_deltaBB :: Delta [Int] d => DVal [Int] d
 _deltaBB = DVal bb up_bb up_dbb
   where up_dbb :: ListDelta Int -> DB -> DB
+  -- y not
+  --where up_dbb :: d -> DB -> DB
         up_dbb deltaBB db = up_bb newArr db
           where newArr = (bb db) .+ deltaBB
 
@@ -325,6 +330,7 @@ froo :: TMI ()
 froo = do
   _deltaB <--. (Insert 1 200)
   _deltaBB <--. (Insert 1 2000)
+  --_deltaBB <--. [Insert 1 2000, Insert 1 2001]
   return $ vconst ()
 
 mkdwrite :: Delta a da => DVal a da -> da -> Write
