@@ -348,6 +348,7 @@ deltaTmiDemo = do
   ((), newDB) <- tmiRun thedb froo
   msp newDB
   vsp _b
+  msp $ ([1, 2, 3] :: [Int]) .+ [Insert 1 20 :: ListDelta Int, Insert 1 200 :: ListDelta Int]
 
 processLines:: String -> (String -> IO ()) -> IO ()
 processLines filename action = do
