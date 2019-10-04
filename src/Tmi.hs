@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -268,17 +269,29 @@ instance Delta DB DBDelta where
 fyoo :: ListDelta Int -> DBDelta
 fyoo = DBDeltaB
 
+-- data Val b = Val (DB -> b) (b -> DB -> DB)
 -- b :: DB -> [Int]
 -- up_b :: [Int] -> DB -> DB
 -- up_b v db = db { b = v }
 -- _b = liftBV b up_b theroot
 -- DBWriteDeltaB (Insert 2 4)
 
+data DVal b db = Delta b db => DVal (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
+_deltaB :: DVal [Int] (ListDelta Int)
+_deltaB = DVal b up_b up_db
+  where up_db :: ListDelta Int -> DB -> DB
+        up_db deltaB db = up_b newArr db
+          where newArr = (b db) .+ deltaB
+
+writeDelta :: DVal b db -> db -> DB -> DB
+writeDelta (DVal f r df) = df
+
 -- data DVal a b da db = DVal (a -> b) (b -> a -> a) (da -> db) (db -> da)
 -- -- Incremental variant of _b
 -- _deltaB = DVal b up_b
 
 deltaTmiDemo = do
+  msp $ writeDelta _deltaB (Insert 1 200) thedb
   vsp _b
 
 processLines:: String -> (String -> IO ()) -> IO ()
