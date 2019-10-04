@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -32,10 +33,10 @@ import Web.Firefly
 import Util 
 
 type History = [DB]
-data DB = DB { a :: Int, b :: [Int], c :: String, accounts :: M.Map String Int }
+data DB = DB { a :: Int, b :: [Int], bb :: [Int], c :: String, accounts :: M.Map String Int }
   deriving (Eq, Read, Show)
 
-thedb = DB { a = 12, b = [2, 3, 4], c = "asdf", accounts = M.fromList [] }
+thedb = DB { a = 12, b = [2, 3, 4], bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] }
 
 data Val b = Val (DB -> b) (b -> DB -> DB)
 
@@ -139,21 +140,21 @@ nmain = do
   vsp $ (liftV (+ 10)) $ _a
   vsp $ (liftV2 (+)) _a (_bi 1)
   msp $ vwrite _a 120 thedb
-  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , c = "asdf", accounts = M.fromList [] } 
+  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] } 
   vsp $ binc $ _a
   massert $ (vwrite (binc $ _a) 130 thedb) ==
-    DB { a = 129 , b = [ 2 , 3 , 4 ] , c = "asdf", accounts = M.fromList [] } 
+    DB { a = 129 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] } 
   vsp $ _a `bidiPlus` (_bi 1)
   msp $ vwrite (_a `bidiPlus` (_bi 1)) 19 thedb
   massert $ (vwrite (_a `bidiPlus` (_bi 1)) 19 thedb) ==
-    DB { a = 14 , b = [ 2 , 5 , 4 ] , c = "asdf", accounts = M.fromList [] }
+    DB { a = 14 , b = [ 2 , 5 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] }
   let floo :: Val Int
       floo = 123
   vsp floo
   msp "mult"
   msp $ vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb
   massert $ (vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb) ==
-    DB { a = 126 , b = [ 2 , 335 , 4 ] , c = "zxcv", accounts = M.fromList [] }
+    DB { a = 126 , b = [ 2 , 335 , 4 ] , bb = [20, 30, 40], c = "zxcv", accounts = M.fromList [] }
   vsp $ nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])
   vsp $ nmap2 (vconst (\x -> x * 2)) (vconst [1, 2, 3])
   massert $ (vread (nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])) thedb) == [2, 4, 6]
@@ -188,12 +189,14 @@ nmain = do
 
 up_a v db = db { a = v }
 up_b v db = db { b = v }
+up_bb v db = db { bb = v }
 up_c v db = db { c = v }
 up_accounts :: M.Map String Int -> DB -> DB
 up_accounts v db = db { accounts = v }
 _a :: Val Int
 _a = liftBV a up_a theroot
 _b = liftBV b up_b theroot
+_bb = liftBV bb up_bb theroot
 _c = liftBV c up_c theroot
 _accounts = liftBV accounts up_accounts theroot
 _i :: Int -> Val [a] -> Val a
@@ -259,10 +262,21 @@ instance Delta [a] (ListDelta a) where
   xs .+ (Insert i x) = (take i xs) ++ [x] ++ (drop i xs)
   (.-) = undefined  -- slow
 
-data DBDelta = DBDeltaB (ListDelta Int)
+data DBDelta = DBDeltaB (ListDelta Int) | DBDeltaBB (ListDelta Int)
 
 instance Delta DB DBDelta where
   db .+ (DBDeltaB ld) = up_b ((b db) .+ ld) db
+  (.-) = undefined  -- slow
+
+-- This is wrong, of course
+instance Delta a da => Delta a [da] where
+  db .+ (da : das) = (db .+ da) .+ das
+  db .+ [] = db
+  (.-) = undefined  -- slow
+
+instance (Delta a da, Delta a da') => Delta a (Either da da') where
+  db .+ (Left da) = db .+ da
+  db .+ (Right da') = db .+ da'
   (.-) = undefined  -- slow
 
 -- Turn a list delta into a db delta
@@ -277,21 +291,30 @@ fyoo = DBDeltaB
 -- DBWriteDeltaB (Insert 2 4)
 
 data DVal b db = Delta b db => DVal (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
+-- _deltaB is an incremental lens view of DB.b
 _deltaB :: DVal [Int] (ListDelta Int)
 _deltaB = DVal b up_b up_db
   where up_db :: ListDelta Int -> DB -> DB
         up_db deltaB db = up_b newArr db
           where newArr = (b db) .+ deltaB
+_deltaBB :: DVal [Int] (ListDelta Int)
+_deltaBB = DVal bb up_bb up_dbb
+  where up_dbb :: ListDelta Int -> DB -> DB
+        up_dbb deltaBB db = up_bb newArr db
+          where newArr = (bb db) .+ deltaBB
 
-writeDelta :: DVal b db -> db -> DB -> DB
+writeDelta :: DVal b db -> db -> Write
 writeDelta (DVal f r df) = df
 
+-- type Write = DB -> DB
+-- mkwrite :: Val a -> Val a -> Write
 -- data DVal a b da db = DVal (a -> b) (b -> a -> a) (da -> db) (db -> da)
 -- -- Incremental variant of _b
 -- _deltaB = DVal b up_b
 
 deltaTmiDemo = do
   msp $ writeDelta _deltaB (Insert 1 200) thedb
+  msp $ writeDelta _deltaBB (Insert 1 2000) thedb
   vsp _b
 
 processLines:: String -> (String -> IO ()) -> IO ()
