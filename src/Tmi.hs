@@ -258,8 +258,28 @@ instance Delta [a] (ListDelta a) where
   xs .+ (Insert i x) = (take i xs) ++ [x] ++ (drop i xs)
   (.-) = undefined  -- slow
 
+data DBDelta = DBDeltaB (ListDelta Int)
+
+instance Delta DB DBDelta where
+  db .+ (DBDeltaB ld) = up_b ((b db) .+ ld) db
+  (.-) = undefined  -- slow
+
+-- Turn a list delta into a db delta
+fyoo :: ListDelta Int -> DBDelta
+fyoo = DBDeltaB
+
+-- b :: DB -> [Int]
+-- up_b :: [Int] -> DB -> DB
+-- up_b v db = db { b = v }
+-- _b = liftBV b up_b theroot
+-- DBWriteDeltaB (Insert 2 4)
+
+-- data DVal a b da db = DVal (a -> b) (b -> a -> a) (da -> db) (db -> da)
+-- -- Incremental variant of _b
+-- _deltaB = DVal b up_b
+
 deltaTmiDemo = do
-  msp $ ([1, 2, 3, 4] :: [Int]) .+ ((Insert 2 5) :: ListDelta Int)
+  vsp _b
 
 processLines:: String -> (String -> IO ()) -> IO ()
 processLines filename action = do
