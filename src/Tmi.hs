@@ -306,6 +306,30 @@ _deltaBB = DVal bb up_bb up_dbb
 writeDelta :: DVal b db -> db -> Write
 writeDelta (DVal f r df) = df
 
+-- ??
+{-
+(<--) :: Val a -> Val a -> TMI ()
+dest <-- src = do
+  writes <- get
+  put $ writes ++ [mkwrite dest src]
+  return $ vconst ()
+-}
+(<--.) :: Delta a da => DVal a da -> da -> TMI()
+dest <--. srcDelta = do
+  writes <- get
+  put $ writes ++ [mkdwrite dest srcDelta]
+  return $ vconst ()
+--tmiRun :: DB -> TMI a -> IO (a, DB)
+
+froo :: TMI ()
+froo = do
+  _deltaB <--. (Insert 1 200)
+  _deltaBB <--. (Insert 1 2000)
+  return $ vconst ()
+
+mkdwrite :: Delta a da => DVal a da -> da -> Write
+mkdwrite = writeDelta
+
 -- type Write = DB -> DB
 -- mkwrite :: Val a -> Val a -> Write
 -- data DVal a b da db = DVal (a -> b) (b -> a -> a) (da -> db) (db -> da)
@@ -315,6 +339,8 @@ writeDelta (DVal f r df) = df
 deltaTmiDemo = do
   msp $ writeDelta _deltaB (Insert 1 200) thedb
   msp $ writeDelta _deltaBB (Insert 1 2000) thedb
+  ((), newDB) <- tmiRun thedb froo
+  msp newDB
   vsp _b
 
 processLines:: String -> (String -> IO ()) -> IO ()
