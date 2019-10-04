@@ -39,8 +39,9 @@ of re-calculating state from ground truth.  In almost any imperative program,
 the various pieces of code that change any given data structure can be thought
 of as multiple, redundant, and possibly inconsistent specifications of the
 semantics of that data.  The problem got much worse when concurrency became
-mainstream.  Thus, FRP.  Incrementalization isn't just for speed, it also has
-tremendous power to simplify code.
+mainstream.  Thus, FRP.  Deincrementalization is letting the language do the
+Incrementalization for you.  And incrementalization isn't just for speed, it
+also has tremendous power to simplify code.
 
 *(80%)* **Pessimization:** This is the act of going to extremes to simplify
 code and making its meaning obvious.  Again, premature optimization etc etc.
@@ -84,10 +85,10 @@ and compiles to the lambda calculus which is then compiled to Scheme.
 
 Then I though, hey, I should try this Haskell language I've been reading about
 avidly for so long. And I did, and very quickly I was completely hooked.  I see
-no reason to implement the core functional part of TMI when I have one that I
-find perfect.  So this version of TMI is going to be built in Haskell, and
-perhaps on top of Haskell.  It is currently and EDSL.  Later I want to make it
-more of its own language, with Template Haskell or even the GHC API.
+no reason to implement the core functional part of TMI when we already have one
+that seems perfect.  So this version of TMI is going to be built in Haskell,
+and perhaps on top of Haskell.  It is currently and EDSL.  Later I want to make
+it more of its own language, with Template Haskell or even the GHC API.
 
 My current goal, though, is to implement the bare minimum that demonstrates the
 fusion of all the buzzwords I listed at the top, and then see if it looks like
