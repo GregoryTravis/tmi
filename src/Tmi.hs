@@ -34,10 +34,14 @@ import Web.Firefly
 import Util 
 
 type History = [DB]
-data DB = DB { a :: Int, b :: [Int], bb :: [Int], c :: String, accounts :: M.Map String Int }
+data NN = NN { nnn :: [Int] }
+  deriving (Eq, Read, Show)
+data DB = DB { a :: Int, b :: [Int], bb :: [Int], c :: String, accounts :: M.Map String Int,
+               nn :: NN }
   deriving (Eq, Read, Show)
 
-thedb = DB { a = 12, b = [2, 3, 4], bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] }
+thedb = DB { a = 12, b = [2, 3, 4], bb = [20, 30, 40], c = "asdf", accounts = M.fromList [],
+             nn = NN { nnn = [4, 5, 6] } }
 
 data Val b = Val (DB -> b) (b -> DB -> DB)
 
@@ -141,21 +145,21 @@ nmain = do
   vsp $ (liftV (+ 10)) $ _a
   vsp $ (liftV2 (+)) _a (_bi 1)
   msp $ vwrite _a 120 thedb
-  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] } 
+  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } } 
   vsp $ binc $ _a
   massert $ (vwrite (binc $ _a) 130 thedb) ==
-    DB { a = 129 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] } 
+    DB { a = 129 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } } 
   vsp $ _a `bidiPlus` (_bi 1)
   msp $ vwrite (_a `bidiPlus` (_bi 1)) 19 thedb
   massert $ (vwrite (_a `bidiPlus` (_bi 1)) 19 thedb) ==
-    DB { a = 14 , b = [ 2 , 5 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [] }
+    DB { a = 14 , b = [ 2 , 5 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } }
   let floo :: Val Int
       floo = 123
   vsp floo
   msp "mult"
   msp $ vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb
   massert $ (vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb) ==
-    DB { a = 126 , b = [ 2 , 335 , 4 ] , bb = [20, 30, 40], c = "zxcv", accounts = M.fromList [] }
+    DB { a = 126 , b = [ 2 , 335 , 4 ] , bb = [20, 30, 40], c = "zxcv", accounts = M.fromList [], nn = NN { nnn = [1] } }
   vsp $ nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])
   vsp $ nmap2 (vconst (\x -> x * 2)) (vconst [1, 2, 3])
   massert $ (vread (nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])) thedb) == [2, 4, 6]
@@ -194,6 +198,8 @@ up_bb v db = db { bb = v }
 up_c v db = db { c = v }
 up_accounts :: M.Map String Int -> DB -> DB
 up_accounts v db = db { accounts = v }
+up_nn v db = db { nn = v }
+up_nnn v nn = nn { nnn = v }
 _a :: Val Int
 _a = liftBV a up_a theroot
 _b = liftBV b up_b theroot
@@ -311,6 +317,61 @@ _deltaBB = DVal bb up_bb up_dbb
 writeDelta :: DVal b db -> db -> Write
 writeDelta (DVal f r df) = df
 
+--data DVal' b db = Delta b db => DVal' (DB -> b) (b -> DB -> DB) (db -> DB -> da)
+--liftBV :: (a -> b) -> (b -> a -> a) -> Val a -> Val b
+
+liftBDV :: (Delta a da, Delta b db) => (a -> b) -> (b -> a -> a) -> (da -> db) -> (db -> a -> da) -> DVal a da -> DVal b db
+liftBDV f b df db (DVal afor arev adrev) = DVal bfor brev bdrev
+  where --bfor :: DB -> b
+        bfor w = f (afor w)
+        --brev :: b -> DB -> DB
+        brev x w = arev (b x (afor w)) w
+        --bdrev :: db -> DB -> DB
+        bdrev dx w = arev ((afor w) .+ (db dx (afor w))) w
+
+--data DBDelta = DBDeltaB (ListDelta Int) | DBDeltaBB (ListDelta Int)
+data NNDelta = NNDeltaNNN (ListDelta Int)
+instance Delta NN NNDelta where
+  x .+ (NNDeltaNNN nu) = x { nnn = (nnn x .+ nu) }
+  (.-) = undefined
+
+--data DVal b db = Delta b db => DVal (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
+nnDval :: DVal NN NNDelta
+nnDval = DVal nn up_nn drev
+  where drev dx w = up_nn (nn w .+ dx) w
+
+_dnnn :: DVal NN NNDelta -> DVal [Int] (ListDelta Int)
+_dnnn = liftBDV nnn up_nnn undefined nrev
+  where nrev :: (ListDelta Int) -> NN -> NNDelta
+        nrev ldi nnnn = NNDeltaNNN ldi
+
+nnnDval :: DVal [Int] (ListDelta Int)
+nnnDval = _dnnn nnDval
+
+dvread :: Delta a da => DVal a da -> DB -> a
+dvread (DVal for _ _) = for
+
+floo :: TMI ()
+floo = do
+  nnnDval <--. (Insert 1 52)
+  return $ vconst ()
+
+deltaTmiDemo = do
+  msp $ dvread nnDval thedb
+  msp $ writeDelta nnDval (NNDeltaNNN (Insert 1 50)) thedb
+  msp $ dvread nnnDval thedb
+  msp $ writeDelta nnnDval (Insert 1 51) thedb
+  ((), newDB) <- tmiRun thedb floo
+  msp newDB
+
+_deltaTmiDemo = do
+  msp $ writeDelta _deltaB (Insert 1 200) thedb
+  msp $ writeDelta _deltaBB (Insert 1 2000) thedb
+  ((), newDB) <- tmiRun thedb froo
+  msp newDB
+  vsp _b
+  msp $ ([1, 2, 3] :: [Int]) .+ [Insert 1 20 :: ListDelta Int, Insert 1 200 :: ListDelta Int]
+
 -- ??
 {-
 (<--) :: Val a -> Val a -> TMI ()
@@ -341,14 +402,6 @@ mkdwrite = writeDelta
 -- data DVal a b da db = DVal (a -> b) (b -> a -> a) (da -> db) (db -> da)
 -- -- Incremental variant of _b
 -- _deltaB = DVal b up_b
-
-deltaTmiDemo = do
-  msp $ writeDelta _deltaB (Insert 1 200) thedb
-  msp $ writeDelta _deltaBB (Insert 1 2000) thedb
-  ((), newDB) <- tmiRun thedb froo
-  msp newDB
-  vsp _b
-  msp $ ([1, 2, 3] :: [Int]) .+ [Insert 1 20 :: ListDelta Int, Insert 1 200 :: ListDelta Int]
 
 processLines:: String -> (String -> IO ()) -> IO ()
 processLines filename action = do
