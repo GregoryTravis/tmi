@@ -1,6 +1,8 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -297,6 +299,32 @@ fyoo = DBDeltaB
 -- _b = liftBV b up_b theroot
 -- DBWriteDeltaB (Insert 2 4)
 
+  {-
+data Viff b = forall db . Delta b db => Viff (DB -> b) (b -> DB -> DB)
+
+vfnn :: Viff NN
+vfnn = undefined
+
+class DViffer b db | db -> b where
+  dvwrite :: db -> DB -> DB
+-}
+
+data Biff b = forall db . Delta b db => Biff (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
+
+bfnn :: forall db . (Delta NN db, Cbfnn db) => Biff NN
+--bfnn = undefined
+bfnn = Biff nn up_nn (dup_nn :: NNDelta -> DB -> DB)
+--bfnn = Biff nn up_nn (dup_nn :: (Delta NN db, Cbfnn db) => db -> DB -> DB)
+
+class Delta NN dnn => Cbfnn dnn where
+  dup_nn :: Delta NN dnn => dnn -> DB -> DB
+
+instance Cbfnn NNDelta where
+  dup_nn dx w = up_nn (nn w .+ dx) w
+
+deltaTmiDemo = do
+  msp "ho"
+
 data DVal b db = Delta b db => DVal (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
 -- _deltaB is an incremental lens view of DB.b
 _deltaB :: DVal [Int] (ListDelta Int)
@@ -356,7 +384,7 @@ floo = do
   nnnDval <--. (Insert 1 52)
   return $ vconst ()
 
-deltaTmiDemo = do
+__deltaTmiDemo = do
   msp $ dvread nnDval thedb
   msp $ writeDelta nnDval (NNDeltaNNN (Insert 1 50)) thedb
   msp $ dvread nnnDval thedb
