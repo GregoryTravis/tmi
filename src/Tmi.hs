@@ -326,6 +326,55 @@ vfnnn :: Val [Int]
 --vfnnn = Val nnn up_nnn
 vfnnn = (liftBV nnn up_nnn) vfnn
 
+--type VFun a b = Val a -> Val b
+
+--class VFun a b
+
+data BFun a b = BFun (a -> b) (b -> a -> a)
+
+class VFun f
+
+data DMap a b = DMap (BFun a b)
+instance VFun (DMap a b)
+data DReverse
+instance VFun DReverse
+
+-- TODO works with just db -> da?  Should...
+class (Delta a da, Delta b db, VFun vf) => Differ vf a b da db | vf a b db -> da where
+  differ :: vf -> db -> a -> da
+
+-- Super not crazy about the list lookup here, we can omit it because we know map doesn't need it?
+instance Differ (DMap a b) [a] [b] (ListDelta a) (ListDelta b) where
+  differ (DMap (BFun for rev)) (Insert i b) as = Insert i (rev b (as !! i))
+
+-- TODO more idiomatic way to ignore the second param
+double :: DMap Int Int
+double = DMap (BFun (* 2) (\x _ -> x `div` 2))
+
+-- TODO more idiomatic way to ignore the second param
+addone :: DMap Int Int
+addone = DMap (BFun (+ 1) (\x _ -> x - 1))
+
+data ComposeDiffers dfa dfb = dfa :..: dfb
+
+  {-
+instance (Differ fbc b c db dc, Differ fab a b da db) => Differ (ComposeDiffers fbc fab) a c da dc where
+  --differ :: VFun -> dc -> a -> da
+  differ (fbc :..: fab) dc a = fab (fbc dc b) a
+    where b = ???
+-}
+
+deltaTmiDemo = do
+  msp $ differ double (Insert 1 (20::Int)) (b thedb)
+  msp $ differ addone (Insert 1 (20::Int)) (b thedb)
+  --msp $ dvwrite (NNDeltaNNN (Insert 2 (50 :: Int))) thedb
+  --msp $ dvwrite' vfnn (NNDeltaNNN (Insert 2 (51 :: Int))) thedb
+  --msp $ dvwrite' vfnnn (Insert 2 (52 :: Int)) thedb
+  --msp $ vread vfnnn thedb
+  --tmiRunShow hahaNN
+  --tmiRunShow hahaNNN
+  msp "hi"
+
   {-
 class DViffer b db | db -> b where
   dvwrite :: db -> DB -> DB
@@ -368,14 +417,6 @@ hahaNNN :: TMI ()
 hahaNNN = do
   vfnnn <--.. Insert 2 (52 :: Int)
   return $ vconst ()
-
-deltaTmiDemo = do
-  --msp $ dvwrite (NNDeltaNNN (Insert 2 (50 :: Int))) thedb
-  --msp $ dvwrite' vfnn (NNDeltaNNN (Insert 2 (51 :: Int))) thedb
-  --msp $ dvwrite' vfnnn (Insert 2 (52 :: Int)) thedb
-  --msp $ vread vfnnn thedb
-  tmiRunShow hahaNN
-  tmiRunShow hahaNNN
 
 data Biff b = forall db . Delta b db => Biff (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
 
