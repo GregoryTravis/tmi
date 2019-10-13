@@ -7,6 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Tmi
 ( Val(..)
@@ -242,11 +243,10 @@ applyWrites writes db = foldl (&) db writes
 
 tmiRun :: DB -> TMI a -> IO (a, DB)
 tmiRun db action = do
-  msp "hi"
   (x, writes) <- runStateT action []
   let result = vread x db
       newDb = applyWrites writes db
-  msp newDb
+  --msp newDb
   return (result, newDb)
 
 persistentRun :: TMI a -> IO a
@@ -260,7 +260,7 @@ persistentRun action = do
   writeFile "history.db" newHistoryS
   return result
 
-class Delta a d where
+class Delta a d | d -> a where
   (.+) :: a -> d -> a
   (.-) :: a -> a -> d
 
@@ -299,15 +299,83 @@ fyoo = DBDeltaB
 -- _b = liftBV b up_b theroot
 -- DBWriteDeltaB (Insert 2 4)
 
+-- Is the constaint necessary?
+--data Viff b = forall db . Delta b db => Viff (DB -> b) (b -> DB -> DB)
+--data Viff b = Viff (DB -> b) (b -> DB -> DB)
+
+{-
+ggoo :: forall da . Delta a da -> (a -> a)
+ggoo = undefined
+liftVF :: forall da db . (Delta a da, Delta b db) => (a -> b) -> (b -> a -> a) -> Viff a -> Viff b
+liftVF = undefined
+
+liftDV :: (Delta a da, Delta b db) => (a -> b) -> (b -> a -> a) -> (da -> db) -> (db -> a -> da) -> DVal a da -> DVal b db
+liftBDV f b df db (DVal afor arev adrev) = DVal bfor brev bdrev
+  where --bfor :: DB -> b
+        bfor w = f (afor w)
+        --brev :: b -> DB -> DB
+        brev x w = arev (b x (afor w)) w
+        --bdrev :: db -> DB -> DB
+        bdrev dx w = arev ((afor w) .+ (db dx (afor w))) w
+-}
+
+vfnn :: Val NN
+vfnn = Val nn up_nn
+
+vfnnn :: Val [Int]
+--vfnnn = Val nnn up_nnn
+vfnnn = (liftBV nnn up_nnn) vfnn
+
   {-
-data Viff b = forall db . Delta b db => Viff (DB -> b) (b -> DB -> DB)
-
-vfnn :: Viff NN
-vfnn = undefined
-
 class DViffer b db | db -> b where
   dvwrite :: db -> DB -> DB
+
+instance DViffer NN NNDelta where
+  dvwrite dx w = up_nn (nn w .+ dx) w
 -}
+
+class DViffer' b db | db -> b where
+  dvwrite' :: Val b -> db -> DB -> DB
+
+--instance DViffer' NN NNDelta where
+  --dvwrite' (Val for rev) dx w = rev (for w .+ dx) w
+
+instance Delta a da => DViffer' a da where
+  dvwrite' (Val for rev) dx w = rev (for w .+ dx) w
+
+(<--..) :: Delta a da => Val a -> da -> TMI()
+dest <--.. srcDelta = do
+  writes <- get
+  let newWrite = dvwrite' dest srcDelta
+  put $ writes ++ [newWrite]
+  return $ vconst ()
+
+--tmiRun :: DB -> TMI a -> IO (a, DB)
+tmiRunShow :: TMI () -> IO ()
+tmiRunShow action = do
+  msp "before"
+  msp thedb
+  ((), newDb) <- tmiRun thedb action
+  msp "after"
+  msp newDb
+
+hahaNN :: TMI ()
+hahaNN = do
+  vfnn <--.. (NNDeltaNNN (Insert 2 (51 :: Int)))
+  return $ vconst ()
+
+hahaNNN :: TMI ()
+hahaNNN = do
+  vfnnn <--.. Insert 2 (52 :: Int)
+  return $ vconst ()
+
+deltaTmiDemo = do
+  --msp $ dvwrite (NNDeltaNNN (Insert 2 (50 :: Int))) thedb
+  --msp $ dvwrite' vfnn (NNDeltaNNN (Insert 2 (51 :: Int))) thedb
+  --msp $ dvwrite' vfnnn (Insert 2 (52 :: Int)) thedb
+  --msp $ vread vfnnn thedb
+  tmiRunShow hahaNN
+  tmiRunShow hahaNNN
 
 data Biff b = forall db . Delta b db => Biff (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
 
@@ -321,9 +389,6 @@ class Delta NN dnn => Cbfnn dnn where
 
 instance Cbfnn NNDelta where
   dup_nn dx w = up_nn (nn w .+ dx) w
-
-deltaTmiDemo = do
-  msp "ho"
 
 data DVal b db = Delta b db => DVal (DB -> b) (b -> DB -> DB) (db -> DB -> DB)
 -- _deltaB is an incremental lens view of DB.b
