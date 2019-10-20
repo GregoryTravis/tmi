@@ -326,36 +326,218 @@ vfnnn :: Val [Int]
 --vfnnn = Val nnn up_nnn
 vfnnn = (liftBV nnn up_nnn) vfnn
 
---type VFun a b = Val a -> Val b
+----type VFun a b = Val a -> Val b
 
---class VFun a b
+----class VFun a b
 
-data BFun a b = BFun (a -> b) (b -> a -> a)
+--data BFun a b = BFun (a -> b) (b -> a -> a)
 
-class VFun f
+--class VFun f
 
-data DMap a b = DMap (BFun a b)
-instance VFun (DMap a b)
-data DReverse
-instance VFun DReverse
+--data DMap a b = DMap (BFun a b)
+--instance VFun (DMap a b)
+--data DReverse
+--instance VFun DReverse
 
--- TODO works with just db -> da?  Should...
-class (Delta a da, Delta b db, VFun vf) => Differ vf a b da db | vf a b db -> da where
-  differ :: vf -> db -> a -> da
+---- TODO works with just db -> da?  Should...
+--class (Delta a da, Delta b db, VFun vf) => Differ vf a b da db | vf a b db -> da where
+--  differ :: vf -> db -> a -> da
 
--- Super not crazy about the list lookup here, we can omit it because we know map doesn't need it?
-instance Differ (DMap a b) [a] [b] (ListDelta a) (ListDelta b) where
-  differ (DMap (BFun for rev)) (Insert i b) as = Insert i (rev b (as !! i))
+---- Super not crazy about the list lookup here, we can omit it because we know map doesn't need it?
+--instance Differ (DMap a b) [a] [b] (ListDelta a) (ListDelta b) where
+--  differ (DMap (BFun for rev)) (Insert i b) as = Insert i (rev b (as !! i))
 
--- TODO more idiomatic way to ignore the second param
-double :: DMap Int Int
-double = DMap (BFun (* 2) (\x _ -> x `div` 2))
+---- TODO more idiomatic way to ignore the second param
+--double :: DMap Int Int
+--double = DMap (BFun (* 2) (\x _ -> x `div` 2))
 
--- TODO more idiomatic way to ignore the second param
-addone :: DMap Int Int
-addone = DMap (BFun (+ 1) (\x _ -> x - 1))
+---- TODO more idiomatic way to ignore the second param
+--addone :: DMap Int Int
+--addone = DMap (BFun (+ 1) (\x _ -> x - 1))
 
-data ComposeDiffers dfa dfb = dfa :..: dfb
+--data ComposeDiffers dfa dfb = dfa :..: dfb
+
+----class Abc abc
+
+----class Def def
+
+----data Abc0 = Abc0
+----instance Abc Abc0
+----data Abc1 = Abc1
+----instance Abc Abc1
+----data Def0 = Def0
+----instance Def Def0
+----data Def1 = Def1
+----instance Def Def1
+
+----class (Abc abc, Def def) => Brack abc def where
+----  loop :: abc -> a -> def -> String
+
+----instance Brack Abc0 Def0 where
+----  loop _ _ _  = "00"
+----instance Brack Abc0 Def1 where
+----  loop _ _ _  = "01"
+----instance Brack Abc1 Def0 where
+----  loop _ _ _  = "10"
+----instance Brack Abc1 Def1 where
+----  loop _ _ _  = "11"
+
+----{-
+----data Voon def = forall abc . (Brack abc def, Abc abc, Def def) => Voon abc def
+----plah :: (Brack abc def, Abc abc, Def def) => forall abc . Voon def -> String
+----plah (Voon abc def) = loop abc def
+-----}
+
+----data Voon a = forall abc . (Abc abc) => Voon abc a
+------plah :: (Brack abc def, Abc abc, Def def) => forall abc . Voon def -> String
+----plah :: (Brack abc def, Abc abc, Def def) => (Voon a) -> def -> String
+----plah (Voon abc a) def = loop abc a def
+------plah (Voon abc a) def = jarr abc a def
+------jarr :: Brack abc def => abc -> a -> def -> String
+------jarr abc a def = loop abc a def
+
+----{-
+----ARGH
+
+----na :: Val ? a
+----fab :: Fun a b
+----nb :: Val ? b
+----nb = fab `app` na
+----app :: Val x a -> Fun a b -> Val (Fun a b) b
+
+----db :: Val (Fun () DB) DB
+----getb :: Fun DB a
+----na :: Val (Fun DB a) a
+----na = getb `app` db
+----fab = Fun a b
+----nb = fab `app` na
+----nb :: Val (Fun a b) b
+----app :: Fun a b -> Val c a -> Val (Fun a b) a
+-----}
+
+----voon00 = Voon Abc0 Def0
+----voon01 = Voon Abc0 Def1
+----voon10 = Voon Abc1 Def0
+----voon11 = Voon Abc1 Def1
+
+-- class VFun a b where
+--   forwards :: a -> b
+--   backwards :: b -> a -> a
+
+data VFun a b = VFun (a -> b) (b -> a -> a)
+
+--data Bree a b = Bree (VFun a b) b
+data Bree a b = Bree (VFun a b) (World -> b) (b -> World -> World)
+--data Bree a b = Bree (VFun a b) b
+
+--vapply :: VFun a b -> Bree vf a -> Bree vf b
+--vapply :: VFun a b -> Bree c a -> Bree a b
+--vapply (VFun vf) (Bree ovf a) = Bree (VFun vf) (vf a)
+
+data Blerb = Blerb { wba :: [Int] } deriving Show
+data World = World { wa :: [Int], wb :: Blerb } deriving Show
+worldData :: World
+worldData = World { wa = [1, 2, 3], wb = Blerb { wba = [4, 5, 6] } }
+u_wa wa w = w { wa = wa }
+u_wb wb w = w { wb = wb }
+u_wba wba w = w { wba = wba }
+
+world :: Bree World World
+world = Bree (VFun f r) id (\w _ -> w) -- TODO const?
+  where f _ = worldData
+        r w _ = w
+
+--nwa :: Bree World [Int]
+--nwa = Bree (VFun wa) (wa worldData)
+
+vapply :: VFun a b -> Bree c a -> Bree a b
+vapply (VFun vf vr) (Bree _ w2a a2w) = Bree (VFun vf vr) w2b b2w
+  where w2b w = vf $ w2a w
+        b2w b w = a2w a w
+          where a = vr b (w2a w)
+
+vvread :: Bree a b -> World -> b
+vvread (Bree _ w2b _) w = w2b w
+
+vvwrite :: Bree a b -> b -> World -> World
+vvwrite (Bree vf f r) b w = r b w
+
+nwa = vapply (VFun wa u_wa) world
+nwb = vapply (VFun wb u_wb) world
+nwba = vapply (VFun wba u_wba) nwb
+nwbai i = vapply (VFun (!! i) rev) nwba
+  where rev b arr = upd arr i b
+
+vmap' :: (a -> b) -> (b -> a -> a) -> VFun [a] [b]
+vmap' f r = VFun (map f) undefined
+vmap :: (a -> b) -> (b -> a -> a ) -> VMap a b
+vmap f r = VMap (f, r, (vmap' f r))
+
+--data VFun a b = VFun (a -> b) (b -> a -> a)
+newtype VMap a b = VMap ((a -> b), (b -> a -> a), (VFun [a] [b]))
+instance Wrapper (VMap a b)
+
+class Wrapper a
+
+class (Delta a da, Delta b db, Wrapper wr) => Incremental a b da db wr where
+  applyDelta :: wr -> db -> a -> da
+
+instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
+  applyDelta (VMap (f, r, _)) (Insert i bb) as = (Insert i aa)
+    where aa = r bb (as !! i)
+
+--instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
+  --applyDelta (VMap (VFun f r)) (Insert i bb) as = (Insert i aa)
+    --where aa = r bb (as !! i)
+
+-- instance (Delta [a] da, Delta [b] db) => Incremental [a] [b] da db (VMap [a] [b]) where
+--   applyDelta (VMap (VFun f r)) (Insert i bb) as = (Insert i aa)
+--     where aa = r bb (as !! i)
+
+deltaTmiDemo = do
+  msp $ vvread world worldData
+  msp $ vvread nwa worldData
+  msp $ vvread nwb worldData
+  msp $ vvread nwba worldData
+  msp $ vvread (nwbai 1) worldData
+  msp $ vvwrite nwa [10, 20, 30] worldData
+  msp $ vvwrite nwba [40, 50, 60] worldData
+  msp $ vvwrite (nwbai 2) 60 worldData
+  let x = (applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int)
+  msp x
+  msp "hi"
+  --msp $ loop Abc0 Def0
+  --msp $ loop Abc0 Def1
+  --msp $ loop Abc1 Def0
+  --msp $ loop Abc1 Def1
+
+  --msp $ plah voon00
+
+  --msp $ differ double (Insert 1 (20::Int)) (b thedb)
+  --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
+
+  --msp $ dvwrite (NNDeltaNNN (Insert 2 (50 :: Int))) thedb
+  --msp $ dvwrite' vfnn (NNDeltaNNN (Insert 2 (51 :: Int))) thedb
+  --msp $ dvwrite' vfnnn (Insert 2 (52 :: Int)) thedb
+  --msp $ vread vfnnn thedb
+  --tmiRunShow hahaNN
+  --tmiRunShow hahaNNN
+
+{-
+data Loo a = forall vf da . (VFun vf, Delta a da) => Loo a vf (da -> String)
+
+class (VFun vf, Delta a da) => Chew vf a da where
+  brap :: vf -> a -> da -> String
+
+instance Delta b db => Chew (DMap a b) b db where
+  brap _ _ db = "dmapab"
+
+garsh :: (Chew vf a da, Delta a da) => Loo a -> da -> String
+garsh (Loo a vf dfwut) da = brap vf a da
+-}
+
+--class (VFun vf, Delta a da) => forall vf. forall dc . Ruh a
+--class forall a . Num a => Loo
 
   {-
 instance (Differ fbc b c db dc, Differ fab a b da db) => Differ (ComposeDiffers fbc fab) a c da dc where
@@ -363,17 +545,6 @@ instance (Differ fbc b c db dc, Differ fab a b da db) => Differ (ComposeDiffers 
   differ (fbc :..: fab) dc a = fab (fbc dc b) a
     where b = ???
 -}
-
-deltaTmiDemo = do
-  msp $ differ double (Insert 1 (20::Int)) (b thedb)
-  msp $ differ addone (Insert 1 (20::Int)) (b thedb)
-  --msp $ dvwrite (NNDeltaNNN (Insert 2 (50 :: Int))) thedb
-  --msp $ dvwrite' vfnn (NNDeltaNNN (Insert 2 (51 :: Int))) thedb
-  --msp $ dvwrite' vfnnn (Insert 2 (52 :: Int)) thedb
-  --msp $ vread vfnnn thedb
-  --tmiRunShow hahaNN
-  --tmiRunShow hahaNNN
-  msp "hi"
 
   {-
 class DViffer b db | db -> b where
