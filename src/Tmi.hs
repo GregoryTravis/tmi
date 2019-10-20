@@ -487,16 +487,19 @@ instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
     where aa = r bb (as !! i)
   applyDelta (VMap (f, r, _)) (Delete i) _ = (Delete i)
 
---data ConsDelta a = Cons a | Cdr a | Snoc a | Rdc a
---deriving instance Show a => Show (ConsDelta a)
+data ConsDelta a = Cons a | Snoc a
+deriving instance Show a => Show (ConsDelta a)
 
---instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
-  --applyDelta (VMap (VFun f r)) (Insert i bb) as = (Insert i aa)
-    --where aa = r bb (as !! i)
+instance Delta [a] (ConsDelta a) where
+  xs .+ (Cons x) = x : xs
+  xs .+ (Snoc x) = xs ++ [x]
+  (.-) = undefined  -- slow
 
--- instance (Delta [a] da, Delta [b] db) => Incremental [a] [b] da db (VMap [a] [b]) where
---   applyDelta (VMap (VFun f r)) (Insert i bb) as = (Insert i aa)
---     where aa = r bb (as !! i)
+instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
+  applyDelta (VMap (f, r, _)) (Cons bb) as = (Cons aa)
+    where aa = r bb (head as)
+  applyDelta (VMap (f, r, _)) (Snoc bb) as = (Snoc aa)
+    where aa = r bb (head as)
 
 deltaTmiDemo = do
   msp $ vvread world worldData
@@ -507,8 +510,11 @@ deltaTmiDemo = do
   msp $ vvwrite nwa [10, 20, 30] worldData
   msp $ vvwrite nwba [40, 50, 60] worldData
   msp $ vvwrite (nwbai 2) 60 worldData
-  msp $ ((applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
-  msp $ ((applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
+  let x2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
+  msp $ ((applyDelta x2 (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
+  msp $ ((applyDelta x2 ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
+  msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
+  msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp "hi"
   --msp $ loop Abc0 Def0
   --msp $ loop Abc0 Def1
