@@ -466,6 +466,8 @@ instance Delta a (FullDelta a) where
 instance (Delta a a, Delta b b, Wrapper (VFun a b)) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
   applyDelta (VFun f r) (FullDelta bs) as = FullDelta $ r bs as
 
+--instance Wrapper (VFun a b)
+
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
   msp $ vvread world worldData
