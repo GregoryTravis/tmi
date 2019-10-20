@@ -453,6 +453,9 @@ instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
   applyDelta (VMap (f, r, _)) (Snoc bb) as = (Snoc aa)
     where aa = r bb (head as)
 
+instance Incremental a b da db wr => Incremental a b [da] [db] wr where
+  applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
+
 deltaTmiDemo = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
@@ -467,6 +470,7 @@ deltaTmiDemo = do
   msp $ ((applyDelta x2 ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
+  msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
