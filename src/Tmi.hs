@@ -357,45 +357,6 @@ vfnnn = (liftBV nnn up_nnn) vfnn
 
 --data ComposeDiffers dfa dfb = dfa :..: dfb
 
-----class Abc abc
-
-----class Def def
-
-----data Abc0 = Abc0
-----instance Abc Abc0
-----data Abc1 = Abc1
-----instance Abc Abc1
-----data Def0 = Def0
-----instance Def Def0
-----data Def1 = Def1
-----instance Def Def1
-
-----class (Abc abc, Def def) => Brack abc def where
-----  loop :: abc -> a -> def -> String
-
-----instance Brack Abc0 Def0 where
-----  loop _ _ _  = "00"
-----instance Brack Abc0 Def1 where
-----  loop _ _ _  = "01"
-----instance Brack Abc1 Def0 where
-----  loop _ _ _  = "10"
-----instance Brack Abc1 Def1 where
-----  loop _ _ _  = "11"
-
-----{-
-----data Voon def = forall abc . (Brack abc def, Abc abc, Def def) => Voon abc def
-----plah :: (Brack abc def, Abc abc, Def def) => forall abc . Voon def -> String
-----plah (Voon abc def) = loop abc def
------}
-
-----data Voon a = forall abc . (Abc abc) => Voon abc a
-------plah :: (Brack abc def, Abc abc, Def def) => forall abc . Voon def -> String
-----plah :: (Brack abc def, Abc abc, Def def) => (Voon a) -> def -> String
-----plah (Voon abc a) def = loop abc a def
-------plah (Voon abc a) def = jarr abc a def
-------jarr :: Brack abc def => abc -> a -> def -> String
-------jarr abc a def = loop abc a def
-
 ----{-
 ----ARGH
 
@@ -414,15 +375,6 @@ vfnnn = (liftBV nnn up_nnn) vfnn
 ----nb :: Val (Fun a b) b
 ----app :: Fun a b -> Val c a -> Val (Fun a b) a
 -----}
-
-----voon00 = Voon Abc0 Def0
-----voon01 = Voon Abc0 Def1
-----voon10 = Voon Abc1 Def0
-----voon11 = Voon Abc1 Def1
-
--- class VFun a b where
---   forwards :: a -> b
---   backwards :: b -> a -> a
 
 data VFun a b = VFun (a -> b) (b -> a -> a)
 
@@ -516,13 +468,6 @@ deltaTmiDemo = do
   msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp "hi"
-  --msp $ loop Abc0 Def0
-  --msp $ loop Abc0 Def1
-  --msp $ loop Abc1 Def0
-  --msp $ loop Abc1 Def1
-
-  --msp $ plah voon00
-
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
 
