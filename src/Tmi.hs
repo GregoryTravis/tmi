@@ -456,6 +456,13 @@ instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
 instance Incremental a b da db wr => Incremental a b [da] [db] wr where
   applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
 
+-- instance Delta a a where
+--   x .+ x' = x'
+--   (.-) = undefined -- TODO: Or is it just: x .- x' = x
+
+-- instance Incremental a b a b wr where
+--   applyDelta = undefined
+
 deltaTmiDemo = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
