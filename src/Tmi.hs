@@ -485,6 +485,10 @@ class (Delta a da, Delta b db, Wrapper wr) => Incremental a b da db wr where
 instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
   applyDelta (VMap (f, r, _)) (Insert i bb) as = (Insert i aa)
     where aa = r bb (as !! i)
+  applyDelta (VMap (f, r, _)) (Delete i) _ = (Delete i)
+
+--data ConsDelta a = Cons a | Cdr a | Snoc a | Rdc a
+--deriving instance Show a => Show (ConsDelta a)
 
 --instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
   --applyDelta (VMap (VFun f r)) (Insert i bb) as = (Insert i aa)
@@ -503,8 +507,8 @@ deltaTmiDemo = do
   msp $ vvwrite nwa [10, 20, 30] worldData
   msp $ vvwrite nwba [40, 50, 60] worldData
   msp $ vvwrite (nwbai 2) 60 worldData
-  let x = (applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int)
-  msp x
+  msp $ ((applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
+  msp $ ((applyDelta (vmap (* (2::Int)) (\x _ -> x `div` (2::Int))) ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp "hi"
   --msp $ loop Abc0 Def0
   --msp $ loop Abc0 Def1
