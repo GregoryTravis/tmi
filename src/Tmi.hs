@@ -456,13 +456,17 @@ instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
 instance Incremental a b da db wr => Incremental a b [da] [db] wr where
   applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
 
--- instance Delta a a where
---   x .+ x' = x'
---   (.-) = undefined -- TODO: Or is it just: x .- x' = x
+newtype FullDelta a = FullDelta a
+  deriving (Eq, Show)
 
--- instance Incremental a b a b wr where
---   applyDelta = undefined
+instance Delta a (FullDelta a) where
+  x .+ FullDelta x' = x'
+  (.-) = undefined -- TODO: Or is it just: x .- x' = x
 
+instance (Delta a a, Delta b b, Wrapper (VFun a b)) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
+  applyDelta (VFun f r) (FullDelta bs) as = FullDelta $ r bs as
+
+xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
@@ -478,6 +482,7 @@ deltaTmiDemo = do
   msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
+  --msp $ ((applyDelta x2 (FullDelta [3, 2, (1::Int)]) [(1::Int), 2, 3]) :: (FullDelta [Int]))
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
