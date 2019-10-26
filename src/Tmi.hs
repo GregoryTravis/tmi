@@ -458,6 +458,16 @@ instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
 instance Incremental a b da db wr => Incremental a b [da] [db] wr where
   applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
 
+data NullDelta a = NullDelta
+  deriving (Eq, Show)
+
+instance Delta a (NullDelta a) where
+  x .+ NullDelta = x
+  (.-) = undefined  -- TODO: maybe assert args are equal? Maybe (.-) should be maybe?
+
+instance Incremental a b (NullDelta a) (NullDelta b) (VFun a b) where
+  applyDelta (VFun f r) NullDelta _ = NullDelta  -- TODO: or you could run it and assert it hasn't changed, see NullDelta
+
 newtype FullDelta a = FullDelta a
   deriving (Eq, Show)
 
@@ -496,7 +506,7 @@ deltaTmiDemo = do
   msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
   msp $ ((applyDelta huh (FullDelta [6, 4, (2::Int)]) [(2::Int), 4, 6]) :: (FullDelta [Int]))
-  --xx msp $ ((applyDelta x2 (FullDelta [3, 2, (1::Int)]) [(1::Int), 2, 3]) :: (FullDelta [Int]))
+  msp $ ((applyDelta huh (NullDelta :: (NullDelta [Int])) [(1::Int), 2, 3]) :: (NullDelta [Int]))
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
