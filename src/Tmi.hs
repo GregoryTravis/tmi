@@ -488,6 +488,13 @@ instance Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
 
 instance Wrapper (VFun a b)
 
+--data IndividualDeltas da = IndividualDeltas [da]
+
+--instance (Delta [a] (IndividualDeltas da), Delta [b] (IndividualDeltas db)) => Incremental [a] [b] (IndividualDeltas da) (IndividualDeltas db) (VMap a b) where
+--  --applyDelta (VMap (f, r, _)) (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> r db a) (zip dbs as))
+--  --applyDelta vm (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
+--  applyDelta   (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
+
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
   msp $ vvread world worldData
