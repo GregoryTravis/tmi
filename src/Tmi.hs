@@ -5,6 +5,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -507,7 +508,22 @@ instance Incremental a b da db wr => Incremental [a] [b] (ParListDelta da) (ParL
   applyDelta wr (ParListDelta dbs) as = ParListDelta $ map (\(db, a) -> applyDelta wr db a) (zip dbs as)
   --applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
 
+-- composing applyDelta
+-- TODO this only works because none of our delta appliers use the second argument
+-- Also, this doesn't work because there's no way to determine what type b is in the where clauses
+data ComposeWrappers bc ab = ComposeWrappers bc ab
+instance (Wrapper ab, Wrapper bc) => Wrapper (ComposeWrappers bc ab)
+instance (Incremental b c db dc wbc, Incremental a b da db wab) => Incremental a c da dc (ComposeWrappers wbc wab) where
+  applyDelta (ComposeWrappers wbc wab) dc a = da
+    where db :: db
+          db = applyDelta wbc dc b
+          b :: b
+          b = undefined -- TODO never used anywhere, but might be
+          da :: da
+          da = applyDelta wab db a
+
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
+pp1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
 deltaTmiDemo = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
@@ -519,6 +535,7 @@ deltaTmiDemo = do
   msp $ vvwrite (nwbai 2) 60 worldData
   let x2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
   let (VMap (_, _, huh)) = x2
+  let p1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
   msp $ ((applyDelta x2 (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp $ ((applyDelta x2 ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
@@ -528,6 +545,8 @@ deltaTmiDemo = do
   msp $ ((applyDelta huh (NullDelta :: (NullDelta [Int])) [(1::Int), 2, 3]) :: (NullDelta [Int]))
   msp $ ([[1, 2], [3, 4], [5, 6]] .+ ParListDelta [Insert 0 (11::Int), Insert 1 (44::Int), Insert 2 (77::Int)])
   msp $ ((applyDelta x2 (ParListDelta [Insert 0 (20::Int), Insert 1 (40::Int)]) [[(2::Int), 4], [(6::Int), 8]]) :: ParListDelta (ListDelta Int))
+  -- Cannot determine the intermediate type from this, the type of b/db
+  --msp $ ((applyDelta (ComposeWrappers p1 x2) (Insert 1 (41::Int)) [(3::Int), 5, 7]) :: ListDelta Int)
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
