@@ -421,7 +421,9 @@ nwbai i = vapply (VFun (!! i) rev) nwba
   where rev b arr = upd arr i b
 
 vmap' :: (a -> b) -> (b -> a -> a) -> VFun [a] [b]
-vmap' f r = VFun (map f) undefined
+vmap' f r = VFun (map f) blah
+  where -- blah :: [b] -> [a] -> [a]
+        blah bs as = map (\(b, a) -> r b a) (zip bs as)
 vmap :: (a -> b) -> (b -> a -> a ) -> VMap a b
 vmap f r = VMap (f, r, (vmap' f r))
 
@@ -463,10 +465,18 @@ instance Delta a (FullDelta a) where
   x .+ FullDelta x' = x'
   (.-) = undefined -- TODO: Or is it just: x .- x' = x
 
-instance (Delta a a, Delta b b, Wrapper (VFun a b)) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
-  applyDelta (VFun f r) (FullDelta bs) as = FullDelta $ r bs as
+-- map-specific, nope
+--instance (Delta a (FullDelta a), Delta b (FullDelta b), Wrapper (VMap a b)) => Incremental [a] [b] (FullDelta [a]) (FullDelta [b]) (VMap a b) where
+--  applyDelta (VMap (f, r, _)) (FullDelta bs) as = FullDelta $ map r bs as
 
---instance Wrapper (VFun a b)
+-- not map-specific
+--instance (Delta a a, Delta b b, Wrapper (VFun a b)) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
+--instance Wrapper (VFun a b) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
+instance Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
+  applyDelta (VFun f r) (FullDelta b) a = FullDelta $ r b a
+--applyDelta :: wr -> db -> a -> da
+
+instance Wrapper (VFun a b)
 
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
@@ -479,12 +489,14 @@ deltaTmiDemo = do
   msp $ vvwrite nwba [40, 50, 60] worldData
   msp $ vvwrite (nwbai 2) 60 worldData
   let x2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
+  let (VMap (_, _, huh)) = x2
   msp $ ((applyDelta x2 (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp $ ((applyDelta x2 ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
   msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
   msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
-  --msp $ ((applyDelta x2 (FullDelta [3, 2, (1::Int)]) [(1::Int), 2, 3]) :: (FullDelta [Int]))
+  msp $ ((applyDelta huh (FullDelta [6, 4, (2::Int)]) [(2::Int), 4, 6]) :: (FullDelta [Int]))
+  --xx msp $ ((applyDelta x2 (FullDelta [3, 2, (1::Int)]) [(1::Int), 2, 3]) :: (FullDelta [Int]))
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
