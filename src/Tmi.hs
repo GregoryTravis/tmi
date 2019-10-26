@@ -495,6 +495,12 @@ instance Wrapper (VFun a b)
 --  --applyDelta vm (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
 --  applyDelta   (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
 
+newtype ParListDelta a = ParListDelta [a]
+
+instance Delta a da => Delta [a] (ParListDelta da) where
+  as .+ (ParListDelta das) = map (\(a, da) -> a .+ da) (zip as das)
+  as .- as' = ParListDelta $ map (\(a, a') -> a .- a') (zip as as')
+
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
   msp $ vvread world worldData
@@ -514,6 +520,7 @@ deltaTmiDemo = do
   msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
   msp $ ((applyDelta huh (FullDelta [6, 4, (2::Int)]) [(2::Int), 4, 6]) :: (FullDelta [Int]))
   msp $ ((applyDelta huh (NullDelta :: (NullDelta [Int])) [(1::Int), 2, 3]) :: (NullDelta [Int]))
+  msp $ ([[1, 2], [3, 4], [5, 6]] .+ ParListDelta [Insert 0 (11::Int), Insert 1 (44::Int), Insert 2 (77::Int)])
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
