@@ -496,10 +496,16 @@ instance Wrapper (VFun a b)
 --  applyDelta   (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
 
 newtype ParListDelta a = ParListDelta [a]
+  deriving (Eq, Show)
 
 instance Delta a da => Delta [a] (ParListDelta da) where
   as .+ (ParListDelta das) = map (\(a, da) -> a .+ da) (zip as das)
   as .- as' = ParListDelta $ map (\(a, a') -> a .- a') (zip as as')
+
+--instance (Delta a da, Delta b db
+instance Incremental a b da db wr => Incremental [a] [b] (ParListDelta da) (ParListDelta db) wr where
+  applyDelta wr (ParListDelta dbs) as = ParListDelta $ map (\(db, a) -> applyDelta wr db a) (zip dbs as)
+  --applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
 
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 deltaTmiDemo = do
@@ -521,6 +527,7 @@ deltaTmiDemo = do
   msp $ ((applyDelta huh (FullDelta [6, 4, (2::Int)]) [(2::Int), 4, 6]) :: (FullDelta [Int]))
   msp $ ((applyDelta huh (NullDelta :: (NullDelta [Int])) [(1::Int), 2, 3]) :: (NullDelta [Int]))
   msp $ ([[1, 2], [3, 4], [5, 6]] .+ ParListDelta [Insert 0 (11::Int), Insert 1 (44::Int), Insert 2 (77::Int)])
+  msp $ ((applyDelta x2 (ParListDelta [Insert 0 (20::Int), Insert 1 (40::Int)]) [[(2::Int), 4], [(6::Int), 8]]) :: ParListDelta (ListDelta Int))
   msp "hi"
   --msp $ differ double (Insert 1 (20::Int)) (b thedb)
   --msp $ differ addone (Insert 1 (20::Int)) (b thedb)
