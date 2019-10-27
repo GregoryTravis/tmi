@@ -597,16 +597,45 @@ gbdi = bmap $ Brap floor (\i _ -> (fromInteger i) :: Double)
 gbis :: BMap (Brap Integer String) (Brap [Integer] [String])
 gbis = bmap $ Brap show (\s _ -> read s)
 
+-- TODO wish I could use DatatypeContexts but I know it's wrong and you should use GADTs or somethign
+--data Guff DB b c => GVal b c = GVal (DB -> b) (b -> DB -> DB) c
+data GVal b g = GVal (World -> b) (b -> World -> World) g
+
+thegdb :: GVal World (BId (Brap World World))
+thegdb  = GVal id (\x _ -> x) gbid
+
+gbid :: BId (Brap a a)
+gbid = BId (Brap id (\x _ -> x))
+data BId br = BId br  -- TODO why is this 'br'?
+instance Guff a b (BId (Brap a b)) where
+  getIt (BId mf) = mf
+werld :: GVal World (BId (Brap World World))
+werld = GVal undefined undefined gbid
+--bmap :: Brap a b -> BMap (Brap a b) (Brap [a] [b])
+--bmap (Brap f r) = BMap (Brap f r) (Brap (map f) rev)
+
+gread :: Guff World b g => GVal b g -> World -> b
+gread (GVal _ _ g) w = f w
+  where (Brap f r) = getIt g
+
+-- gapply :: Guff a b g => GVal a ag -> g -> GVal b g
+-- gapply a g = GVal newFor newRev
+--   where newFor f (gread a)
+--   where (Brap f r) = getIt g
+
 deltaTmiDemo = do
-  msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
-  msp $ ((appInc gbdubs (Insert 1 (10::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
-  let dubThenInc = CompInc gbincr gbdubs
-  msp $ ((appInc dubThenInc (Insert 1 (21::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
-  -- d -> i -> s
-  msp $ ((appInc gbdi (Insert 1 (20::Integer)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
-  msp $ ((appInc gbis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
-  let gbdis = CompInc gbis gbdi
-  msp $ ((appInc gbdis (Insert 1 ("20"::String)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
+  msp $ gread werld worldData
+  -- -- works
+  -- msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
+  -- msp $ ((appInc gbdubs (Insert 1 (10::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
+  -- let dubThenInc = CompInc gbincr gbdubs
+  -- msp $ ((appInc dubThenInc (Insert 1 (21::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
+  -- -- d -> i -> s
+  -- msp $ ((appInc gbdi (Insert 1 (20::Integer)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
+  -- msp $ ((appInc gbis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
+  -- let gbdis = CompInc gbis gbdi
+  -- msp $ ((appInc gbdis (Insert 1 ("20"::String)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
+
   -- msp $ bapplyf bincr 3
   -- msp $ bapplyr bincr 4 3
   -- msp $ bapplyf bdubs 5
