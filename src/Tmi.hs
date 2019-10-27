@@ -548,10 +548,10 @@ bmap (Brap f r) = BMap (Brap f r) (Brap (map f) rev)
 
 data BMap f br = BMap f br
 
-class Guff a b c | c -> a b --where
-  --getIt :: c -> BMap a b
-instance Guff [a] [b] (BMap (Brap a b) (Brap [a] [b])) --where
-  --getIt (BMap f mf) = mf
+class Guff a b c | c -> a b where
+  getIt :: c -> Brap a b
+instance Guff [a] [b] (BMap (Brap a b) (Brap [a] [b])) where
+  getIt (BMap f mf) = mf
 
 -- Wrapped as singleton
 gbincr :: BMap (Brap Int Int) (Brap [Int] [Int])
@@ -569,9 +569,23 @@ instance Inc [a] [b] (ListDelta a) (ListDelta b) (BMap (Brap a b) (Brap [a] [b])
     where a = as !! i
 
 data CompInc bc ab = CompInc bc ab
-instance (Guff b c bc, Guff a b ab) => Guff a c (CompInc bc ab)
+instance (Guff b c bc, Guff a b ab) => Guff a c (CompInc bc ab) where
+  getIt = undefined
+  -- -- TODO wish I didn't need to write this since I'm never going to call it?
+  -- getIt (CompInc bc ab) = Brap acf acr
+  --   where (Brap bcf bcr) = getIt bc
+  --         (Brap abf abr) = getIt ab
+  --         acf =
+
 instance (Inc b c db dc gbc, Inc a b da db gab) => Inc a c da dc (CompInc gbc gab) where
-  appInc = undefined
+  --appInc = undefined
+  appInc (CompInc gbc gab) dc a = da
+    where db = appInc gbc dc b
+          (Brap abf abr) = getIt gab
+          b  = abf a  -- TODO an bapplyf for this
+          da = appInc gab db a
+    -- where (Brap bcf bcr) = getIt gbc
+    --       (Brap abf abr) = getIt gab
 
 bapplyf (Brap f r) = f
 bapplyr (Brap f r) = r
