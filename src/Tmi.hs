@@ -511,6 +511,9 @@ instance Incremental a b da db wr => Incremental [a] [b] (ParListDelta da) (ParL
 -- composing applyDelta
 -- TODO this only works because none of our delta appliers use the second argument
 -- Also, this doesn't work because there's no way to determine what type b is in the where clauses
+-- More specifically, wbc and wab do not have any type variables, so they cannot be unified with the
+-- input and output types. A specific instantion does have those, but perhaps that is masked by them
+-- not being part of the Wrapper here.  But I can't figure out how to add them to Wrapper.
 data ComposeWrappers bc ab = ComposeWrappers bc ab
 instance (Wrapper ab, Wrapper bc) => Wrapper (ComposeWrappers bc ab)
 instance (Incremental b c db dc wbc, Incremental a b da db wab) => Incremental a c da dc (ComposeWrappers wbc wab) where
@@ -521,6 +524,21 @@ instance (Incremental b c db dc wbc, Incremental a b da db wab) => Incremental a
           b = undefined -- TODO never used anywhere, but might be
           da :: da
           da = applyDelta wab db a
+
+-- class Wrapper2 a b
+-- data VMap2 a b =
+-- class (Delta a da, Delta b db, Wrapper wr) => Incremental a b da db wr where
+--   applyDelta :: wr -> db -> da
+
+-- Double -> Integer -> String
+vmdi :: VMap Double Integer
+vmdi = vmap floor (\i _ -> (fromInteger i) :: Double)
+vmis :: VMap Integer String
+vmis = vmap show (\s _ -> read s)
+compositeFailureDemo = do
+  msp $ ((applyDelta vmdi (Insert 1 (20::Integer)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
+  msp $ ((applyDelta vmis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
+  --msp $ ((applyDelta (ComposeWrappers vmis vmdi) (Insert 1 ("20"::String)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
 
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 pp1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
