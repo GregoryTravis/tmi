@@ -599,10 +599,10 @@ gbis = bmap $ Brap show (\s _ -> read s)
 
 -- TODO wish I could use DatatypeContexts but I know it's wrong and you should use GADTs or somethign
 --data Guff DB b c => GVal b c = GVal (DB -> b) (b -> DB -> DB) c
-data GVal b g = GVal (World -> b) (b -> World -> World) g
+data GVal b g = GVal g
 
 thegdb :: GVal World (BId (Brap World World))
-thegdb  = GVal id (\x _ -> x) gbid
+thegdb  = GVal gbid
 
 gbid :: BId (Brap a a)
 gbid = BId (Brap id (\x _ -> x))
@@ -610,18 +610,19 @@ data BId br = BId br  -- TODO why is this 'br'?
 instance Guff a b (BId (Brap a b)) where
   getIt (BId mf) = mf
 werld :: GVal World (BId (Brap World World))
-werld = GVal undefined undefined gbid
+werld = GVal gbid
 --bmap :: Brap a b -> BMap (Brap a b) (Brap [a] [b])
 --bmap (Brap f r) = BMap (Brap f r) (Brap (map f) rev)
 
 gread :: Guff World b g => GVal b g -> World -> b
-gread (GVal _ _ g) w = f w
+gread (GVal g) w = f w
   where (Brap f r) = getIt g
 
--- gapply :: Guff a b g => GVal a ag -> g -> GVal b g
--- gapply a g = GVal newFor newRev
---   where newFor f (gread a)
---   where (Brap f r) = getIt g
+--gapply :: Guff a b g => GVal a ag -> g -> GVal b g
+----gapply = undefined
+--gapply a g = GVal (Brap newFor newRev)
+--  where (Brap f r) = getIt g
+--        newFor 
 
 deltaTmiDemo = do
   msp $ gread werld worldData
