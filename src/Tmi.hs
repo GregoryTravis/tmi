@@ -540,9 +540,45 @@ compositeFailureDemo = do
   msp $ ((applyDelta vmis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
   --msp $ ((applyDelta (ComposeWrappers vmis vmdi) (Insert 1 ("20"::String)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
 
+-- Function abstraction
+data Brap a b = Brap (a -> b) (b -> a -> a)
+bmap :: Brap a b -> Brap [a] [b]
+bmap (Brap f r) = Brap (map f) rev
+  where rev bs as = map (\(b, a) -> r b a) (zip bs as)
+
+class Guff a
+data BMap f br = BMap f br
+instance Guff (BMap f br)
+
+-- Wrapped as singleton
+gbincr :: BMap (Brap Int Int) (Brap [Int] [Int])
+gbincr = BMap bincr (bmap bincr)
+
+class (Delta a da, Delta b db, Guff g) => Inc a b da db g where
+  appInc :: g -> db -> a -> da
+
+--instance (Delta a da, Delta b db) => Inc a b da db (BMap (Brap a b)) where
+instance Inc [a] [b] (ListDelta a) (ListDelta b) (BMap (Brap a b) (Brap [a] [b])) where
+  -- TODO: could choose to not lookup in as since it's not used; or a different form for this
+  appInc (BMap (Brap f r) _) (Insert i b) as = Insert i (r b a)
+    where a = as !! i
+
+bincr = Brap (+1) (\n _ -> n - 1)
+bapplyf (Brap f r) = f
+bapplyr (Brap f r) = r
+
+deltaTmiDemo = do
+  msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
+  -- msp $ bapplyf bincr 3
+  -- msp $ bapplyr bincr 4 3
+  -- msp $ bapplyf (bmap bincr) [1, 2 ,3]
+  -- msp $ bapplyr (bmap bincr) [2, 3, 4] [1, 2 ,3]
+  -- --msp $ bapplyr (bmap bincr) [2, 3, 4] undefined  -- wish this worked
+  msp "hi"
+
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 pp1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
-deltaTmiDemo = do
+deltaTmiDemo4 = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
   msp $ vvread nwb worldData
