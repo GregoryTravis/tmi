@@ -542,8 +542,8 @@ compositeFailureDemo = do
 
 -- Function abstraction
 data Brap a b = Brap (a -> b) (b -> a -> a)
-bmap :: Brap a b -> Brap [a] [b]
-bmap (Brap f r) = Brap (map f) rev
+bmap :: Brap a b -> BMap (Brap a b) (Brap [a] [b])
+bmap (Brap f r) = BMap (Brap f r) (Brap (map f) rev)
   where rev bs as = map (\(b, a) -> r b a) (zip bs as)
 
 class Guff a
@@ -552,7 +552,8 @@ instance Guff (BMap f br)
 
 -- Wrapped as singleton
 gbincr :: BMap (Brap Int Int) (Brap [Int] [Int])
-gbincr = BMap bincr (bmap bincr)
+--gbincr = BMap bincr (bmap bincr)
+gbincr = bmap bincr
 
 class (Delta a da, Delta b db, Guff g) => Inc a b da db g where
   appInc :: g -> db -> a -> da
