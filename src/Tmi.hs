@@ -618,11 +618,20 @@ gread :: Guff World b g => GVal b g -> World -> b
 gread (GVal g) w = f w
   where (Brap f r) = getIt g
 
---gapply :: Guff a b g => GVal a ag -> g -> GVal b g
-----gapply = undefined
---gapply a g = GVal (Brap newFor newRev)
---  where (Brap f r) = getIt g
---        newFor 
+{-
+-- ** I think what this needs is a Guff instance just for application
+gapply :: (Guff a b funG, Guff World a valG, Guff World b resultG) => funG -> GVal a valG -> GVal b resultG
+--gapply = undefined
+gapply funG (GVal valG) = GVal resultG
+  where (Brap funF funR) = getIt funG
+        (Brap argF argR) = getIt argG
+        resultG = Brap resultF resultR
+        resultF :: World -> b
+        resultF w = funF (argF w)
+        resultR :: b -> World -> World
+        resultR b w = argR (funR b a) w
+          where a = argF w
+-}
 
 deltaTmiDemo = do
   msp $ gread werld worldData
