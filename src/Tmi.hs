@@ -554,6 +554,7 @@ instance Guff (BMap f br)
 gbincr :: BMap (Brap Int Int) (Brap [Int] [Int])
 --gbincr = BMap bincr (bmap bincr)
 gbincr = bmap bincr
+gbdubs = bmap bdubs
 
 class (Delta a da, Delta b db, Guff g) => Inc a b da db g where
   appInc :: g -> db -> a -> da
@@ -564,14 +565,18 @@ instance Inc [a] [b] (ListDelta a) (ListDelta b) (BMap (Brap a b) (Brap [a] [b])
   appInc (BMap (Brap f r) _) (Insert i b) as = Insert i (r b a)
     where a = as !! i
 
-bincr = Brap (+1) (\n _ -> n - 1)
 bapplyf (Brap f r) = f
 bapplyr (Brap f r) = r
+bincr = Brap (+1) (\n _ -> n - 1)
+bdubs = Brap (*2) (\n _ -> n `div` (2::Int))
 
 deltaTmiDemo = do
   msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
+  msp $ ((appInc gbdubs (Insert 1 (10::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
   -- msp $ bapplyf bincr 3
   -- msp $ bapplyr bincr 4 3
+  -- msp $ bapplyf bdubs 5
+  -- msp $ bapplyr bdubs 10 5
   -- msp $ bapplyf (bmap bincr) [1, 2 ,3]
   -- msp $ bapplyr (bmap bincr) [2, 3, 4] [1, 2 ,3]
   -- --msp $ bapplyr (bmap bincr) [2, 3, 4] undefined  -- wish this worked
