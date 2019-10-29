@@ -1,1 +1,1 @@
-[DB {a = 12, b = [2,3,4], c = "asdf", accounts = fromList []}]
+[DB {a = 12, b = [2,3,4], bb = [20, 30, 40], c = "asdf", accounts = fromList [], nn = NN { nnn = [3, 4, 5]}}]
