@@ -618,11 +618,97 @@ gread :: Guff World b g => GVal b g -> World -> b
 gread (GVal g) w = f w
   where (Brap f r) = getIt g
 
+data BWa br = BWa br
+instance Guff a b (BWa (Brap a b)) where
+  getIt (BWa mf) = mf
+gbwa :: BWa (Brap World [Int])
+gbwa = BWa (Brap wa u_wa)
+gvwa :: GVal [Int] (BWa (Brap World [Int]))
+gvwa = GVal gbwa
+
+data BWb br = BWb br
+instance Guff a b (BWb (Brap a b)) where
+  getIt (BWb mf) = mf
+gbwb :: BWb (Brap World Blerb)
+gbwb = BWb (Brap wb u_wb)
+gvwb :: GVal Blerb (BWb (Brap World Blerb))
+gvwb = GVal gbwb
+
+data BWba br = BWba br
+instance Guff a b (BWba (Brap a b)) where
+  getIt (BWba mf) = mf
+gbwba :: BWba (Brap Blerb [Int])
+gbwba = BWba (Brap wba u_wba)
+gvwba :: GVal Blerb (BWba (Brap Blerb [Int]))
+gvwba = GVal gbwba
+
+-- a -> b1 -> b2 or ((b1 -> b2) b1)
+-- db2 -> a -> da is the composite delta transformer
+--fah :: (Guff a b f, Guff w a v) => f -> v -> q
+--fah fg (GVal vg) = (appInc (CompInc fg vg), CompInc fg vg)
+fah :: funG -> (GVal a valG) -> GVal b (CompInc funG valG)
+fah fg (GVal vg) = GVal (CompInc fg vg)
+  -- where (Brap ff fr) = getIt fg
+  --       (Brap vf vr) = getInt vg
+
+data WADelta = WADelta (ListDelta Int) deriving Show
+instance Delta World WADelta where
+  w .+ (WADelta ld) = w { wa = (wa w .+ ld) }
+  (.-) = undefined
+
+data BlerbDelta = BlerbDelta (ListDelta Int) deriving Show
+instance Delta Blerb BlerbDelta where
+  b .+ (BlerbDelta ld) = b { wba = (wba b) .+ ld }
+  (.-) = undefined
+
+data WBDelta = WBDelta BlerbDelta deriving Show
+instance Delta World WBDelta where
+  w .+ (WBDelta bd) = w { wb = (wb w .+ bd) }
+  (.-) = undefined
+
+-- instance Delta World () where
+--   w .+ () = w
+--   (.-) = undefined
+
+instance Inc World [Int] WADelta (ListDelta Int) (BWa (Brap World [Int])) where
+  appInc g ld _ = WADelta ld
+
+--instance Inc World World () WADelta (GVal World (BId (Brap World World))) where
+-- instance Inc World World () WADelta (BId (Brap World World)) where
+--   appInc = undefined
+
+instance Inc World World WADelta WADelta (BId (Brap World World)) where
+  appInc g waDelta _ = waDelta
+
+instance Inc World World WBDelta WBDelta (BId (Brap World World)) where
+  appInc g wbDelta _ = wbDelta
+
+instance Inc Blerb [Int] BlerbDelta (ListDelta Int) (BWba (Brap Blerb [Int])) where
+  appInc g ld _ = BlerbDelta ld
+
+instance Inc World Blerb WBDelta BlerbDelta (BWb (Brap World Blerb)) where
+  appInc g bd _ = WBDelta bd
+
+xxxx = fah gbwa werld
+--yyyy
+  -- :: (Inc a World da db (GVal World (BId (Brap World World))),
+  --     Inc World [Int] db (ListDelta Int) (BWa (Brap World [Int]))) =>
+  --    a -> da
+
+  -- :: Inc a World da WADelta (GVal World (BId (Brap World World))) =>
+  --    a -> da
+--yyyy = undefined
+--yyyy = (appInc (CompInc gbwa werld) (Insert 1 (12::Int))) :: ListDelta Int -> WADelta
+--yyyy = appInc (CompInc gbwa werld) (Insert 1 (12::Int))
+
 {-
 -- ** I think what this needs is a Guff instance just for application
-gapply :: (Guff a b funG, Guff World a valG, Guff World b resultG) => funG -> GVal a valG -> GVal b resultG
+gapply :: (Guff a b funG, Guff World a valG, Guff World b resultG) =>
+          funG -> GVal a valG -> GVal b resultG
 --gapply = undefined
 gapply funG (GVal valG) = GVal resultG
+  where resultG = CompInc funG valG
+{-
   where (Brap funF funR) = getIt funG
         (Brap argF argR) = getIt argG
         resultG = Brap resultF resultR
@@ -632,9 +718,32 @@ gapply funG (GVal valG) = GVal resultG
         resultR b w = argR (funR b a) w
           where a = argF w
 -}
+-}
+
+gapply funG (GVal valG) = GVal resultG
+  where resultG = CompInc funG valG
+
+dwrot (GVal g) delta w = appInc g delta w
 
 deltaTmiDemo = do
   msp $ gread werld worldData
+  msp $ gread gvwa worldData
+  msp $ appInc gbid (WADelta (Insert 1 (12::Int))) worldData
+  msp $ appInc (CompInc gbwa gbid) (Insert 1 (12::Int)) worldData
+  --msp $ appInc (gapply gbwa werld) (Insert 1 (12::Int)) worldData
+  msp $ appInc (case gapply gbwa werld of (GVal ha) -> ha) (Insert 1 (12::Int)) worldData
+  msp $ dwrot (gapply gbwa werld) (Insert 1 (12::Int)) worldData
+  msp $ gread gvwb worldData
+  msp $ appInc (CompInc gbwba gbwb) (Insert 1 (34::Int)) worldData
+  msp $ appInc (case gapply gbwb werld of (GVal ha) -> ha) (BlerbDelta (Insert 1 (12::Int))) worldData
+  msp $ appInc (case gapply gbwba (gapply gbwb werld) of (GVal ha) -> ha) (Insert 1 (12::Int)) worldData
+  msp $ dwrot (gapply gbwb werld) (BlerbDelta (Insert 1 (12::Int))) worldData
+  msp $ dwrot (gapply gbwba (gapply gbwb werld)) (Insert 1 (12::Int)) worldData
+  let j = dwrot (gapply gbwb werld) (BlerbDelta (Insert 1 (12::Int))) worldData
+      jj = dwrot (gapply gbwba (gapply gbwb werld)) (Insert 1 (12::Int)) worldData
+  msp $ worldData .+ j
+  msp $ worldData .+ jj
+  --msp $ dwrot (gapply gbwb werld) (BlerbDelta (Insert 1 (12::Int))) worldData
   -- -- works
   -- msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
   -- msp $ ((appInc gbdubs (Insert 1 (10::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
