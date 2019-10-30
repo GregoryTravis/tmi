@@ -402,14 +402,7 @@ deltaTmiDemo4 = do
   --tmiRunShow hahaNN
   --tmiRunShow hahaNNN
 
-class DViffer' b db | db -> b where
-  dvwrite' :: Val b -> db -> DB -> DB
-
---instance DViffer' NN NNDelta where
-  --dvwrite' (Val for rev) dx w = rev (for w .+ dx) w
-
-instance Delta a da => DViffer' a da where
-  dvwrite' (Val for rev) dx w = rev (for w .+ dx) w
+dvwrite' (Val for rev) dx w = rev (for w .+ dx) w
 
 (<--..) :: Delta a da => Val a -> da -> TMI()
 dest <--.. srcDelta = do
