@@ -15,6 +15,7 @@ module Tmi
 , (<--)
 , oldWebDemo
 , deltaTmiDemo4
+, nmain
 , bankProcess) where
 
 import Control.Applicative
@@ -144,21 +145,22 @@ nmain = do
   vsp $ (liftV (+ 10)) $ _a
   vsp $ (liftV2 (+)) _a (_bi 1)
   msp $ vwrite _a 120 thedb
-  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } } 
+  msp $ (vwrite _a 120 thedb)
+  massert $ (vwrite _a 120 thedb) == DB { a = 120 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [4, 5, 6] } } 
   vsp $ binc $ _a
   massert $ (vwrite (binc $ _a) 130 thedb) ==
-    DB { a = 129 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } } 
+    DB { a = 129 , b = [ 2 , 3 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [4, 5, 6] } } 
   vsp $ _a `bidiPlus` (_bi 1)
   msp $ vwrite (_a `bidiPlus` (_bi 1)) 19 thedb
   massert $ (vwrite (_a `bidiPlus` (_bi 1)) 19 thedb) ==
-    DB { a = 14 , b = [ 2 , 5 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [1] } }
+    DB { a = 14 , b = [ 2 , 5 , 4 ] , bb = [20, 30, 40], c = "asdf", accounts = M.fromList [], nn = NN { nnn = [4, 5, 6] } }
   let floo :: Val Int
       floo = 123
   vsp floo
   msp "mult"
   msp $ vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb
   massert $ (vwrite (_bi 1) 335 $ vwrite _a 126 $ vwrite _c "zxcv" thedb) ==
-    DB { a = 126 , b = [ 2 , 335 , 4 ] , bb = [20, 30, 40], c = "zxcv", accounts = M.fromList [], nn = NN { nnn = [1] } }
+    DB { a = 126 , b = [ 2 , 335 , 4 ] , bb = [20, 30, 40], c = "zxcv", accounts = M.fromList [], nn = NN { nnn = [4, 5, 6] } }
   vsp $ nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])
   vsp $ nmap2 (vconst (\x -> x * 2)) (vconst [1, 2, 3])
   massert $ (vread (nmap (liftV (\x -> x * 2)) (vconst [1, 2, 3])) thedb) == [2, 4, 6]

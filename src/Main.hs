@@ -13,4 +13,5 @@ main = do
   -- bankProcess
   deltaTmiDemo
   deltaTmiDemo4
+  nmain
   msp "hi"
