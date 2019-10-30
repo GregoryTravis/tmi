@@ -51,6 +51,17 @@ instance Delta [a] (ListDelta a) where
   xs .+ (Insert i x) = (take i xs) ++ [x] ++ (drop i xs)
   (.-) = undefined  -- slow
 
+-- This is wrong, of course
+instance Delta a da => Delta a [da] where
+  db .+ (da : das) = (db .+ da) .+ das
+  db .+ [] = db
+  (.-) = undefined  -- slow
+
+instance (Delta a da, Delta a da') => Delta a (Either da da') where
+  db .+ (Left da) = db .+ da
+  db .+ (Right da') = db .+ da'
+  (.-) = undefined  -- slow
+
 -- Function abstraction
 data Brap a b = Brap (a -> b) (b -> a -> a)
 bmap :: Brap a b -> BMap (Brap a b) (Brap [a] [b])

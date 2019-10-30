@@ -12,4 +12,5 @@ main = do
   -- oldWebDemo
   -- bankProcess
   deltaTmiDemo
+  deltaTmiDemo4
   msp "hi"

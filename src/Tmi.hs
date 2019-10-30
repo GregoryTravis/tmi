@@ -14,6 +14,7 @@ module Tmi
 ( Val(..)
 , (<--)
 , oldWebDemo
+, deltaTmiDemo4
 , bankProcess) where
 
 import Control.Applicative
@@ -50,11 +51,6 @@ data Val b = Val (DB -> b) (b -> DB -> DB)
 
 type a --> b = Val a -> Val b
 type a ---> b = Val a -> b
-
-goo :: String --> Int
-goo (Val _ _) = vconst 3
-hoo :: String ---> (Int --> Float)
-hoo (Val _ _) (Val _ _) = vconst 3.4
 
 vconst v = uni $ const v
 
