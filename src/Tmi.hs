@@ -286,93 +286,12 @@ instance (Delta a da, Delta a da') => Delta a (Either da da') where
   db .+ (Right da') = db .+ da'
   (.-) = undefined  -- slow
 
--- Turn a list delta into a db delta
-fyoo :: ListDelta Int -> DBDelta
-fyoo = DBDeltaB
-
--- data Val b = Val (DB -> b) (b -> DB -> DB)
--- b :: DB -> [Int]
--- up_b :: [Int] -> DB -> DB
--- up_b v db = db { b = v }
--- _b = liftBV b up_b theroot
--- DBWriteDeltaB (Insert 2 4)
-
--- Is the constaint necessary?
---data Viff b = forall db . Delta b db => Viff (DB -> b) (b -> DB -> DB)
---data Viff b = Viff (DB -> b) (b -> DB -> DB)
-
-{-
-ggoo :: forall da . Delta a da -> (a -> a)
-ggoo = undefined
-liftVF :: forall da db . (Delta a da, Delta b db) => (a -> b) -> (b -> a -> a) -> Viff a -> Viff b
-liftVF = undefined
-
-liftDV :: (Delta a da, Delta b db) => (a -> b) -> (b -> a -> a) -> (da -> db) -> (db -> a -> da) -> DVal a da -> DVal b db
-liftBDV f b df db (DVal afor arev adrev) = DVal bfor brev bdrev
-  where --bfor :: DB -> b
-        bfor w = f (afor w)
-        --brev :: b -> DB -> DB
-        brev x w = arev (b x (afor w)) w
-        --bdrev :: db -> DB -> DB
-        bdrev dx w = arev ((afor w) .+ (db dx (afor w))) w
--}
-
 vfnn :: Val NN
 vfnn = Val nn up_nn
 
 vfnnn :: Val [Int]
 --vfnnn = Val nnn up_nnn
 vfnnn = (liftBV nnn up_nnn) vfnn
-
-----type VFun a b = Val a -> Val b
-
-----class VFun a b
-
---data BFun a b = BFun (a -> b) (b -> a -> a)
-
---class VFun f
-
---data DMap a b = DMap (BFun a b)
---instance VFun (DMap a b)
---data DReverse
---instance VFun DReverse
-
----- TODO works with just db -> da?  Should...
---class (Delta a da, Delta b db, VFun vf) => Differ vf a b da db | vf a b db -> da where
---  differ :: vf -> db -> a -> da
-
----- Super not crazy about the list lookup here, we can omit it because we know map doesn't need it?
---instance Differ (DMap a b) [a] [b] (ListDelta a) (ListDelta b) where
---  differ (DMap (BFun for rev)) (Insert i b) as = Insert i (rev b (as !! i))
-
----- TODO more idiomatic way to ignore the second param
---double :: DMap Int Int
---double = DMap (BFun (* 2) (\x _ -> x `div` 2))
-
----- TODO more idiomatic way to ignore the second param
---addone :: DMap Int Int
---addone = DMap (BFun (+ 1) (\x _ -> x - 1))
-
---data ComposeDiffers dfa dfb = dfa :..: dfb
-
-----{-
-----ARGH
-
-----na :: Val ? a
-----fab :: Fun a b
-----nb :: Val ? b
-----nb = fab `app` na
-----app :: Val x a -> Fun a b -> Val (Fun a b) b
-
-----db :: Val (Fun () DB) DB
-----getb :: Fun DB a
-----na :: Val (Fun DB a) a
-----na = getb `app` db
-----fab = Fun a b
-----nb = fab `app` na
-----nb :: Val (Fun a b) b
-----app :: Fun a b -> Val c a -> Val (Fun a b) a
------}
 
 data VFun a b = VFun (a -> b) (b -> a -> a)
 
@@ -473,25 +392,10 @@ instance Delta a (FullDelta a) where
   x .+ FullDelta x' = x'
   (.-) = undefined -- TODO: Or is it just: x .- x' = x
 
--- map-specific, nope
---instance (Delta a (FullDelta a), Delta b (FullDelta b), Wrapper (VMap a b)) => Incremental [a] [b] (FullDelta [a]) (FullDelta [b]) (VMap a b) where
---  applyDelta (VMap (f, r, _)) (FullDelta bs) as = FullDelta $ map r bs as
-
--- not map-specific
---instance (Delta a a, Delta b b, Wrapper (VFun a b)) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
---instance Wrapper (VFun a b) => Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
 instance Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
   applyDelta (VFun f r) (FullDelta b) a = FullDelta $ r b a
---applyDelta :: wr -> db -> a -> da
 
 instance Wrapper (VFun a b)
-
---data IndividualDeltas da = IndividualDeltas [da]
-
---instance (Delta [a] (IndividualDeltas da), Delta [b] (IndividualDeltas db)) => Incremental [a] [b] (IndividualDeltas da) (IndividualDeltas db) (VMap a b) where
---  --applyDelta (VMap (f, r, _)) (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> r db a) (zip dbs as))
---  --applyDelta vm (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
---  applyDelta   (IndividualDeltas dbs) as = IndividualDeltas (map (\(db, a) -> applyDelta vm db a) (zip dbs as))
 
 newtype ParListDelta a = ParListDelta [a]
   deriving (Eq, Show)
@@ -522,12 +426,6 @@ instance (Incremental b c db dc wbc, Incremental a b da db wab) => Incremental a
           da :: da
           da = applyDelta wab db a
 
--- class Wrapper2 a b
--- data VMap2 a b =
--- class (Delta a da, Delta b db, Wrapper wr) => Incremental a b da db wr where
---   applyDelta :: wr -> db -> da
-
--- Double -> Integer -> String
 vmdi :: VMap Double Integer
 vmdi = vmap floor (\i _ -> (fromInteger i) :: Double)
 vmis :: VMap Integer String
@@ -572,37 +470,6 @@ deltaTmiDemo4 = do
   --msp $ vread vfnnn thedb
   --tmiRunShow hahaNN
   --tmiRunShow hahaNNN
-
-{-
-data Loo a = forall vf da . (VFun vf, Delta a da) => Loo a vf (da -> String)
-
-class (VFun vf, Delta a da) => Chew vf a da where
-  brap :: vf -> a -> da -> String
-
-instance Delta b db => Chew (DMap a b) b db where
-  brap _ _ db = "dmapab"
-
-garsh :: (Chew vf a da, Delta a da) => Loo a -> da -> String
-garsh (Loo a vf dfwut) da = brap vf a da
--}
-
---class (VFun vf, Delta a da) => forall vf. forall dc . Ruh a
---class forall a . Num a => Loo
-
-  {-
-instance (Differ fbc b c db dc, Differ fab a b da db) => Differ (ComposeDiffers fbc fab) a c da dc where
-  --differ :: VFun -> dc -> a -> da
-  differ (fbc :..: fab) dc a = fab (fbc dc b) a
-    where b = ???
--}
-
-  {-
-class DViffer b db | db -> b where
-  dvwrite :: db -> DB -> DB
-
-instance DViffer NN NNDelta where
-  dvwrite dx w = up_nn (nn w .+ dx) w
--}
 
 class DViffer' b db | db -> b where
   dvwrite' :: Val b -> db -> DB -> DB
