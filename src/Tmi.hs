@@ -346,18 +346,6 @@ vmap f r = VMap (f, r, (vmap' f r))
 
 --data VFun a b = VFun (a -> b) (b -> a -> a)
 newtype VMap a b = VMap ((a -> b), (b -> a -> a), (VFun [a] [b]))
-instance Wrapper (VMap a b)
-
-class Wrapper a
-
-class (Delta a da, Delta b db, Wrapper wr) => Incremental a b da db wr where
-  applyDelta :: wr -> db -> a -> da
-
-instance Incremental [a] [b] (ListDelta a) (ListDelta b) (VMap a b) where
-  applyDelta (VMap (f, r, _)) (Insert i bb) as = (Insert i aa)
-    where aa = r bb (as !! i)
-  applyDelta (VMap (f, r, _)) (Delete i) _ = (Delete i)
-
 data ConsDelta a = Cons a | Snoc a
 deriving instance Show a => Show (ConsDelta a)
 
@@ -366,24 +354,12 @@ instance Delta [a] (ConsDelta a) where
   xs .+ (Snoc x) = xs ++ [x]
   (.-) = undefined  -- slow
 
-instance Incremental [a] [b] (ConsDelta a) (ConsDelta b) (VMap a b) where
-  applyDelta (VMap (f, r, _)) (Cons bb) as = (Cons aa)
-    where aa = r bb (head as)
-  applyDelta (VMap (f, r, _)) (Snoc bb) as = (Snoc aa)
-    where aa = r bb (head as)
-
-instance Incremental a b da db wr => Incremental a b [da] [db] wr where
-  applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
-
 data NullDelta a = NullDelta
   deriving (Eq, Show)
 
 instance Delta a (NullDelta a) where
   x .+ NullDelta = x
   (.-) = undefined  -- TODO: maybe assert args are equal? Maybe (.-) should be maybe?
-
-instance Incremental a b (NullDelta a) (NullDelta b) (VFun a b) where
-  applyDelta (VFun f r) NullDelta _ = NullDelta  -- TODO: or you could run it and assert it hasn't changed, see NullDelta
 
 newtype FullDelta a = FullDelta a
   deriving (Eq, Show)
@@ -392,48 +368,12 @@ instance Delta a (FullDelta a) where
   x .+ FullDelta x' = x'
   (.-) = undefined -- TODO: Or is it just: x .- x' = x
 
-instance Incremental a b (FullDelta a) (FullDelta b) (VFun a b) where
-  applyDelta (VFun f r) (FullDelta b) a = FullDelta $ r b a
-
-instance Wrapper (VFun a b)
-
 newtype ParListDelta a = ParListDelta [a]
   deriving (Eq, Show)
 
 instance Delta a da => Delta [a] (ParListDelta da) where
   as .+ (ParListDelta das) = map (\(a, da) -> a .+ da) (zip as das)
   as .- as' = ParListDelta $ map (\(a, a') -> a .- a') (zip as as')
-
---instance (Delta a da, Delta b db
-instance Incremental a b da db wr => Incremental [a] [b] (ParListDelta da) (ParListDelta db) wr where
-  applyDelta wr (ParListDelta dbs) as = ParListDelta $ map (\(db, a) -> applyDelta wr db a) (zip dbs as)
-  --applyDelta wr dbs a = map (\db -> applyDelta wr db a) dbs
-
--- composing applyDelta
--- TODO this only works because none of our delta appliers use the second argument
--- Also, this doesn't work because there's no way to determine what type b is in the where clauses
--- More specifically, wbc and wab do not have any type variables, so they cannot be unified with the
--- input and output types. A specific instantion does have those, but perhaps that is masked by them
--- not being part of the Wrapper here.  But I can't figure out how to add them to Wrapper.
-data ComposeWrappers bc ab = ComposeWrappers bc ab
-instance (Wrapper ab, Wrapper bc) => Wrapper (ComposeWrappers bc ab)
-instance (Incremental b c db dc wbc, Incremental a b da db wab) => Incremental a c da dc (ComposeWrappers wbc wab) where
-  applyDelta (ComposeWrappers wbc wab) dc a = da
-    where db :: db
-          db = applyDelta wbc dc b
-          b :: b
-          b = undefined -- TODO never used anywhere, but might be
-          da :: da
-          da = applyDelta wab db a
-
-vmdi :: VMap Double Integer
-vmdi = vmap floor (\i _ -> (fromInteger i) :: Double)
-vmis :: VMap Integer String
-vmis = vmap show (\s _ -> read s)
-compositeFailureDemo = do
-  msp $ ((applyDelta vmdi (Insert 1 (20::Integer)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
-  msp $ ((applyDelta vmis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
-  --msp $ ((applyDelta (ComposeWrappers vmis vmdi) (Insert 1 ("20"::String)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
 
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 pp1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
@@ -449,15 +389,6 @@ deltaTmiDemo4 = do
   let x2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
   let (VMap (_, _, huh)) = x2
   let p1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
-  msp $ ((applyDelta x2 (Insert 1 (20::Int)) [(1::Int), 2, 3]) :: (ListDelta Int))
-  msp $ ((applyDelta x2 ((Delete 1) :: ListDelta Int) [(1::Int), 2, 3]) :: (ListDelta Int))
-  msp $ ((applyDelta x2 (Cons (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
-  msp $ ((applyDelta x2 (Snoc (20::Int)) [(1::Int), 2, 3]) :: (ConsDelta Int))
-  msp $ ((applyDelta x2 [Cons (20::Int), Cons (22::Int)] [(1::Int), 2, 3]) :: [(ConsDelta Int)])
-  msp $ ((applyDelta huh (FullDelta [6, 4, (2::Int)]) [(2::Int), 4, 6]) :: (FullDelta [Int]))
-  msp $ ((applyDelta huh (NullDelta :: (NullDelta [Int])) [(1::Int), 2, 3]) :: (NullDelta [Int]))
-  msp $ ([[1, 2], [3, 4], [5, 6]] .+ ParListDelta [Insert 0 (11::Int), Insert 1 (44::Int), Insert 2 (77::Int)])
-  msp $ ((applyDelta x2 (ParListDelta [Insert 0 (20::Int), Insert 1 (40::Int)]) [[(2::Int), 4], [(6::Int), 8]]) :: ParListDelta (ListDelta Int))
   -- Cannot determine the intermediate type from this, the type of b/db
   --msp $ ((applyDelta (ComposeWrappers p1 x2) (Insert 1 (41::Int)) [(3::Int), 5, 7]) :: ListDelta Int)
   msp "hi"
