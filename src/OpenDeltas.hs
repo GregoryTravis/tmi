@@ -28,9 +28,9 @@
 -- transforms an output delta to an input delta.
 --
 -- Fun is a lensy thing, but I didn't actually implement it fully here.  All this demo does is show that:
---   - you can transform the deltas
---   - you can have multiple delta types for a class, and thus multiple implementations
---   - you can write a delta to a value and get back the updated World
+--   - You can transform the deltas
+--   - You can have multiple delta types for a class, and thus multiple implementations
+--   - You can write a delta to a value and get back the updated World
 --
 -- In particular, I don't think I implemented the non-incremental part of the
 -- lens.  gapply is composition of the reverse delta part of the lens, but not

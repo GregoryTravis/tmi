@@ -10,6 +10,17 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- What's in here:
+--   - A pretty complete implementation of Val (a bidirectional value) and lifters to construct bidi functions
+--   - DVal, which also has a delta writer
+--   - The TMI monad which lets you write to Vals
+--   - A delta implementation (<--.) that uses a DVal
+--   - A (better?) delta implementation (<--..) that uses a regular Val
+--   - A couple of 'bank' demos that I can't move out without also moving DB out
+--
+-- Honestly, I can't quite figure out why I have two delta implementations,
+-- other than that one uses Val and one uses DVal.
+
 module Tmi
 ( Val(..)
 , (<--)
