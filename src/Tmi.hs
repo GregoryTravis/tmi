@@ -34,7 +34,6 @@ import Network.URI.Encode as ENC
 import System.Directory (copyFile)
 import System.IO
 import Text.Pretty.Simple (pShow)
-import Web.Firefly
 
 import Html 
 import Util 

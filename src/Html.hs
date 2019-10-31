@@ -12,6 +12,9 @@ module Html
 ( col
 , link
 , linkDecode
+, run  -- From Firefly
+, route  -- From Firefly
+, getQuery  -- From Firefly
 , WebResult(..)) where
 
 import Control.Applicative
