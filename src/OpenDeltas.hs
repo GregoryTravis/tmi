@@ -14,12 +14,38 @@
 -- along the way that I just cleaned out in the last batch of changes. The goal
 -- was open deltas: allowing the programmer to create as many deltas they want
 -- for any given type, and implementations of the reverse delta transform for
--- each one. Now that I think about it, I didn't actually test whether it's
--- possible to have more than one. Sounds crazy, but it's true. What I did
--- manage to do was to create a class, Inc, which is parameterized by input and
--- output types a, b; delta types da, db; and another type that is an instance
--- of a singleton class that uniquely determines a particular function. So the
--- idea is that a 
+-- each one. I think I crudely re-invented Haskell's weird version of dependent
+-- types.
+--
+-- Fun a b: a bidi function from a to b.
+--
+-- Label: a singleton typeclass used to identify a function at the type level.
+-- For example, BMap is the label for the bidi map, bmap.
+--
+-- Val b g: a bidirection value of type b. g is an instance of class Label.
+--
+-- Inc: a class used to define a delta transform implementation, which
+-- transforms an output delta to an input delta.
+--
+-- Fun is a lensy thing, but I didn't actually implement it fully here.  All this demo does is show that:
+--   - you can transform the deltas
+--   - you can have multiple delta types for a class, and thus multiple implementations
+--   - you can write a delta to a value and get back the updated World
+--
+-- In particular, I don't think I implemented the non-incremental part of the
+-- lens.  gapply is composition of the reverse delta part of the lens, but not
+-- the non-incremental part.
+--
+-- The type witchery in here is pretty verbose and most likely could be
+-- simpler, but this was so hard to get working that I'm done with it for now.
+-- Once I get some kind of TH or syntax extension so that I can generate all
+-- the boilerplate. You'll also notice that I have explicit type declarations
+-- everywhere. Possibly I can remove some, but probably not enough.
+--
+-- Notably, the output type of Val is a phantom type. The only thing that a Val
+-- contains is the Label for the function that produced it. I didn't think "gee
+-- a phantom type would be good for this", I just didn't need a value of type
+-- 'b' in there, so there isn't one.
 
 module OpenDeltas (deltaTmiDemo) where
 
