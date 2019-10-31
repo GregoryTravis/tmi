@@ -25,8 +25,8 @@ module Tmi
 ( Val(..)
 , (<--)
 , oldWebDemo
-, deltaTmiDemo4
-, nmain
+, valDeltaDemo
+, valDemo
 , bankProcess) where
 
 import Control.Applicative
@@ -147,7 +147,7 @@ nmap f as = nif (neq as (vconst []))
 
 nmap2 = liftV2 map
 
-nmain = do
+valDemo = do
   hSetBuffering stdin NoBuffering
   msp "hi"
   msp $ vread theroot thedb
@@ -389,7 +389,7 @@ instance Delta a da => Delta [a] (ParListDelta da) where
 
 xx2 = vmap (* (2::Int)) (\x _ -> x `div` (2::Int))
 pp1 = vmap (+ (1::Int)) (\x _ -> x - (1::Int))
-deltaTmiDemo4 = do
+valDeltaDemo = do
   msp $ vvread world worldData
   msp $ vvread nwa worldData
   msp $ vvread nwb worldData

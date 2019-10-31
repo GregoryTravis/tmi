@@ -11,7 +11,7 @@ main = do
   -- expDemo
   -- oldWebDemo
   -- bankProcess
-  nmain
-  deltaTmiDemo4
-  deltaTmiDemo
+  -- valDemo
+  -- valDeltaDemo
+  openDeltaDemo
   msp "hi"

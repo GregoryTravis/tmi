@@ -47,7 +47,7 @@
 -- a phantom type would be good for this", I just didn't need a value of type
 -- 'b' in there, so there isn't one.
 
-module OpenDeltas (deltaTmiDemo) where
+module OpenDeltas (openDeltaDemo) where
 
 import Control.Applicative
 import Control.Monad.State
@@ -297,7 +297,7 @@ gapply funG (Val valG) = Val resultG
 
 dwrot (Val g) delta w = appInc g delta w
 
-deltaTmiDemo = do
+openDeltaDemo = do
   msp $ gread werld worldData
   msp $ gread gvwa worldData
   msp $ appInc gbid (WADelta (Insert 1 (12::Int))) worldData
