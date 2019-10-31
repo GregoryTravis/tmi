@@ -36,6 +36,7 @@ import System.IO
 import Text.Pretty.Simple (pShow)
 import Web.Firefly
 
+import Html 
 import Util 
 
 type History = [DB]
@@ -250,6 +251,7 @@ tmiRun db action = do
 persistentRun :: TMI a -> IO a
 persistentRun action = do
   historyS <- readFile "history.db"
+  seq (length historyS) (return ())
   let history :: History
       history = (read historyS) :: History
   (result, newDb) <- tmiRun (last history) action
@@ -601,57 +603,13 @@ bankPage [] = do
     link "home" ["home"]
     ]
 
--- name contents attributes
-data HTML = HTMLString Text | HTMLPair HTML HTML | HTMLNothing
-  deriving Show
-htmlRender :: HTML -> Text
-htmlRender (HTMLString s) = s
-htmlRender (HTMLPair a b) = (htmlRender a) `T.append` (htmlRender b)
-htmlRender HTMLNothing = ""
-
-tag :: Text -> Text -> [(Text, Text)] -> HTML
-tag name contents attrs = HTMLString $ "<" <> name <> " " <> attrsS <> ">" <> contents <> "</" <> name <> ">"
-  where attrsS = T.intercalate " " kevs
-        kevs = [key <> "=" <> quot value | (key, value) <- attrs]
-        quot s = "\"" <> s <> "\""
-utag name = HTMLString $ "<" <> name <> "/>"
-
-htmlList :: [HTML] -> HTML
-htmlList htmls = mconcat htmls
-col :: [HTML] -> HTML
-col htmls = htmlList $ intersperse br htmls
-
-br = utag "br"
-
-link :: Text -> [Text] -> HTML
-link text target = tag "a" text [("href", linkEncode target)]
-
-linkEncode :: [Text] -> Text
-linkEncode ss = "?q=" <> (T.pack $ ENC.encode $ show $ map T.unpack ss)
-
-linkDecode :: Text -> [Text]
-linkDecode s = read (ENC.decode $ T.unpack s)
-
-instance Semigroup HTML where
-  a <> b = HTMLPair a b
-
-instance Monoid HTML where
-  mempty = HTMLNothing
-
-data WebResult = WROk HTML | WRRedirect String
-  deriving Show
-
-type WebTMI = TMI WebResult
-
-instance ToResponse WebResult where
-  toResponse (WROk html) = toResponse ((htmlRender $ html) :: Text, ok200, M.fromList [("Content-type", ["text/html"])] :: HeaderMap)
-  toResponse (WRRedirect url) = toResponse ("" :: Text, found302, M.fromList [("Location", [T.pack url])] :: HeaderMap)
-
 registry :: M.Map Text ([Text] -> WebTMI)
 registry = M.fromList
   [ ("home", bankPage)
   , ("bank", bank)
   ]
+
+type WebTMI = TMI WebResult
 
 oldWebDemo :: IO ()
 oldWebDemo = run 3001 $ do
