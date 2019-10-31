@@ -58,6 +58,14 @@ class Delta a d | d -> a where
 data ListDelta a = Insert Int a | Delete Int
 deriving instance Show a => Show (ListDelta a)
 
+data ConsDelta a = Cons a | Snoc a
+deriving instance Show a => Show (ConsDelta a)
+
+instance Delta [a] (ConsDelta a) where
+  xs .+ (Cons x) = x : xs
+  xs .+ (Snoc x) = xs ++ [x]
+  (.-) = undefined  -- slow
+
 instance Delta [a] (ListDelta a) where
   xs .+ (Insert i x) = (take i xs) ++ [x] ++ (drop i xs)
   (.-) = undefined  -- slow
@@ -100,6 +108,11 @@ instance Inc [a] [b] (ListDelta a) (ListDelta b) (BMap (Fun a b) (Fun [a] [b])) 
   -- TODO: could choose to not lookup in as since it's not used; or a different form for this
   appInc (BMap (Fun f r) _) (Insert i b) as = Insert i (r b a)
     where a = as !! i
+
+instance Inc [a] [b] (ConsDelta a) (ConsDelta b) (BMap (Fun a b) (Fun [a] [b])) where
+  -- TODO: could choose to not lookup in as since it's not used; or a different form for this
+  appInc (BMap (Fun f r) _) (Cons x) _ = Cons (r x undefined)
+  appInc (BMap (Fun f r) _) (Snoc x) _ = Snoc (r x undefined)
 
 data CompInc bc ab = CompInc bc ab
 instance (Label b c bc, Label a b ab) => Label a c (CompInc bc ab) where
@@ -280,8 +293,9 @@ deltaTmiDemo = do
   -- -- works
   -- msp $ ((appInc gbincr (Insert 1 (21::Int)) [11::Int, 31, 41]) :: (ListDelta Int))
   -- msp $ ((appInc gbdubs (Insert 1 (10::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
-  -- let dubThenInc = CompInc gbincr gbdubs
-  -- msp $ ((appInc dubThenInc (Insert 1 (21::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
+  let dubThenInc = CompInc gbincr gbdubs
+  msp $ ((appInc dubThenInc (Insert 1 (21::Int)) [5::Int, 15, 20]) :: (ListDelta Int))
+  msp $ ((appInc dubThenInc (Cons (21::Int)) [5::Int, 15, 20]) :: (ConsDelta Int))
   -- -- d -> i -> s
   -- msp $ ((appInc gbdi (Insert 1 (20::Integer)) [1.0::Double, 2.0, 3.0]) :: ListDelta Double)
   -- msp $ ((appInc gbis (Insert 1 ("20"::String)) [1::Integer, 2, 3]) :: ListDelta Integer)
