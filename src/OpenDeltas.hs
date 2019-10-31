@@ -10,6 +10,17 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- The following is the result of a lengthy effort with many failed attempts
+-- along the way that I just cleaned out in the last batch of changes. The goal
+-- was open deltas: allowing the programmer to create as many deltas they want
+-- for any given type, and implementations of the reverse delta transform for
+-- each one. Now that I think about it, I didn't actually test whether it's
+-- possible to have more than one. Sounds crazy, but it's true. What I did
+-- manage to do was to create a class, Inc, which is parameterized by input and
+-- output types a, b; delta types da, db; and another type that is an instance
+-- of a singleton class that uniquely determines a particular function. So the
+-- idea is that a 
+
 module OpenDeltas (deltaTmiDemo) where
 
 import Control.Applicative
