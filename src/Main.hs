@@ -3,6 +3,7 @@ module Main where
 import Delta
 import Exp
 import OpenDeltas
+import SimpleDelta
 import Tmi
 import Util
 
@@ -13,5 +14,6 @@ main = do
   -- bankProcess
   -- valDemo
   -- valDeltaDemo
-  openDeltaDemo
+  -- openDeltaDemo
+  simpleDeltaDemo
   msp "hi"
