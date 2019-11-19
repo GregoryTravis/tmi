@@ -40,8 +40,8 @@ composeFunFun (Fun { for = forBC, rev = revBC, drev = drevBC }) (Fun { for = for
 class Delta a da where
   apply :: a -> da -> a
 
-data ListIndexDelta a = LISet Int a
-data ListConsDelta a = ListCons a | ListSnoc a
+data ListIndexDelta a = LISet Int a deriving Show
+data ListConsDelta a = ListCons a | ListSnoc a deriving Show
 
 instance Delta [a] (ListIndexDelta a) where
   apply xs (LISet i x) = take i xs ++ [x] ++ drop (i+1) xs
@@ -50,20 +50,38 @@ instance Delta [a] (ListConsDelta a) where
   apply xs (ListSnoc x) = xs ++ [x]
 
 data W = W
-  { ints :: [Int] }
+  { ints :: [Int] 
+  , strings :: [String] }
   deriving (Eq, Show)
 _ints :: [Int] -> W -> W
 _ints xs w = w { ints = xs }
+_strings ss w = w { strings = ss }
 
-data WDelta da = WIntsDelta da
+data WDelta da = WIntsDelta da | WStringsDelta da deriving Show
 _d_ints :: db -> a -> WDelta db
 _d_ints dInts _ = WIntsDelta dInts
+_d_strings dStrings _ = WStringsDelta dStrings
 
 funWInts :: Fun W [Int] (WDelta di) di
 funWInts = Fun { for, rev, drev }
   where for = ints
         rev = _ints
         drev = _d_ints
+
+funWStrings :: Fun W [String] (WDelta di) di
+funWStrings = Fun { for, rev, drev }
+  where for = strings
+        rev = _strings
+        drev = _d_strings
+
+valRead :: W -> Fun W a (WDelta di) da -> a
+valRead world (Fun { for }) = for world
+
+valWrite :: W -> Fun W a (WDelta di) da -> a -> W
+valWrite world (Fun { rev }) a = rev a world
+
+valDWrite :: W -> Fun W a (WDelta di) da -> da -> (WDelta di)
+valDWrite world (Fun { drev }) da = drev da world
 
 -- This is just the identity dlens
 -- funW :: Fun W W (WDelta di) (WDelta di)
@@ -80,7 +98,8 @@ instance Delta [Int] da => Delta W (WDelta da) where
   apply w (WIntsDelta dInts) = w { ints = apply (ints w) dInts }
 
 world = W
-  { ints = [0, 1, 2, 3, 4] }
+  { ints = [0, 1, 2, 3, 4]
+  , strings = ["aaa", "bbb", "ccc"] }
 
 -- This whole section was trying to work with Val
 --applyFunVal :: Fun a b da db -> Val a da -> Val b db
@@ -106,7 +125,12 @@ world = W
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
   msp $ apply [4::Int, 5, 6] (LISet 1 (50::Int))
-  msp $ apply (W { ints = [4::Int, 5, 6] }) (WIntsDelta (LISet 1 (50::Int)))
-  msp $ apply (W { ints = [4::Int, 5, 6] }) (WIntsDelta (ListCons (3::Int)))
-  msp $ apply (W { ints = [4::Int, 5, 6] }) (WIntsDelta (ListSnoc (7::Int)))
+  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (LISet 1 (50::Int)))
+  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListCons (3::Int)))
+  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListSnoc (7::Int)))
+  msp $ valRead world funWInts
+  msp $ valRead world funWStrings
+  msp $ valWrite world funWInts [40::Int, 50, 60]
+  msp $ valWrite world funWStrings ["a", "b", "c"]
+  msp $ valDWrite world funWInts (LISet 1 (500::Int))
   msp "shi"
