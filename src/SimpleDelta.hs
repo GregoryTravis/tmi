@@ -103,6 +103,7 @@ funWInts' = composeFunFun funWInts funW
 instance Delta [Int] da => Delta W (WDelta da) where
   apply w (WIntsDelta dInts) = w { ints = apply (ints w) dInts }
 
+funWIntsI1 :: Fun W Int (WDelta (ListIndexDelta Int)) Int
 funWIntsI1 = composeFunFun (arrIndex 1) funWInts
 
 world = W
@@ -144,4 +145,5 @@ simpleDeltaDemo = do
   msp $ valRead world funWIntsI1
   msp $ valWrite world funWIntsI1 (1000::Int)
   msp $ valDWrite world funWIntsI1 (1000::Int)
+  msp $ apply world (valDWrite world funWIntsI1 1000)
   msp "shi"
