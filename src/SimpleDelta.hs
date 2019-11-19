@@ -62,6 +62,12 @@ _d_ints :: db -> a -> WDelta db
 _d_ints dInts _ = WIntsDelta dInts
 _d_strings dStrings _ = WStringsDelta dStrings
 
+-- dlens of (!!)
+arrIndex i = Fun { for, rev, drev }
+  where for = (!!i)
+        rev x xs = apply xs (LISet i x)
+        drev dx _ = LISet i dx
+
 funWInts :: Fun W [Int] (WDelta di) di
 funWInts = Fun { for, rev, drev }
   where for = ints
@@ -96,6 +102,8 @@ funWInts' = composeFunFun funWInts funW
 
 instance Delta [Int] da => Delta W (WDelta da) where
   apply w (WIntsDelta dInts) = w { ints = apply (ints w) dInts }
+
+funWIntsI1 = composeFunFun (arrIndex 1) funWInts
 
 world = W
   { ints = [0, 1, 2, 3, 4]
@@ -133,4 +141,7 @@ simpleDeltaDemo = do
   msp $ valWrite world funWInts [40::Int, 50, 60]
   msp $ valWrite world funWStrings ["a", "b", "c"]
   msp $ valDWrite world funWInts (LISet 1 (500::Int))
+  msp $ valRead world funWIntsI1
+  msp $ valWrite world funWIntsI1 (1000::Int)
+  msp $ valDWrite world funWIntsI1 (1000::Int)
   msp "shi"
