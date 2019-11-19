@@ -1,5 +1,6 @@
 misc
 .stack-work
+stack.yaml.lock
 notes.txt
 todo.txt
 out
