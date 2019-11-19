@@ -63,6 +63,7 @@ _d_ints dInts _ = WIntsDelta dInts
 _d_strings dStrings _ = WStringsDelta dStrings
 
 -- dlens of (!!)
+arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
 arrIndex i = Fun { for, rev, drev }
   where for = (!!i)
         rev x xs = apply xs (LISet i x)
