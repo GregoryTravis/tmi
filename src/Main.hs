@@ -5,6 +5,7 @@ import Exp
 import OpenDeltas
 import SimpleDelta
 import Tmi
+import TFDelta
 import Util
 
 main = do
@@ -15,5 +16,6 @@ main = do
   -- valDemo
   -- valDeltaDemo
   -- openDeltaDemo
-  simpleDeltaDemo
+  -- simpleDeltaDemo
+  typeFamilyDeltaDemo
   msp "hi"
