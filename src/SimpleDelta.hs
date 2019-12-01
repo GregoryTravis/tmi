@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module SimpleDelta
@@ -29,9 +30,6 @@ composeFunFun (Fun { for = forBC, rev = revBC, drev = drevBC }) (Fun { for = for
           where db = drevBC dc b
                 b = forAB a
 
-data ListIndexDelta a = LISet Int a deriving Show
-data ListConsDelta a = ListCons a | ListSnoc a deriving Show
-
 data W = W
   { ints :: [Int] 
   , strings :: [String] }
@@ -50,7 +48,7 @@ arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
 arrIndex i = Fun { for, rev, drev }
   where for = (!!i)
         rev x xs = take i xs ++ [x] ++ drop (i+1) xs
-        drev dx _ = LISet i dx
+        drev dx _ = Update i dx
 
 funWInts :: Fun W [Int] (WDelta di) di
 funWInts = Fun { for, rev, drev }
@@ -91,17 +89,59 @@ world = W
   { ints = [0, 1, 2, 3, 4]
   , strings = ["aaa", "bbb", "ccc"] }
 
+data ListIndexDelta a = Insert Int a | Delete Int | Update Int a deriving Show
+
+data ListConsDelta a = Cons a | Snoc a
+
+class Delta d where
+  type V d
+  apply :: V d -> d -> V d
+
+instance Delta (ListIndexDelta a) where
+  type V (ListIndexDelta a) = [a]
+  apply xs (Insert i x) = take i xs ++ [x] ++ drop i xs
+  apply xs (Update i x) = take i xs ++ [x] ++ drop (i+1) xs
+  apply xs (Delete i) = take i xs ++ drop (i+1) xs
+
+instance Delta (ListConsDelta a) where
+  type V (ListConsDelta a) = [a]
+  apply xs (Cons x) = x:xs
+  apply xs (Snoc x) = xs ++ [x]
+
+data StringDelta = Prepend String | Append String
+
+instance Delta StringDelta where
+  type V StringDelta = String
+  apply s (Prepend s') = s' ++ s
+  apply s (Append s') = s ++ s'
+
+-- Goal: modify an array of strings: change the second element, and change it by prepending to it
+-- s: string
+-- ds: StringDelta
+data Foo s ds = Update' Int ds
+
+instance Delta ds => Delta (Foo s ds) where
+  type V (Foo s ds) = [V ds] -- crucial
+  apply ss (Update' i ds) = apply ss (Update i newS)
+    where newS = apply (ss !! i) ds
+
+data FullDelta a = FullDelta a
+
+instance Delta (FullDelta a) where
+  type V (FullDelta a) = a
+  apply x (FullDelta dx) = dx
+
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
-  -- msp $ apply [4::Int, 5, 6] (LISet 1 (50::Int))
-  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (LISet 1 (50::Int)))
+  -- msp $ apply [4::Int, 5, 6] (Update 1 (50::Int))
+  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (Update 1 (50::Int)))
   -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListCons (3::Int)))
   -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListSnoc (7::Int)))
   msp $ valRead world funWInts
   msp $ valRead world funWStrings
   msp $ valWrite world funWInts [40::Int, 50, 60]
   msp $ valWrite world funWStrings ["a", "b", "c"]
-  msp $ valDWrite world funWInts (LISet 1 (500::Int))
+  msp $ valDWrite world funWInts (Update 1 (500::Int))
   msp $ valRead world funWIntsI1
   msp $ valWrite world funWIntsI1 (1000::Int)
   msp $ valDWrite world funWIntsI1 (1000::Int)
