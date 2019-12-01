@@ -159,4 +159,9 @@ simpleDeltaDemo = do
   msp $ valWrite world funWIntsI1 1000
   msp $ valDWrite world funWIntsI1 1000
   msp $ apply world (valDWrite world funWIntsI1 1000)
+  msp $ apply ["one", "two", "three"] (Update' 1 (Prepend "sh"))
+  msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (Append "aa"))
+  msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (Append "aa")))
+  msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (FullDelta "zzzz"))
+  msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
   msp "shi"
