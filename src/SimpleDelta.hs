@@ -131,12 +131,32 @@ instance Delta (FullDelta a) where
   type V (FullDelta a) = a
   apply x (FullDelta dx) = dx
 
+-- data WDelta da = WIntsDelta da | WStringsDelta da deriving Show
+
+-- instance Delta (WDelta da) where
+--   type V (WDelta da) = W
+--   apply world (WIntsDelta da) = world { ints = apply (ints world) da }
+
+-- Definite separate types for each field, since the argument type cannot be the same
+data WIDelta da = WIDelta da
+data WSDelta da = WSDelta da
+
+-- The problem here is that there is no way to say that the V for da is definitely [Int].
+-- I can't state what da is, since it could be either ListIndexDelta or ListConsDelta, and
+-- for both of those, V is [Int], but I don't think I can assert that. Oh wait, I can:
+instance (Delta da, (V da) ~ [Int]) => Delta (WIDelta da) where
+  type V (WIDelta da) = W
+  apply world (WIDelta da) = world { ints = apply (ints world) da }
+instance (Delta da, (V da) ~ [String]) => Delta (WSDelta da) where
+  type V (WSDelta da) = W
+  apply world (WSDelta da) = world { strings = apply (strings world) da }
+
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
-  -- msp $ apply [4::Int, 5, 6] (Update 1 (50::Int))
+  msp $ apply [4::Int, 5, 6] (Update 1 (50::Int))
   -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (Update 1 (50::Int)))
-  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListCons (3::Int)))
-  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (ListSnoc (7::Int)))
+  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (Cons (3::Int)))
+  -- msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIntsDelta (Snoc (7::Int)))
   msp $ valRead world funWInts
   msp $ valRead world funWStrings
   msp $ valWrite world funWInts [40::Int, 50, 60]
