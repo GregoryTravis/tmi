@@ -46,6 +46,12 @@ instance Delta ds => Delta (Foo s ds) where
   apply ss (Update' i ds) = take i ss ++ [newS] ++ drop (i+1) ss
     where newS = apply (ss !! i) ds
 
+data FullDelta a = FullDelta a
+
+instance Delta (FullDelta a) where
+  type V (FullDelta a) = a
+  apply x (FullDelta dx) = dx
+
 typeFamilyDeltaDemo = do
   msp $ apply [1, 2, 3] (Insert 1 10)
   msp $ apply [1, 2, 3] (Delete 1)
@@ -57,4 +63,6 @@ typeFamilyDeltaDemo = do
   msp $ apply ["one", "two", "three"] (Update' 1 (Prepend "sh"))
   msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (Append "aa"))
   msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (Append "aa")))
+  msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (FullDelta "zzzz"))
+  msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
   msp "hoo"
