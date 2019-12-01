@@ -43,7 +43,7 @@ data Foo s ds = Update' Int ds
 
 instance Delta ds => Delta (Foo s ds) where
   type V (Foo s ds) = [V ds] -- crucial
-  apply ss (Update' i ds) = take i ss ++ [newS] ++ drop (i+1) ss
+  apply ss (Update' i ds) = apply ss (Update i newS)
     where newS = apply (ss !! i) ds
 
 data FullDelta a = FullDelta a
