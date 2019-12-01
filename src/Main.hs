@@ -17,5 +17,6 @@ main = do
   -- valDeltaDemo
   -- openDeltaDemo
   typeFamilyDeltaDemo
+  msp "hi"
   simpleDeltaDemo
   msp "hi"

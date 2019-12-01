@@ -38,10 +38,9 @@ _ints :: [Int] -> W -> W
 _ints xs w = w { ints = xs }
 _strings ss w = w { strings = ss }
 
-data WDelta da = WIntsDelta da | WStringsDelta da deriving Show
-_d_ints :: db -> a -> WDelta db
-_d_ints dInts _ = WIntsDelta dInts
-_d_strings dStrings _ = WStringsDelta dStrings
+_d_ints :: db -> a -> WIDelta db
+_d_ints dInts _ = WIDelta dInts
+_d_strings dStrings _ = WSDelta dStrings
 
 -- dlens of (!!)
 arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
@@ -50,29 +49,28 @@ arrIndex i = Fun { for, rev, drev }
         rev x xs = take i xs ++ [x] ++ drop (i+1) xs
         drev dx _ = Update i dx
 
-funWInts :: Fun W [Int] (WDelta di) di
+funWInts :: Fun W [Int] (WIDelta di) di
 funWInts = Fun { for, rev, drev }
   where for = ints
         rev = _ints
         drev = _d_ints
 
-funWStrings :: Fun W [String] (WDelta di) di
+funWStrings :: Fun W [String] (WSDelta di) di
 funWStrings = Fun { for, rev, drev }
   where for = strings
         rev = _strings
         drev = _d_strings
 
-valRead :: W -> Fun W a (WDelta di) da -> a
+valRead :: W -> Fun W a dw da -> a
 valRead world (Fun { for }) = for world
 
-valWrite :: W -> Fun W a (WDelta di) da -> a -> W
+valWrite :: W -> Fun W a dw da -> a -> W
 valWrite world (Fun { rev }) a = rev a world
 
-valDWrite :: W -> Fun W a (WDelta di) da -> da -> (WDelta di)
+valDWrite :: W -> Fun W a dw da -> da -> dw
 valDWrite world (Fun { drev }) da = drev da world
 
 -- This is just the identity dlens
--- funW :: Fun W W (WDelta di) (WDelta di)
 funW :: Fun a a da da
 funW = Fun { for, rev, drev }
   where for = id
@@ -82,7 +80,7 @@ funW = Fun { for, rev, drev }
 -- Probably pointless
 funWInts' = composeFunFun funWInts funW
 
-funWIntsI1 :: Fun W Int (WDelta (ListIndexDelta Int)) Int
+funWIntsI1 :: Fun W Int (WIDelta (ListIndexDelta Int)) Int
 funWIntsI1 = composeFunFun (arrIndex 1) funWInts
 
 world = W
@@ -131,15 +129,9 @@ instance Delta (FullDelta a) where
   type V (FullDelta a) = a
   apply x (FullDelta dx) = dx
 
--- data WDelta da = WIntsDelta da | WStringsDelta da deriving Show
-
--- instance Delta (WDelta da) where
---   type V (WDelta da) = W
---   apply world (WIntsDelta da) = world { ints = apply (ints world) da }
-
 -- Definite separate types for each field, since the argument type cannot be the same
-data WIDelta da = WIDelta da
-data WSDelta da = WSDelta da
+data WIDelta da = WIDelta da deriving Show
+data WSDelta da = WSDelta da deriving Show
 
 -- The problem here is that there is no way to say that the V for da is definitely [Int].
 -- I can't state what da is, since it could be either ListIndexDelta or ListConsDelta, and
