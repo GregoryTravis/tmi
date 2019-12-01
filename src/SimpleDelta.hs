@@ -38,9 +38,9 @@ _ints :: [Int] -> W -> W
 _ints xs w = w { ints = xs }
 _strings ss w = w { strings = ss }
 
-_d_ints :: db -> a -> WIDelta db
-_d_ints dInts _ = WIDelta dInts
-_d_strings dStrings _ = WSDelta dStrings
+_d_ints :: db -> a -> WIntsDelta db
+_d_ints dInts _ = WIntsDelta dInts
+_d_strings dStrings _ = WStringsDelta dStrings
 
 -- dlens of (!!)
 arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
@@ -49,13 +49,13 @@ arrIndex i = Fun { for, rev, drev }
         rev x xs = take i xs ++ [x] ++ drop (i+1) xs
         drev dx _ = Update i dx
 
-funWInts :: Fun W [Int] (WIDelta di) di
+funWInts :: Fun W [Int] (WIntsDelta di) di
 funWInts = Fun { for, rev, drev }
   where for = ints
         rev = _ints
         drev = _d_ints
 
-funWStrings :: Fun W [String] (WSDelta di) di
+funWStrings :: Fun W [String] (WStringsDelta di) di
 funWStrings = Fun { for, rev, drev }
   where for = strings
         rev = _strings
@@ -80,7 +80,7 @@ funW = Fun { for, rev, drev }
 -- Probably pointless
 funWInts' = composeFunFun funWInts funW
 
-funWIntsI1 :: Fun W Int (WIDelta (ListIndexDelta Int)) Int
+funWIntsI1 :: Fun W Int (WIntsDelta (ListIndexDelta Int)) Int
 funWIntsI1 = composeFunFun (arrIndex 1) funWInts
 
 world = W
@@ -130,26 +130,26 @@ instance Delta (FullDelta a) where
   apply x (FullDelta dx) = dx
 
 -- Definite separate types for each field, since the argument type cannot be the same
-data WIDelta da = WIDelta da deriving Show
-data WSDelta da = WSDelta da deriving Show
+data WIntsDelta da = WIntsDelta da deriving Show
+data WStringsDelta da = WStringsDelta da deriving Show
 
 -- The problem here is that there is no way to say that the V for da is definitely [Int].
 -- I can't state what da is, since it could be either ListIndexDelta or ListConsDelta, and
 -- for both of those, V is [Int], but I don't think I can assert that. Oh wait, I can:
-instance (Delta da, (V da) ~ [Int]) => Delta (WIDelta da) where
-  type V (WIDelta da) = W
-  apply world (WIDelta da) = world { ints = apply (ints world) da }
-instance (Delta da, (V da) ~ [String]) => Delta (WSDelta da) where
-  type V (WSDelta da) = W
-  apply world (WSDelta da) = world { strings = apply (strings world) da }
+instance (Delta da, (V da) ~ [Int]) => Delta (WIntsDelta da) where
+  type V (WIntsDelta da) = W
+  apply world (WIntsDelta da) = world { ints = apply (ints world) da }
+instance (Delta da, (V da) ~ [String]) => Delta (WStringsDelta da) where
+  type V (WStringsDelta da) = W
+  apply world (WStringsDelta da) = world { strings = apply (strings world) da }
 
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
   msp $ apply [4, 5, 6] (Update 1 50)
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Update 1 50))
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Cons 3))
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Snoc 7))
-  msp $ apply world (WSDelta (Snoc "sn"))
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Update 1 50))
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Cons 3))
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Snoc 7))
+  msp $ apply world (WStringsDelta (Snoc "sn"))
   msp $ valRead world funWInts
   msp $ valRead world funWStrings
   msp $ valWrite world funWInts [40, 50, 60]
