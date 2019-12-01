@@ -164,4 +164,6 @@ simpleDeltaDemo = do
   msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (Append "aa")))
   msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (FullDelta "zzzz"))
   msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
+  msp $ apply world (WStringsDelta (Update' 1 (Append "yy")))
+  --msp $ apply world (WStringsDelta (Update 1 (FullDelta (Append "yy"))))
   msp "shi"
