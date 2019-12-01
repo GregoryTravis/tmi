@@ -187,4 +187,6 @@ simpleDeltaDemo = do
   msp $ apply world (valDWrite world (funWStringsI' 2) (Append "qq"))
   -- full delta to world strings 1
   msp $ apply world (valDWrite world (funWStringsI' 0) (FullDelta "ful"))
+  msp $ apply world (WIntsDelta (FullDelta [7, 8, 9]))
+  msp $ apply world (valDWrite world funWInts' (FullDelta [11, 12, 13]))
   msp "shi"
