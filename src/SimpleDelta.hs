@@ -49,6 +49,13 @@ arrIndex i = Fun { for, rev, drev }
         rev x xs = take i xs ++ [x] ++ drop (i+1) xs
         drev dx _ = Update i dx
 
+-- But which allows nested deltas
+--arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
+arrIndex' i = Fun { for, rev, drev }
+  where for = (!!i)
+        rev x xs = take i xs ++ [x] ++ drop (i+1) xs
+        drev dx _ = Update' i dx
+
 funWInts :: Fun W [Int] (WIntsDelta di) di
 funWInts = Fun { for, rev, drev }
   where for = ints
@@ -83,13 +90,16 @@ funWInts' = composeFunFun funWInts funW
 funWIntsI1 :: Fun W Int (WIntsDelta (ListIndexDelta Int)) Int
 funWIntsI1 = composeFunFun (arrIndex 1) funWInts
 
+funWStringsI i = composeFunFun (arrIndex i) funWStrings
+funWStringsI' i = composeFunFun (arrIndex' i) funWStrings
+
 world = W
   { ints = [0, 1, 2, 3, 4]
   , strings = ["aaa", "bbb", "ccc"] }
 
 data ListIndexDelta a = Insert Int a | Delete Int | Update Int a deriving Show
 
-data ListConsDelta a = Cons a | Snoc a
+data ListConsDelta a = Cons a | Snoc a deriving Show
 
 class Delta d where
   type V d
@@ -106,7 +116,7 @@ instance Delta (ListConsDelta a) where
   apply xs (Cons x) = x:xs
   apply xs (Snoc x) = xs ++ [x]
 
-data StringDelta = Prepend String | Append String
+data StringDelta = Prepend String | Append String deriving Show
 
 instance Delta StringDelta where
   type V StringDelta = String
@@ -116,7 +126,7 @@ instance Delta StringDelta where
 -- Goal: modify an array of strings: change the second element, and change it by prepending to it
 -- s: string
 -- ds: StringDelta
-data Foo s ds = Update' Int ds
+data Foo s ds = Update' Int ds deriving Show
 
 instance Delta ds => Delta (Foo s ds) where
   type V (Foo s ds) = [V ds] -- crucial
@@ -157,6 +167,7 @@ simpleDeltaDemo = do
   msp $ valDWrite world funWInts (Update 1 500)
   msp $ valRead world funWIntsI1
   msp $ valWrite world funWIntsI1 1000
+  msp "hhi"
   msp $ valDWrite world funWIntsI1 1000
   msp $ apply world (valDWrite world funWIntsI1 1000)
   msp $ apply ["one", "two", "three"] (Update' 1 (Prepend "sh"))
@@ -166,4 +177,12 @@ simpleDeltaDemo = do
   msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
   msp $ apply world (WStringsDelta (Update' 1 (Append "yy")))
   msp $ apply world (WStringsDelta (Update' 1 (FullDelta "yy")))
+  msp $ valRead world (funWStringsI 0)
+  msp $ valRead world (funWStringsI 1)
+  -- prepend string to world strings 1
+  msp $ valDWrite world (funWStringsI 1) (Append "qq")
+  msp $ valDWrite world (funWStringsI' 1) (Append "qq")
+  msp $ apply world (valDWrite world (funWStringsI' 1) (Prepend "qq"))
+  -- append string to world strings 1
+  msp $ apply world (valDWrite world (funWStringsI' 2) (Append "qq"))
   msp "shi"
