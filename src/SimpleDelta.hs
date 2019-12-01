@@ -145,18 +145,18 @@ instance (Delta da, (V da) ~ [String]) => Delta (WSDelta da) where
 
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
-  msp $ apply [4::Int, 5, 6] (Update 1 (50::Int))
-  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIDelta (Update 1 (50::Int)))
-  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIDelta (Cons (3::Int)))
-  msp $ apply (W { ints = [4::Int, 5, 6], strings = [] }) (WIDelta (Snoc (7::Int)))
+  msp $ apply [4, 5, 6] (Update 1 50)
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Update 1 50))
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Cons 3))
+  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIDelta (Snoc 7))
   msp $ apply world (WSDelta (Snoc "sn"))
   msp $ valRead world funWInts
   msp $ valRead world funWStrings
-  msp $ valWrite world funWInts [40::Int, 50, 60]
+  msp $ valWrite world funWInts [40, 50, 60]
   msp $ valWrite world funWStrings ["a", "b", "c"]
-  msp $ valDWrite world funWInts (Update 1 (500::Int))
+  msp $ valDWrite world funWInts (Update 1 500)
   msp $ valRead world funWIntsI1
-  msp $ valWrite world funWIntsI1 (1000::Int)
-  msp $ valDWrite world funWIntsI1 (1000::Int)
+  msp $ valWrite world funWIntsI1 1000
+  msp $ valDWrite world funWIntsI1 1000
   msp $ apply world (valDWrite world funWIntsI1 1000)
   msp "shi"
