@@ -8,6 +8,7 @@ module SimpleDelta
 ( simpleDeltaDemo
 ) where
 
+import Control.Monad.State
 import qualified Data.Map.Strict as M
 import qualified Debug.Trace as TR
 
@@ -68,13 +69,13 @@ funWStrings = Fun { for, rev, drev }
         rev = _strings
         drev = _d_strings
 
-valRead :: W -> Fun W a dw da -> a
+valRead :: w -> Fun w a dw da -> a
 valRead world (Fun { for }) = for world
 
-valWrite :: W -> Fun W a dw da -> a -> W
+valWrite :: w -> Fun w a dw da -> a -> w
 valWrite world (Fun { rev }) a = rev a world
 
-valDWrite :: W -> Fun W a dw da -> da -> dw
+valDWrite :: w -> Fun w a dw da -> da -> dw
 valDWrite world (Fun { drev }) da = drev da world
 
 -- This is just the identity dlens
@@ -153,6 +154,37 @@ instance (Delta da, (V da) ~ [String]) => Delta (WStringsDelta da) where
   type V (WStringsDelta da) = W
   apply world (WStringsDelta da) = world { strings = apply (strings world) da }
 
+
+type TMI w a = StateT w IO a
+
+tmiRun :: w -> TMI w a -> IO (a, w)
+tmiRun world action = do
+  (x, world') <- runStateT action world
+  -- TODO world or world'?
+  --let result = (for x) world
+  return (x, world')
+
+infix 4 <-+
+(<-+) :: Delta da => Fun (V da) b da db -> db -> TMI (V da) ()
+dest <-+ src = do
+  w <- get
+  let w' = apply w (valDWrite w dest src)
+  put w'
+
+infix 4 <--
+-- I think this should be right but it's not
+-- (<--) :: (Delta da, Delta db) => Fun (V da) (V db) da db -> V db -> TMI (V da) ()
+dest <-- src = dest <-+ (FullDelta src)
+
+tmiRunShow world action = do
+  (x, world') <- tmiRun world action
+  msp world'
+  msp x
+
+aTMI = do
+  funWInts' <-- [11, 12, 13]
+  funWStringsI' 1 <-- "hey"
+
 simpleDeltaDemo = do
   msp $ _ints [3, 4, 5] world
   msp $ apply [4, 5, 6] (Update 1 50)
@@ -189,4 +221,5 @@ simpleDeltaDemo = do
   msp $ apply world (valDWrite world (funWStringsI' 0) (FullDelta "ful"))
   msp $ apply world (WIntsDelta (FullDelta [7, 8, 9]))
   msp $ apply world (valDWrite world funWInts' (FullDelta [11, 12, 13]))
+  tmiRunShow world aTMI
   msp "shi"
