@@ -1,10 +1,11 @@
 module Main where
 
 import Delta
+import DVal
 import Exp
 import OpenDeltas
 import SimpleDelta
-import DVal
+import Tmi
 import Util
 
 main = do
@@ -15,5 +16,6 @@ main = do
   -- valDemo
   -- valDeltaDemo
   -- openDeltaDemo
-  simpleDeltaDemo
+  -- simpleDeltaDemo
+  tmiMain
   msp "hi"
