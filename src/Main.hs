@@ -4,7 +4,7 @@ import Delta
 import Exp
 import OpenDeltas
 import SimpleDelta
-import Tmi
+import DVal
 import Util
 
 main = do

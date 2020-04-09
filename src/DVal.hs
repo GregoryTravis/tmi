@@ -21,7 +21,7 @@
 -- Honestly, I can't quite figure out why I have two delta implementations,
 -- other than that one uses Val and one uses DVal.
 
-module Tmi
+module DVal
 ( Val(..)
 , (<--)
 , oldWebDemo
