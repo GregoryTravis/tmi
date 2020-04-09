@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -23,9 +24,15 @@ instance Delta DIntAdd where
   type V DIntAdd = Int
   i .+ (DIntAdd di) = i + di
 
+data DDoubleAdd = DDoubleAdd Double
+instance Delta DDoubleAdd where
+  type V DDoubleAdd = Double
+  d .+ (DDoubleAdd dd) = d + dd
+
 -- The world, but also just a regular type
 data W = W { anInt :: Int
-           , anotherInt :: Int }
+           , anotherInt :: Int
+           , aDouble :: Double }
   deriving Show
 
 -- _foo is an updater for a field foo
@@ -34,6 +41,8 @@ _anInt :: W -> Int -> W
 _anInt w i = w { anInt = i }
 _anotherInt :: W -> Int -> W
 _anotherInt w i = w { anotherInt = i }
+_aDouble :: W -> Double -> W
+_aDouble w d = w { aDouble = d }
 
 -- A change to W -- one option for each field of W.
 -- The type name is 'D' + the full's name.
@@ -62,7 +71,8 @@ _dAnotherInt w di = w .+ DAnotherInt di
 tmiMain = do
   let w :: W
       w = W { anInt = 10
-            , anotherInt = 100 }
+            , anotherInt = 100
+            , aDouble = 3.3 }
   msp w
   msp $ _anInt w 11
   msp $ 34 .+ (DIntAdd 3)
