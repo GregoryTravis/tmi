@@ -24,13 +24,16 @@ instance Delta DIntAdd where
   i .+ (DIntAdd di) = i + di
 
 -- The world, but also just a regular type
-data W = W { anInt :: Int }
+data W = W { anInt :: Int
+           , anotherInt :: Int }
   deriving Show
 
 -- _foo is an updater for a field foo
 -- (foo) reads the field, while (_foo v) writes v to the field
 _anInt :: W -> Int -> W
 _anInt w i = w { anInt = i }
+_anotherInt :: W -> Int -> W
+_anotherInt w i = w { anotherInt = i }
 
 -- A change to W -- one option for each field of W.
 -- The type name is 'D' + the full's name.
@@ -40,25 +43,30 @@ _anInt w i = w { anInt = i }
 --
 -- This is the existential version, but not sure if I need it:
 -- data DW d = (V d ~ Int) => DAnInt d
-data DW d = DAnInt d
+data DW d = DAnInt d | DAnotherInt d
 
 -- Now we define how we apply each type of DW -- it's just pulling wrappers
 -- off
 instance (V (DW d) ~ W, V d ~ Int, Delta d) => Delta (DW d) where
   type V (DW d) = W
-  W { anInt = i } .+ DAnInt d = W { anInt = (i .+ d) }
+  w@(W { anInt = i }) .+ DAnInt d = w { anInt = (i .+ d) }
+  w@(W { anotherInt = i }) .+ DAnotherInt d = w { anotherInt = (i .+ d) }
 
 -- A more concise way to write a delta to a field of a record
 -- __anInt :: W -> DInt -> W -- too specific
 _dAnInt :: (V d ~ Int, Delta d) => W -> d -> W
 _dAnInt w di = w .+ DAnInt di
+_dAnotherInt :: (V d ~ Int, Delta d) => W -> d -> W
+_dAnotherInt w di = w .+ DAnotherInt di
 
 tmiMain = do
   let w :: W
-      w = W { anInt = 10 }
+      w = W { anInt = 10
+            , anotherInt = 100 }
   msp w
   msp $ _anInt w 11
   msp $ 34 .+ (DIntAdd 3)
   msp $ w .+ DAnInt (DIntAdd 5)
   msp $ _dAnInt w (DIntAdd 7)
+  msp $ _dAnotherInt w (DIntAdd 60)
   msp "hihi"
