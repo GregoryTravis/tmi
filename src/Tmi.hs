@@ -15,6 +15,14 @@ class Delta d where
   type V d
   (.+) :: V d -> d -> V d
 
+-- Any type might have multiple deltas, so you give them names.
+-- We could call this DInt if we think there will be only one.
+data DIntAdd = DIntAdd Int
+
+instance Delta DIntAdd where
+  type V DIntAdd = Int
+  i .+ (DIntAdd di) = i + di
+
 -- The world, but also just a regular type
 data W = W { anInt :: Int }
   deriving Show
@@ -34,23 +42,15 @@ _anInt w i = w { anInt = i }
 -- data DW d = (V d ~ Int) => DAnInt d
 data DW d = DAnInt d
 
+-- Now we define how we apply each type of DW -- it's just pulling wrappers
+-- off
 instance (V (DW d) ~ W, V d ~ Int, Delta d) => Delta (DW d) where
   type V (DW d) = W
   W { anInt = i } .+ DAnInt d = W { anInt = (i .+ d) }
 
--- An instance of the world
-w :: W
-w = W { anInt = 10 }
-
--- Any type might have multiple deltas, so you give them names.
--- We could call this DInt if we think there will be only one.
-data DIntAdd = DIntAdd Int
-
-instance Delta DIntAdd where
-  type V DIntAdd = Int
-  i .+ (DIntAdd di) = i + di
-
 tmiMain = do
+  let w :: W
+      w = W { anInt = 10 }
   msp w
   msp $ _anInt w 11
   msp $ 34 .+ (DIntAdd 3)
