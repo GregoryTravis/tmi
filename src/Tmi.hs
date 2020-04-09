@@ -48,6 +48,11 @@ instance (V (DW d) ~ W, V d ~ Int, Delta d) => Delta (DW d) where
   type V (DW d) = W
   W { anInt = i } .+ DAnInt d = W { anInt = (i .+ d) }
 
+-- A more concise way to write a delta to a field of a record
+-- __anInt :: W -> DInt -> W -- too specific
+__anInt :: (V d ~ Int, Delta d) => W -> d -> W
+__anInt w di = w .+ DAnInt di
+
 tmiMain = do
   let w :: W
       w = W { anInt = 10 }
@@ -55,4 +60,5 @@ tmiMain = do
   msp $ _anInt w 11
   msp $ 34 .+ (DIntAdd 3)
   msp $ w .+ DAnInt (DIntAdd 5)
+  msp $ __anInt w (DIntAdd 7)
   msp "hihi"
