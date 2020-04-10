@@ -2,6 +2,7 @@
 --{-# LANGUAGE DatatypeContexts #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -100,6 +101,10 @@ exampleMain = do
   msp "hihi"
 
 {-
+
+-- Trying the same thing with typeclasses; same errors -- can't prove
+-- something about one of the types in a cton if that type isn't used by
+-- that ctor.
 
 -- add float
 -- another int
