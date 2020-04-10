@@ -1,12 +1,38 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
---{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Tmi
-( tmiMain ) where
+module Example
+( exampleMain ) where
 
 import Util
+
+{-
+
+I'm struggling to get something to compile. The full code is below, and I'm not really sure if I could simplify it any further, but it boils down to this:
+
+-- I've got some complicated constraints needed for this implementation of
+-- Delta and its method (.+)
+instance (V (DW d q) ~ W, V d ~ Int, Delta d, V q ~ Double, Delta q)
+         => Delta (DW d q) where
+  type V (DW d q) = W
+  (.+) = ...
+
+-- Each constructor in this type takes only one of the two arguments
+data DW d q = DAnInt d | DAnotherInt d | DADouble q
+
+-- When I try to use a value of type (DW d q) as a Delta here, I can prove
+-- that the constraints on 'd' are satisfied, but I cannot prove anything
+-- about 'q' since 'q' isn't used in this particular value.
+_dAnInt :: (V d ~ Int, Delta d) => W -> d -> W
+_dAnInt w di = w .+ DAnInt di
+--                  ^^^^^^^^^
+-- ---------------------^
+
+I want to say "Don't worry, this value (DAnInt di) meets all the constraints needed for (Delta (DW d q)), don't worry about 'q' here because it isn't involved anyway". I've tried adding explicit annotations but I get lots of things about not being able to unify (d0 ~ d).
+
+-}
 
 -- A type d is a delta for type (V d) if you can use it to change a (V d) into
 -- another (V d).
@@ -36,15 +62,6 @@ data W = W { anInt :: Int
            , aDouble :: Double }
   deriving Show
 
--- _foo is an updater for a field foo
--- (foo) reads the field, while (_foo v) writes v to the field
-_anInt :: W -> Int -> W
-_anInt w i = w { anInt = i }
-_anotherInt :: W -> Int -> W
-_anotherInt w i = w { anotherInt = i }
-_aDouble :: W -> Double -> W
-_aDouble w d = w { aDouble = d }
-
 -- A change to W -- one option for each field of W.
 -- The type name is 'D' + the full's name.
 -- The field constructor names are 'D' + the field name (capitalized).
@@ -53,7 +70,7 @@ _aDouble w d = w { aDouble = d }
 --
 -- This is the existential version, but not sure if I need it:
 -- data DW d = (V d ~ Int) => DAnInt d
-data DW d q = (V d ~ Int, V q ~ Double) => DAnInt d | DAnotherInt d | DADouble q
+data DW d q = DAnInt d | DAnotherInt d | DADouble q
 
 -- Now we define how we apply each type of DW -- it's just pulling wrappers
 -- off
@@ -63,44 +80,8 @@ instance (V (DW d q) ~ W, V d ~ Int, Delta d, V q ~ Double, Delta q) => Delta (D
   w@(W { anotherInt = i }) .+ DAnotherInt d = w { anotherInt = (i .+ d) }
   w@(W { aDouble = d }) .+ DADouble dd = w { aDouble = (d .+ dd) }
 
--- A more concise way to write a delta to a field of a record
--- __anInt :: W -> DInt -> W -- too specific
---_dAnInt :: (V d ~ Int, Delta d) => W -> d -> W
---_dAnInt w di = w .+ DAnInt di
---_dAnInt w di = w .+ (DAnInt di :: (V (DW d q) ~ W, V d ~ Int, Delta d, V q ~ Double, Delta q) => DW d q)
--- _dAnotherInt :: (V d ~ Int, Delta d) => W -> d -> W
--- _dAnotherInt w di = w .+ DAnotherInt di
+-- _dAnInt :: (V d ~ Int, Delta d) => W -> d -> W
+-- _dAnInt w di = w .+ DAnInt di
 
--- data Foo a b = Foo (Either a b)
---   deriving Show
-
--- class C a where
---   bar :: a -> (a, a)
-
--- class P a where
---   yah :: a -> a
-
--- instance P Int where
---   yah = id
-
--- instance (P a, P b) => C (Foo a b) where
---   bar x@(Foo (Left y)) = (x, x)
-
--- example = do
---   putStrLn $ show $ bar $ Foo (Left 1)
-
-tmiMain = do
-  --example
-  let w :: W
-      w = W { anInt = 10
-            , anotherInt = 100
-            , aDouble = 3.3 }
-  msp w
-  msp $ 34 .+ (DIntAdd 3)
-  msp $ w .+ ((DAnInt (DIntAdd 5)) :: DW DIntAdd DDoubleAdd)
-  msp $ w .+ ((DAnotherInt (DIntAdd 6)) :: DW DIntAdd DDoubleAdd)
-  msp $ w .+ ((DADouble (DDoubleAdd 0.2)) :: DW DIntAdd DDoubleAdd)
-  -- msp $ _anInt w 11
-  -- msp $ _dAnInt w (DIntAdd 7)
-  -- msp $ _dAnotherInt w (DIntAdd 60)
+exampleMain = do
   msp "hihi"
