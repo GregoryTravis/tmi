@@ -1,5 +1,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+--{-# LANGUAGE DatatypeContexts #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -7,6 +11,15 @@ module Example
 ( exampleMain ) where
 
 import Util
+
+-- This is an example I posted to reddit:
+-- https://www.reddit.com/r/haskell/comments/fsgqd6/monthly_hask_anything_april_2020/fn05vra/
+--
+-- It's just a stripped down version of my "starting over" attempt over in
+-- Tmi.hs.
+--
+-- Later on in the file is another try using multiparm type classes &
+-- fundeps; it seems to have the same problem.
 
 {-
 
@@ -85,3 +98,47 @@ instance (V (DW d q) ~ W, V d ~ Int, Delta d, V q ~ Double, Delta q) => Delta (D
 
 exampleMain = do
   msp "hihi"
+
+{-
+
+-- add float
+-- another int
+-- remove DW type vars?
+
+class Delta a da | da -> a where 
+  (.+) :: a -> da -> a
+
+data DIntAdd = DIntAdd Int
+instance Delta Int DIntAdd where
+  i .+ (DIntAdd di) = i + di
+
+data DDoubleAdd = DDoubleAdd Double
+instance Delta Double DDoubleAdd where
+  d .+ (DDoubleAdd dd) = d + dd
+
+data W = W { anInt :: Int
+           , aDouble :: Double }
+  deriving Show
+
+-- Errors: same old thing, it can't prove anything about the type that
+-- isn't used in each particular construtor. If I add annotations I get the
+-- usual "I can't unify the thing I want with the thing you said is what I
+-- wait", usually of the form "can't unify d0 with d".
+--
+-- data DW di dd = DAnInt di | DADouble dd
+-- instance (Delta Int di, Delta Double dd) => Delta W (DW di dd) where
+--   w@(W { anInt = i }) .+ (DAnInt di) = w { anInt = i .+ di }
+
+-- Same
+--data DW = forall di dd . (Delta Int di, Delta Double dd) =>  DADouble dd | DAnInt di
+data (Delta Int di, Delta Double dd) => DW di dd = DAnInt di | DADouble dd 
+instance (Delta Int di, Delta Double dd) => Delta W (DW di dd) where
+  w@(W { anInt = i }) .+ (DAnInt di) = w { anInt = i .+ di }
+
+exampleMain = do
+  let w = W { anInt = 10
+            , aDouble = 3.3 }
+  msp w
+  msp $ w .+ (DAnInt (DIntAdd 3) :: (Delta Double dd) => DW DIntAdd dd)
+  msp "hihi"
+-}
