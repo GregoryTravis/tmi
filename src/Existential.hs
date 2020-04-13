@@ -75,12 +75,19 @@ instance DeltaOf W DW where
   --w@(W { aList = xs }) .+ DAList dxs = w { aList = (xs .+ dxs) }
 
 -- Can generate this for each field of W
+_dGeneric :: DeltaOf a da => ((Delta a) -> DW) -> W -> da -> W
+_dGeneric lifter w da = w .+ (lifter (Delta da))
+-- DAnInt :: Delta Int -> DW
+
 _dAnInt :: DeltaOf Int di => W -> di -> W
-_dAnInt w di = w .+ (DAnInt (Delta di))
+--_dAnInt w di = w .+ (DAnInt (Delta di))
+_dAnInt = _dGeneric DAnInt
 _dADouble :: DeltaOf Double dd => W -> dd -> W
-_dADouble w dd = w .+ (DADouble (Delta dd))
+--_dADouble w dd = w .+ (DADouble (Delta dd))
+_dADouble = _dGeneric DADouble
 _dAList :: DeltaOf [Int] dl => W -> dl -> W
-_dAList w dl = w .+ (DAList (Delta dl))
+--_dAList w dl = w .+ (DAList (Delta dl))
+_dAList = _dGeneric DAList
 
 -- Alternately, lift (aka reverse transform) the delta separately
 -- Also generated automatically for each field in W
