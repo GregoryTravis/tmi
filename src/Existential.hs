@@ -33,23 +33,53 @@ instance DeltaOf [a] (DList a) where
   xs .+ DListMod i x = take i xs ++ [x] ++ drop (i+1) xs
   xs .+ DListCons x = x : xs
 
+-- r record, f field type
+type BiField r f = (r -> f, f -> r -> r)
+
 data W = W { anInt :: Int
            , aDouble :: Double
            , aList :: [Int] }
   deriving Show
 
+-- Lensery
+-- data BiW = BiW { biAnInt :: BiField W Int
+--                , biADouble :: BiField W Double
+--                , biAList :: BiField W [Int] }
+-- biW = BiW { biAnInt = (anInt, \i w -> w { anInt = i })
+--           , biADouble = (aDouble, \d w -> w { aDouble = d })
+--           , biAList = (aList, \l w -> w { aList = l }) }
+biAnInt :: BiField W Int
+biAnInt = (anInt, \i w -> w { anInt = i })
+biADouble :: BiField W Double
+biADouble = (aDouble, \d w -> w { aDouble = d })
+biAList :: BiField W [Int]
+biAList = (aList, \l w -> w { aList = l })
+--appLens :: BiField r f -> r ->
+readLens :: BiField r f -> r -> f
+readLens = fst
+writeLens :: BiField r f -> f -> r -> r
+writeLens = snd
+modLens :: BiField r f -> (f -> f) -> r -> r
+modLens bif modder r = writeLens bif (modder $ readLens bif r) r
+dModLens :: BiField r f -> Delta f -> r -> r
+dModLens bif df = modLens bif (.+ df)
+
 data DW = DAnInt (Delta Int) | DADouble (Delta Double) | DAList (Delta [Int])
 
 instance DeltaOf W DW where
-  w@(W { anInt = i }) .+ DAnInt d = w { anInt = (i .+ d) }
-  w@(W { aDouble = d }) .+ DADouble dd = w { aDouble = (d .+ dd) }
-  w@(W { aList = xs }) .+ DAList dxs = w { aList = (xs .+ dxs) }
+  w .+ DAnInt di = dModLens biAnInt di w
+  w .+ DADouble dd = dModLens biADouble dd w
+  w .+ DAList dxs = dModLens biAList dxs w
+  --w@(W { anInt = i }) .+ DAnInt d = w { anInt = (i .+ d) }
+  --w@(W { aDouble = d }) .+ DADouble dd = w { aDouble = (d .+ dd) }
+  --w@(W { aList = xs }) .+ DAList dxs = w { aList = (xs .+ dxs) }
 
 -- Can generate this for each field of W
 _dAnInt :: DeltaOf Int di => W -> di -> W
 _dAnInt w di = w .+ (DAnInt (Delta di))
 _dADouble :: DeltaOf Double dd => W -> dd -> W
 _dADouble w dd = w .+ (DADouble (Delta dd))
+_dAList :: DeltaOf [Int] dl => W -> dl -> W
 _dAList w dl = w .+ (DAList (Delta dl))
 
 -- Alternately, lift (aka reverse transform) the delta separately
