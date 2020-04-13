@@ -75,7 +75,7 @@ instance DeltaOf W DW where
   --w@(W { aList = xs }) .+ DAList dxs = w { aList = (xs .+ dxs) }
 
 -- Can generate this for each field of W
-_dGeneric :: DeltaOf a da => ((Delta a) -> DW) -> W -> da -> W
+_dGeneric :: (DeltaOf a da, DeltaOf r dr) => ((Delta a) -> dr) -> r -> da -> r
 _dGeneric lifter w da = w .+ (lifter (Delta da))
 -- DAnInt :: Delta Int -> DW
 
