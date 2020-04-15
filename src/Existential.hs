@@ -160,4 +160,9 @@ existentialMain = do
   msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
   msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))))
 
+  -- What I want to write
+  -- ((indexL 1) $ _dAList w) <- (Delta (DIntAdd 20))
+  -- the application on left is some kind of composition, doesn't need to
+  -- be exactly like that
+
   msp "hihi"
