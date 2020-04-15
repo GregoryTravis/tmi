@@ -35,9 +35,14 @@ instance DeltaOf Double DDoubleAdd where
 -- DeltaOf a da =>
 data DList a = forall da. (DeltaOf a da) => DListMod Int da | DListCons a
 instance DeltaOf [a] (DList a) where
-  xs .+ DListMod i dx = take i xs ++ [x'] ++ drop (i+1) xs
-    where x' = (xs !! i) .+ dx
+  xs .+ DListMod i dx = dModLens (indexL i) (Delta dx) xs
+  -- xs .+ DListMod i dx = take i xs ++ [x'] ++ drop (i+1) xs
+  --   where x' = (xs !! i) .+ dx
   xs .+ DListCons x = x : xs
+
+indexL :: Int -> BiField [a] a
+indexL i = ((!! i), replaceAt i)
+  where replaceAt i x' xs = take i xs ++ [x'] ++ drop (i+1) xs
 
 -- r record, f field type
 type BiField r f = (r -> f, f -> r -> r)
@@ -86,29 +91,19 @@ _dGeneric lifter w da = w .+ (lifter (Delta da))
 -- DAnInt :: Delta Int -> DW
 
 _dAnInt :: DeltaOf Int di => W -> di -> W
---_dAnInt w di = w .+ (DAnInt (Delta di))
 _dAnInt = _dGeneric DAnInt
 _dADouble :: DeltaOf Double dd => W -> dd -> W
---_dADouble w dd = w .+ (DADouble (Delta dd))
 _dADouble = _dGeneric DADouble
 _dAList :: DeltaOf [Int] dl => W -> dl -> W
---_dAList w dl = w .+ (DAList (Delta dl))
 _dAList = _dGeneric DAList
 
--- Alternately, lift (aka reverse transform) the delta separately
--- Also generated automatically for each field in W
-toDAnInt :: Delta Int -> Delta W
-toDAnInt di = Delta (DAnInt (Delta di))
-toDADouble dd = Delta (DADouble (Delta dd))
-toDAList dl = Delta (DAList (Delta dl))
-  -- let dw :: DW
-  --     dw = DAnInt (Delta di)
-  --  in (Delta dw)
-_dAnInt' :: DeltaOf Int di => W -> di -> W
-_dAnInt' w di = w .+ (toDAnInt (Delta di))
-_dADouble' :: DeltaOf Double dd => W -> dd -> W
-_dADouble' w dd = w .+ (toDADouble (Delta dd))
-_dAList' w dd = w .+ (toDAList (Delta dd))
+---- Also generated automatically for each field in W
+----toDAnInt :: Delta Int -> Delta W
+--_dAnInt' :: DeltaOf Int di => W -> di -> W
+--_dAnInt' w di = w .+ (DAnInt (Delta di))
+--_dADouble' :: DeltaOf Double dd => W -> dd -> W
+--_dADouble' w dd = w .+ (DADouble (Delta dd))
+--_dAList' w dd = w .+ (DAList (Delta dd))
 
 existentialMain = do
   let w :: W
@@ -136,16 +131,10 @@ existentialMain = do
   msp $ _dAnInt w (DIntAdd 9)
   msp $ _dAnInt w (DIntSub 2)
   msp $ _dADouble w (DDoubleAdd 0.1)
-  msp $ _dAnInt' w (DIntAdd 9)
-  msp $ _dAnInt' w (DIntSub 2)
-  msp $ _dADouble' w (DDoubleAdd 0.1)
   msp $ [1, 2, 3] .+ (DListMod 1 (DIntAdd 20))
   msp $ [1, 2, 3] .+ (DListMod 1 (Full 30))
   msp $ [1, 2, 3] .+ (DListCons 7)
   msp $ _dAList w (DListMod 1 (DIntAdd 20))
   msp $ _dAList w (DListMod 1 (Full 30))
   msp $ _dAList w (DListCons 7)
-  msp $ _dAList' w (DListMod 1 (DIntAdd 20))
-  msp $ _dAList' w (DListMod 1 (Full 30))
-  msp $ _dAList' w (DListCons 7)
   msp "hihi"
