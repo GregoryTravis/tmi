@@ -28,9 +28,11 @@ data DDoubleAdd = DDoubleAdd Double
 instance DeltaOf Double DDoubleAdd where
   d .+ (DDoubleAdd dd) = d + dd
 
-data DList a = DListMod Int a | DListCons a
+-- DeltaOf a da =>
+data DList a = forall da. (DeltaOf a da) => DListMod Int da | DListCons a
 instance DeltaOf [a] (DList a) where
-  xs .+ DListMod i x = take i xs ++ [x] ++ drop (i+1) xs
+  xs .+ DListMod i dx = take i xs ++ [x'] ++ drop (i+1) xs
+    where x' = (xs !! i) .+ dx
   xs .+ DListCons x = x : xs
 
 -- r record, f field type
@@ -133,6 +135,6 @@ existentialMain = do
   msp $ _dAnInt' w (DIntAdd 9)
   msp $ _dAnInt' w (DIntSub 2)
   msp $ _dADouble' w (DDoubleAdd 0.1)
-  msp $ [1, 2, 3] .+ (DListMod 1 20)
+  msp $ [1, 2, 3] .+ (DListMod 1 (DIntAdd 20))
   msp $ [1, 2, 3] .+ (DListCons 7)
   msp "hihi"
