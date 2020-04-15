@@ -35,21 +35,14 @@ instance DeltaOf Double DDoubleAdd where
   d .+ (DDoubleAdd dd) = d + dd
 
 -- DeltaOf a da =>
-data DList a = forall da. (DeltaOf a da) => DListMod Int da | DListCons a
+data DList a = DListMod Int (Delta a) | DListCons a
 instance DeltaOf [a] (DList a) where
-  xs .+ DListMod i dx = dModLens (indexL i) (Delta dx) xs
-  -- xs .+ DListMod i dx = take i xs ++ [x'] ++ drop (i+1) xs
-  --   where x' = (xs !! i) .+ dx
+  xs .+ DListMod i (Delta dx) = dModLens (indexL i) (Delta dx) xs
   xs .+ DListCons x = x : xs
 
 indexL :: Int -> BiField [a] a
 indexL i = ((!! i), replaceAt i)
   where replaceAt i x' xs = take i xs ++ [x'] ++ drop (i+1) xs
-
--- data DPair a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPair (Either da db)
--- instance DeltaOf (a, b) (DPair a b) where
---   (a, b) .+ (DPair (Left da)) = (a .+ da, b)
---   (a, b) .+ (DPair (Right db)) = (a, b .+ db)
 
 data DPair a b = DPair (Either (Delta a) (Delta b))
 instance DeltaOf (a, b) (DPair a b) where
@@ -150,13 +143,13 @@ existentialMain = do
   msp $ _dAnInt w (DIntAdd 9)
   msp $ _dAnInt w (DIntSub 2)
   msp $ _dADouble w (DDoubleAdd 0.1)
-  msp $ [1, 2, 3] .+ (DListMod 1 (DIntAdd 20))
-  msp $ [1, 2, 3] .+ (DListMod 1 (Full 30))
+  msp $ [1, 2, 3] .+ (DListMod 1 (Delta (DIntAdd 20)))
+  msp $ [1, 2, 3] .+ (DListMod 1 (Delta (Full 30)))
   msp $ [1, 2, 3] .+ (DListCons 7)
-  msp $ _dAList w (DListMod 1 (DIntAdd 20))
-  msp $ _dAList w (DListMod 1 (Full 30))
+  msp $ _dAList w (DListMod 1 (Delta (DIntAdd 20)))
+  msp $ _dAList w (DListMod 1 (Delta (Full 30)))
   msp $ _dAList w (DListCons 7)
-  msp $ _dSomePairs w (DListMod 1 (DPair (Left (Delta (DIntAdd 20)))))
-  msp $ _dSomePairs w (DListMod 1 (DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))
+  msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
+  msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))))
 
   msp "hihi"
