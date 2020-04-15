@@ -51,12 +51,10 @@ indexL i = ((!! i), replaceAt i)
 --   (a, b) .+ (DPair (Left da)) = (a .+ da, b)
 --   (a, b) .+ (DPair (Right db)) = (a, b .+ db)
 
--- data DPair' a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPairL da | DPairR db
--- data DPair' a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPairL da | forall da db. (DeltaOf a da, DeltaOf b db) => DPairR db
-data DPair' a b = forall da. DeltaOf a da => DPairL da | forall db. DeltaOf b db => DPairR db
-instance DeltaOf (a, b) (DPair' a b) where
-  (a, b) .+ (DPairL da) = (a .+ da, b)
-  (a, b) .+ (DPairR db) = (a, b .+ db)
+data DPair a b = DPair (Either (Delta a) (Delta b))
+instance DeltaOf (a, b) (DPair a b) where
+  (a, b) .+ (DPair (Left da)) = (a .+ da, b)
+  (a, b) .+ (DPair (Right db)) = (a, b .+ db)
 
 -- r record, f field type
 type BiField r f = (r -> f, f -> r -> r)
@@ -158,10 +156,7 @@ existentialMain = do
   msp $ _dAList w (DListMod 1 (DIntAdd 20))
   msp $ _dAList w (DListMod 1 (Full 30))
   msp $ _dAList w (DListCons 7)
-
-  let foo = DPairL (DIntAdd 20)
-      bar = DPairR (Delta (DListMod 2 (Delta (DDoubleAdd 25))))
-  msp $ _dSomePairs w (DListMod 1 foo)
-  msp $ _dSomePairs w (DListMod 1 bar)
+  msp $ _dSomePairs w (DListMod 1 (DPair (Left (Delta (DIntAdd 20)))))
+  msp $ _dSomePairs w (DListMod 1 (DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))
 
   msp "hihi"
