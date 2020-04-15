@@ -11,10 +11,14 @@ import Util
 class DeltaOf a da | da -> a where 
   (.+) :: a -> da -> a
 
-data Delta a = forall da. (DeltaOf a da) => Delta da
+-- instance DeltaOf a a where
+--   a .+ a' = a'
+
+data Delta a = forall da. (DeltaOf a da) => Delta da | Full a
 
 instance DeltaOf a (Delta a) where
   x .+ (Delta dx) = x .+ dx
+  x .+ (Full x') = x'
 
 data DIntAdd = DIntAdd Int
 instance DeltaOf Int DIntAdd where 
@@ -136,5 +140,6 @@ existentialMain = do
   msp $ _dAnInt' w (DIntSub 2)
   msp $ _dADouble' w (DDoubleAdd 0.1)
   msp $ [1, 2, 3] .+ (DListMod 1 (DIntAdd 20))
+  msp $ [1, 2, 3] .+ (DListMod 1 (Full 30))
   msp $ [1, 2, 3] .+ (DListCons 7)
   msp "hihi"
