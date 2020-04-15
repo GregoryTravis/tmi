@@ -46,12 +46,18 @@ indexL :: Int -> BiField [a] a
 indexL i = ((!! i), replaceAt i)
   where replaceAt i x' xs = take i xs ++ [x'] ++ drop (i+1) xs
 
+data DPair a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPair (Either da db)
+instance DeltaOf (a, b) (DPair a b) where
+  (a, b) .+ (DPair (Left da)) = (a .+ da, b)
+  (a, b) .+ (DPair (Right db)) = (a, b .+ db)
+
 -- r record, f field type
 type BiField r f = (r -> f, f -> r -> r)
 
 data W = W { anInt :: Int
            , aDouble :: Double
-           , aList :: [Int] }
+           , aList :: [Int]
+           , somePairs :: [(Int, [Double])] }
   deriving Show
 
 -- Lensery
@@ -67,6 +73,8 @@ biADouble :: BiField W Double
 biADouble = (aDouble, \d w -> w { aDouble = d })
 biAList :: BiField W [Int]
 biAList = (aList, \l w -> w { aList = l })
+biSomePairs :: BiField W [(Int, [Double])]
+biSomePairs = (somePairs, \x w -> w { somePairs = x })
 --appLens :: BiField r f -> r ->
 readLens :: BiField r f -> r -> f
 readLens = fst
@@ -77,12 +85,13 @@ modLens bif modder r = writeLens bif (modder $ readLens bif r) r
 dModLens :: BiField r f -> Delta f -> r -> r
 dModLens bif df = modLens bif (.+ df)
 
-data DW = DAnInt (Delta Int) | DADouble (Delta Double) | DAList (Delta [Int])
+data DW = DAnInt (Delta Int) | DADouble (Delta Double) | DAList (Delta [Int]) | DSomePairs (Delta [(Int, [Double])])
 
 instance DeltaOf W DW where
   w .+ DAnInt di = dModLens biAnInt di w
   w .+ DADouble dd = dModLens biADouble dd w
   w .+ DAList dxs = dModLens biAList dxs w
+  w .+ DSomePairs dsp = dModLens biSomePairs dsp w
   --w@(W { anInt = i }) .+ DAnInt d = w { anInt = (i .+ d) }
   --w@(W { aDouble = d }) .+ DADouble dd = w { aDouble = (d .+ dd) }
   --w@(W { aList = xs }) .+ DAList dxs = w { aList = (xs .+ dxs) }
@@ -98,6 +107,8 @@ _dADouble :: DeltaOf Double dd => W -> dd -> W
 _dADouble = _dGeneric DADouble
 _dAList :: DeltaOf [Int] dl => W -> dl -> W
 _dAList = _dGeneric DAList
+_dSomePairs :: DeltaOf [(Int, [Double])] d => W -> d -> W
+_dSomePairs = _dGeneric DSomePairs
 
 ---- Also generated automatically for each field in W
 ----toDAnInt :: Delta Int -> Delta W
@@ -111,7 +122,8 @@ existentialMain = do
   let w :: W
       w = W { anInt = 10
             , aDouble = 3.3
-            , aList = [1, 2, 3] }
+            , aList = [1, 2, 3]
+            , somePairs = [(100, [1, 2, 3]), (200, [2, 3, 4])] }
   --msp $ 3 .+ DIntAdd 2
   --msp $ 3 .+ DIntSub 2
   --msp $ w .+ DAnInt (Delta (DIntAdd 6))
@@ -139,4 +151,12 @@ existentialMain = do
   msp $ _dAList w (DListMod 1 (DIntAdd 20))
   msp $ _dAList w (DListMod 1 (Full 30))
   msp $ _dAList w (DListCons 7)
+
+  -- These don't work for the old "I can't figure out the type of the part
+  -- you're not using anyway" problem
+  --msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
+  --msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 20))))))))
+  --let foo = DPair (Left (DIntAdd 20))
+  --let foo = DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 20)))))
+
   msp "hihi"
