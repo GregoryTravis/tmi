@@ -44,10 +44,18 @@ indexL :: Int -> BiField [a] a
 indexL i = ((!! i), replaceAt i)
   where replaceAt i x' xs = take i xs ++ [x'] ++ drop (i+1) xs
 
+fstL :: BiField (a, b) a
+fstL = (fst, \a' (a, b) -> (a', b))
+sndL :: BiField (a, b) b
+sndL = (snd, \b' (a, b) -> (a, b'))
+
 data DPair a b = DPair (Either (Delta a) (Delta b))
 instance DeltaOf (a, b) (DPair a b) where
-  (a, b) .+ (DPair (Left da)) = (a .+ da, b)
-  (a, b) .+ (DPair (Right db)) = (a, b .+ db)
+  -- Kinda like these non-lens ones better
+  -- (a, b) .+ (DPair (Left da)) = (a .+ da, b)
+  -- (a, b) .+ (DPair (Right db)) = (a, b .+ db)
+  p .+ (DPair (Left da)) = dModLens fstL da p
+  p .+ (DPair (Right db)) = dModLens sndL db p
 
 -- r record, f field type
 type BiField r f = (r -> f, f -> r -> r)
