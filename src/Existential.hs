@@ -46,10 +46,17 @@ indexL :: Int -> BiField [a] a
 indexL i = ((!! i), replaceAt i)
   where replaceAt i x' xs = take i xs ++ [x'] ++ drop (i+1) xs
 
-data DPair a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPair (Either da db)
-instance DeltaOf (a, b) (DPair a b) where
-  (a, b) .+ (DPair (Left da)) = (a .+ da, b)
-  (a, b) .+ (DPair (Right db)) = (a, b .+ db)
+-- data DPair a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPair (Either da db)
+-- instance DeltaOf (a, b) (DPair a b) where
+--   (a, b) .+ (DPair (Left da)) = (a .+ da, b)
+--   (a, b) .+ (DPair (Right db)) = (a, b .+ db)
+
+-- data DPair' a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPairL da | DPairR db
+-- data DPair' a b = forall da db. (DeltaOf a da, DeltaOf b db) => DPairL da | forall da db. (DeltaOf a da, DeltaOf b db) => DPairR db
+data DPair' a b = forall da. DeltaOf a da => DPairL da | forall db. DeltaOf b db => DPairR db
+instance DeltaOf (a, b) (DPair' a b) where
+  (a, b) .+ (DPairL da) = (a .+ da, b)
+  (a, b) .+ (DPairR db) = (a, b .+ db)
 
 -- r record, f field type
 type BiField r f = (r -> f, f -> r -> r)
@@ -152,11 +159,9 @@ existentialMain = do
   msp $ _dAList w (DListMod 1 (Full 30))
   msp $ _dAList w (DListCons 7)
 
-  -- These don't work for the old "I can't figure out the type of the part
-  -- you're not using anyway" problem
-  --msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
-  --msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 20))))))))
-  --let foo = DPair (Left (DIntAdd 20))
-  --let foo = DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 20)))))
+  let foo = DPairL (DIntAdd 20)
+      bar = DPairR (Delta (DListMod 2 (Delta (DDoubleAdd 25))))
+  msp $ _dSomePairs w (DListMod 1 foo)
+  msp $ _dSomePairs w (DListMod 1 bar)
 
   msp "hihi"
