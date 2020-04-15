@@ -142,4 +142,7 @@ existentialMain = do
   msp $ [1, 2, 3] .+ (DListMod 1 (DIntAdd 20))
   msp $ [1, 2, 3] .+ (DListMod 1 (Full 30))
   msp $ [1, 2, 3] .+ (DListCons 7)
+  msp $ _dAList' w (DListMod 1 (DIntAdd 20))
+  msp $ _dAList' w (DListMod 1 (Full 30))
+  msp $ _dAList' w (DListCons 7)
   msp "hihi"
