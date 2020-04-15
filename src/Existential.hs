@@ -17,6 +17,8 @@ class DeltaOf a da | da -> a where
 data Delta a = forall da. (DeltaOf a da) => Delta da | Full a
 
 instance DeltaOf a (Delta a) where
+  -- I can pass this value, but I can't match on it
+  -- x .+ (Delta (Delta dx)) = esp "SHIT" $ x .+ dx
   x .+ (Delta dx) = x .+ dx
   x .+ (Full x') = x'
 
