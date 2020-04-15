@@ -161,8 +161,12 @@ existentialMain = do
   msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))))
 
   -- What I want to write
-  -- ((indexL 1) $ _dAList w) <- (Delta (DIntAdd 20))
+  -- ((indexL 1) $ _dAList w) <-- (Delta (DIntAdd 20))
   -- the application on left is some kind of composition, doesn't need to
   -- be exactly like that
+  --
+  -- Actually what I really ultimately want to write
+  -- w.aList !! 1 <-- val
+  -- (snd (w.somePairs !! 2)) !! 1 <- val
 
   msp "hihi"
