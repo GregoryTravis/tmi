@@ -124,12 +124,68 @@ _dSomePairs = _dGeneric DSomePairs
 --_dADouble' w dd = w .+ (DADouble (Delta dd))
 --_dAList' w dd = w .+ (DAList (Delta dd))
 
+data Lens a b = Lens (a -> b) (Delta b -> Delta a)
+
+read' :: W -> Lens W a -> a
+read' w (Lens f r) = f w
+dwrite' :: W -> Lens W a -> Delta a -> W
+dwrite' w (Lens f r) dx = w .+ r dx
+
+(*-) :: Lens b c -> Lens a b -> Lens a c
+Lens bc dcdb *- Lens ab dbda = Lens ac dcda
+  where ac = bc . ab
+        dcda = dbda . dcdb
+
+inxnR i d = Delta (DListMod i d)
+pfstR d = Delta (DPair (Left d))
+psndR d = Delta (DPair (Right d))
+somepR d = Delta (DSomePairs d)
+
+inxn :: Int -> Lens [a] a
+inxn i = Lens (!! i) (inxnR i)
+pfst :: Lens (a, b) a
+pfst = Lens fst pfstR
+psnd :: Lens (a, b) b
+psnd = Lens snd psndR
+somep :: Lens W [(Int, [Double])]
+somep = Lens somePairs somepR
+
+--read' :: W -> (W -> a) -> a
+--read' w for = for w
+----read' = &
+--dwrite' :: W -> (Delta a -> Delta W) -> Delta a -> W
+--dwrite' w back d = w .+ (back d)
+
 existentialMain = do
   let w :: W
       w = W { anInt = 10
             , aDouble = 3.3
             , aList = [1, 2, 3]
             , somePairs = [(100, [1, 2, 3]), (200, [2, 3, 4])] }
+      read = read' w
+      dwrite = dwrite' w
+
+  let d :: Delta Double
+      d = Delta (DDoubleAdd 25)
+      --c :: Delta W
+
+      -- I wish this were: (snd $ somePairs !! 1) !! 2
+      --forwards :: W -> Double
+      --forwards = (!! 2) . snd . (!! 1) . somePairs
+
+      -- I wish this were: (snd $ somePairs !! 1) !! 2
+      --backwards :: Delta Double -> Delta W
+      --backwards = somep . inxn 1 . psnd . inxn 2
+      zoom :: Lens W Double
+      zoom = inxn 2 *- psnd *- inxn 1 *- somep
+
+      --c = backwards d
+      --v = forwards w
+  msp $ dwrite zoom d
+  msp $ read zoom
+  -- msp $ w .+ backwards d
+  -- msp $ forwards w
+
   --msp $ 3 .+ DIntAdd 2
   --msp $ 3 .+ DIntSub 2
   --msp $ w .+ DAnInt (Delta (DIntAdd 6))
@@ -148,17 +204,18 @@ existentialMain = do
   --    -- vree w di = _dAnInt w (Delta di)
   ---- msp $ _dAnInt w x'
   ---- msp $ _dAnInt w x''
-  msp $ _dAnInt w (DIntAdd 9)
-  msp $ _dAnInt w (DIntSub 2)
-  msp $ _dADouble w (DDoubleAdd 0.1)
-  msp $ [1, 2, 3] .+ (DListMod 1 (Delta (DIntAdd 20)))
-  msp $ [1, 2, 3] .+ (DListMod 1 (Delta (Full 30)))
-  msp $ [1, 2, 3] .+ (DListCons 7)
-  msp $ _dAList w (DListMod 1 (Delta (DIntAdd 20)))
-  msp $ _dAList w (DListMod 1 (Delta (Full 30)))
-  msp $ _dAList w (DListCons 7)
-  msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
-  msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Right (Delta (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))))
+
+  -- msp $ _dAnInt w (DIntAdd 9)
+  -- msp $ _dAnInt w (DIntSub 2)
+  -- msp $ _dADouble w (DDoubleAdd 0.1)
+  -- msp $ [1, 2, 3] .+ (DListMod 1 (Delta (DIntAdd 20)))
+  -- msp $ [1, 2, 3] .+ (DListMod 1 (Delta (Full 30)))
+  -- msp $ [1, 2, 3] .+ (DListCons 7)
+  -- msp $ _dAList w (DListMod 1 (Delta (DIntAdd 20)))
+  -- msp $ _dAList w (DListMod 1 (Delta (Full 30)))
+  -- msp $ _dAList w (DListCons 7)
+  -- msp $ _dSomePairs w (DListMod 1 (Delta (DPair (Left (Delta (DIntAdd 20))))))
+  -- msp $ _dSomePairs w (Delta (DListMod 1 (Delta (DPair (Right (Delta (DListMod 2 (Delta (DDoubleAdd 25)))))))))
 
   -- What I want to write
   -- ((indexL 1) $ _dAList w) <-- (Delta (DIntAdd 20))
