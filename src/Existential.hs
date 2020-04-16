@@ -170,12 +170,6 @@ existentialMain = do
       --c :: Delta W
 
       -- I wish this were: (snd $ somePairs !! 1) !! 2
-      --forwards :: W -> Double
-      --forwards = (!! 2) . snd . (!! 1) . somePairs
-
-      -- I wish this were: (snd $ somePairs !! 1) !! 2
-      --backwards :: Delta Double -> Delta W
-      --backwards = somep . inxn 1 . psnd . inxn 2
       zoom :: Lens W Double
       zoom = inxn 2 *- psnd *- inxn 1 *- somep
 
