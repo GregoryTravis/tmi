@@ -150,6 +150,11 @@ psnd = Lens snd psndR
 somep :: Lens W [(Int, [Double])]
 somep = Lens somePairs somepR
 
+(!!-) :: Lens a [b] -> Int -> Lens a b
+xs !!- i = inxn i *- xs
+sndF :: Lens a (b, c) -> Lens a c
+sndF p = psnd *- p
+
 --read' :: W -> (W -> a) -> a
 --read' w for = for w
 ----read' = &
@@ -171,7 +176,7 @@ existentialMain = do
 
       -- I wish this were: (snd $ somePairs !! 1) !! 2
       zoom :: Lens W Double
-      zoom = inxn 2 *- psnd *- inxn 1 *- somep
+      zoom = (sndF $ (somep !!- 1)) !!- 2
 
       --c = backwards d
       --v = forwards w
