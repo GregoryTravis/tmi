@@ -4,7 +4,18 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Existential
-( existentialMain ) where
+( existentialMain
+, W(..)
+, Delta(..)
+, DDoubleAdd(..)
+, Lens(..)
+, read'
+, dwrite'
+, somep
+, (!!-)
+, sndF
+, DDoubleAdd(..)
+) where
 
 import Util
 
@@ -126,9 +137,9 @@ _dSomePairs = _dGeneric DSomePairs
 
 data Lens a b = Lens (a -> b) (Delta b -> Delta a)
 
-read' :: W -> Lens W a -> a
+read' :: w -> Lens w a -> a
 read' w (Lens f r) = f w
-dwrite' :: W -> Lens W a -> Delta a -> W
+dwrite' :: w -> Lens w a -> Delta a -> w
 dwrite' w (Lens f r) dx = w .+ r dx
 
 (*-) :: Lens b c -> Lens a b -> Lens a c
