@@ -7,7 +7,7 @@ import qualified Prelude as P
 
 import Util
 
---consequencesMain :: IO ()
+consequencesMain :: IO ()
 consequencesMain = do
 
   let d :: Delta P.Double
