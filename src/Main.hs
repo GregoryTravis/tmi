@@ -1,5 +1,6 @@
 module Main where
 
+import Consequences
 import Delta
 import DVal
 import Example
@@ -20,5 +21,5 @@ main = do
   -- openDeltaDemo
   -- simpleDeltaDemo
   -- tmiMain
-  existentialMain
+  existentialMain consequencesMain
   msp "hi"

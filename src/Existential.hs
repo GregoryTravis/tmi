@@ -161,7 +161,8 @@ sndF p = psnd *- p
 --dwrite' :: W -> (Delta a -> Delta W) -> Delta a -> W
 --dwrite' w back d = w .+ (back d)
 
-existentialMain = do
+existentialMain :: IO () -> IO ()
+existentialMain tmiProgram = do
   let w :: W
       w = W { anInt = 10
             , aDouble = 3.3
@@ -182,6 +183,8 @@ existentialMain = do
       --v = forwards w
   msp $ dwrite zoom d
   msp $ read zoom
+  tmiProgram
+
   -- msp $ w .+ backwards d
   -- msp $ forwards w
 
@@ -224,5 +227,3 @@ existentialMain = do
   -- Actually what I really ultimately want to write
   -- w.aList !! 1 <-- val
   -- (snd (w.somePairs !! 2)) !! 1 <- val
-
-  msp "hihi"
