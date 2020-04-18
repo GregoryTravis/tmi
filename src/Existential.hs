@@ -14,7 +14,6 @@ module Existential
 , somep
 , (!!-)
 , sndF
-, DDoubleAdd(..)
 ) where
 
 import Util
@@ -174,26 +173,26 @@ sndF p = psnd *- p
 
 existentialMain :: IO () -> IO ()
 existentialMain tmiProgram = do
-  let w :: W
-      w = W { anInt = 10
-            , aDouble = 3.3
-            , aList = [1, 2, 3]
-            , somePairs = [(100, [1, 2, 3]), (200, [2, 3, 4])] }
-      read = read' w
-      dwrite = dwrite' w
+  --let w :: W
+  --    w = W { anInt = 10
+  --          , aDouble = 3.3
+  --          , aList = [1, 2, 3]
+  --          , somePairs = [(100, [1, 2, 3]), (200, [2, 3, 4])] }
+  --    read = read' w
+  --    dwrite = dwrite' w
 
-  let d :: Delta Double
-      d = Delta (DDoubleAdd 25)
-      --c :: Delta W
+  --let d :: Delta Double
+  --    d = Delta (DDoubleAdd 25)
+  --    --c :: Delta W
 
-      -- I wish this were: (snd $ somePairs !! 1) !! 2
-      zoom :: Lens W Double
-      zoom = (sndF $ (somep !!- 1)) !!- 2
+  --    -- I wish this were: (snd $ somePairs !! 1) !! 2
+  --    zoom :: Lens W Double
+  --    zoom = (sndF $ (somep !!- 1)) !!- 2
 
-      --c = backwards d
-      --v = forwards w
-  msp $ dwrite zoom d
-  msp $ read zoom
+  --    --c = backwards d
+  --    --v = forwards w
+  --msp $ dwrite zoom d
+  --msp $ read zoom
   tmiProgram
 
   -- msp $ w .+ backwards d

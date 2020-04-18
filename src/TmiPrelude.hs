@@ -6,10 +6,12 @@ module TmiPrelude
 , snd
 , E.DDoubleAdd(..)
 , E.Delta(..)
+, Double
 -- , w
 ) where
 
 import Prelude ()
+import qualified Prelude as P
 
 import qualified Existential as E
 import Util
@@ -27,3 +29,5 @@ dwrite = E.dwrite' w
 (!!) = (E.!!-)
 
 snd = E.sndF
+
+type Double = E.Lens E.W P.Double
