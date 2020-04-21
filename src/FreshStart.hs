@@ -3,8 +3,8 @@
 --{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Tmi
-( tmiMain ) where
+module FreshStart
+( freshStartMain ) where
 
 import Util
 
@@ -89,7 +89,7 @@ instance (V (DW d q) ~ W, V d ~ Int, Delta d, V q ~ Double, Delta q) => Delta (D
 -- example = do
 --   putStrLn $ show $ bar $ Foo (Left 1)
 
-tmiMain = do
+freshStartMain = do
   --example
   let w :: W
       w = W { anInt = 10

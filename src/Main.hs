@@ -8,6 +8,7 @@ import Existential
 import Exp
 import OpenDeltas
 import SimpleDelta
+import FreshStart
 import Tmi
 import Util
 
@@ -20,6 +21,7 @@ main = do
   -- valDeltaDemo
   -- openDeltaDemo
   -- simpleDeltaDemo
-  -- tmiMain
-  existentialMain consequencesMain
+  -- freshStartMain
+  -- existentialMain consequencesMain
+  tmiMain
   msp "hi"
