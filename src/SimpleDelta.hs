@@ -1,3 +1,4 @@
+--{-# LANGUAGE DatatypeContexts #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -9,6 +10,7 @@ module SimpleDelta
 ) where
 
 import Control.Monad.State
+import Data.Char (chr, ord)
 import qualified Data.Map.Strict as M
 import qualified Debug.Trace as TR
 
@@ -183,13 +185,63 @@ funWStringsI' i = composeFunFun (arrIndex' i) funWStrings
 
 x !!- i = composeFunFun (arrIndex' i) x
 
+-- Works, but uses Fun
+-- encoder :: Int -> Fun String String StringDelta StringDelta
+-- encoder n = Fun { for, rev, drev }
+--   where for s = map fc s
+--         rev = undefined
+--         drev (Prepend prefix) _ = Prepend (map rc prefix)
+--         fc c = chr (ord c + n)
+--         rc c = chr (ord c - n)
+--
+-- encoderF n x = composeFunFun (encoder n) x
+
+encoder :: Int -> Lens StringDelta StringDelta
+encoder n = Lens { lfor, lrev, ldrev }
+  where lfor s = map fc s
+        lrev = undefined
+        ldrev (Prepend prefix) _ = Prepend (map rc prefix)
+        fc c = chr (ord c + n)
+        rc c = chr (ord c - n)
+
+encoderF n x = composeLensLens (encoder n) x
+
+-- Works, but this is deprecated
+-- data (a ~ V a, b ~ V b) => Lens a b da db = Lens
+--   { lfor :: a -> b
+--   , lrev :: b -> a -> a
+--   , ldrev :: db -> a -> da }
+
+data Lens da db = Lens
+  { lfor :: V da -> V db
+  , lrev :: V db -> V da -> V da
+  , ldrev :: db -> V da -> da }
+
+composeLensLens :: Lens db dc -> Lens da db -> Lens da dc
+composeLensLens (Lens { lfor = lforBC, lrev = lrevBC, ldrev = ldrevBC }) (Lens { lfor = lforAB, lrev = lrevAB, ldrev = ldrevAB }) = Lens { lfor = lforAC, lrev = lrevAC, ldrev = ldrevAC }
+  where lforAC = lforBC . lforAB
+        -- revAC :: c -> a -> a
+        lrevAC c a = lrevAB b a
+          where b = lrevBC c b'
+                b' = lforAB a
+        -- ldrevAC :: dc -> a -> da
+        ldrevAC dc a = ldrevAB db a
+          where db = ldrevBC dc b
+                b = lforAB a
+
+-- Super dumb
+lensToFun (Lens for rev drev) = Fun for rev drev
+encoderFun n = lensToFun (encoder n)
+encoderFunF n x = composeFunFun (encoderFun n) x
+
 aTMI = do
   funWInts' <-- [11, 12, 13]
   composeFunFun (arrIndex' 1) funWInts' <-- 120
   funWStringsI' 1 <-- "hey"
   funWInts' !!- 2 <-- 1333
-  --funWStringsI' 2 <-+ Append "hey"
-  funWStrings !!- 2 <-+ Prepend "gosh"
+  --funWStringsI' 2 <-+ Append "hey" -- works
+  --funWStrings !!- 2 <-+ Prepend "gosh" -- works
+  encoderFunF 2 (funWStrings !!- 2) <-+ Prepend "zzzz"
 
 simpleDeltaDemo = do
   -- msp $ _ints [3, 4, 5] world
