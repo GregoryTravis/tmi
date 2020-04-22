@@ -20,8 +20,8 @@ main = do
   -- valDemo
   -- valDeltaDemo
   -- openDeltaDemo
-  -- simpleDeltaDemo
+  simpleDeltaDemo
   -- freshStartMain
   -- existentialMain consequencesMain
-  tmiMain
+  -- tmiMain
   msp "hi"

@@ -85,15 +85,6 @@ funW = Fun { for, rev, drev }
         rev = \w _ -> w
         drev = \dw _ -> dw
 
--- Probably pointless
-funWInts' = composeFunFun funWInts funW
-
-funWIntsI1 :: Fun W Int (WIntsDelta (ListIndexDelta Int)) Int
-funWIntsI1 = composeFunFun (arrIndex 1) funWInts
-
-funWStringsI i = composeFunFun (arrIndex i) funWStrings
-funWStringsI' i = composeFunFun (arrIndex' i) funWStrings
-
 world = W
   { ints = [0, 1, 2, 3, 4]
   , strings = ["aaa", "bbb", "ccc"] }
@@ -181,45 +172,60 @@ tmiRunShow world action = do
   msp world'
   msp x
 
+-- Probably pointless
+funWInts' = composeFunFun funWInts funW
+
+funWIntsI1 :: Fun W Int (WIntsDelta (ListIndexDelta Int)) Int
+funWIntsI1 = composeFunFun (arrIndex 1) funWInts
+
+funWStringsI i = composeFunFun (arrIndex i) funWStrings
+funWStringsI' i = composeFunFun (arrIndex' i) funWStrings
+
+x !!- i = composeFunFun (arrIndex' i) x
+
 aTMI = do
   funWInts' <-- [11, 12, 13]
+  composeFunFun (arrIndex' 1) funWInts' <-- 120
   funWStringsI' 1 <-- "hey"
+  funWInts' !!- 2 <-- 1333
+  --funWStringsI' 2 <-+ Append "hey"
+  funWStrings !!- 2 <-+ Prepend "gosh"
 
 simpleDeltaDemo = do
-  msp $ _ints [3, 4, 5] world
-  msp $ apply [4, 5, 6] (Update 1 50)
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Update 1 50))
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Cons 3))
-  msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Snoc 7))
-  msp $ apply world (WStringsDelta (Snoc "sn"))
-  msp $ valRead world funWInts
-  msp $ valRead world funWStrings
-  msp $ valWrite world funWInts [40, 50, 60]
-  msp $ valWrite world funWStrings ["a", "b", "c"]
-  msp $ valDWrite world funWInts (Update 1 500)
-  msp $ valRead world funWIntsI1
-  msp $ valWrite world funWIntsI1 1000
-  msp "hhi"
-  msp $ valDWrite world funWIntsI1 1000
-  msp $ apply world (valDWrite world funWIntsI1 1000)
-  msp $ apply ["one", "two", "three"] (Update' 1 (Prepend "sh"))
-  msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (Append "aa"))
-  msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (Append "aa")))
-  msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (FullDelta "zzzz"))
-  msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
-  msp $ apply world (WStringsDelta (Update' 1 (Append "yy")))
-  msp $ apply world (WStringsDelta (Update' 1 (FullDelta "yy")))
-  msp $ valRead world (funWStringsI 0)
-  msp $ valRead world (funWStringsI 1)
-  -- prepend string to world strings 1
-  msp $ valDWrite world (funWStringsI 1) (Append "qq")
-  msp $ valDWrite world (funWStringsI' 1) (Append "qq")
-  msp $ apply world (valDWrite world (funWStringsI' 1) (Prepend "qq"))
-  -- append string to world strings 1
-  msp $ apply world (valDWrite world (funWStringsI' 2) (Append "qq"))
-  -- full delta to world strings 1
-  msp $ apply world (valDWrite world (funWStringsI' 0) (FullDelta "ful"))
-  msp $ apply world (WIntsDelta (FullDelta [7, 8, 9]))
-  msp $ apply world (valDWrite world funWInts' (FullDelta [11, 12, 13]))
+  -- msp $ _ints [3, 4, 5] world
+  -- msp $ apply [4, 5, 6] (Update 1 50)
+  -- msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Update 1 50))
+  -- msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Cons 3))
+  -- msp $ apply (W { ints = [4, 5, 6], strings = [] }) (WIntsDelta (Snoc 7))
+  -- msp $ apply world (WStringsDelta (Snoc "sn"))
+  -- msp $ valRead world funWInts
+  -- msp $ valRead world funWStrings
+  -- msp $ valWrite world funWInts [40, 50, 60]
+  -- msp $ valWrite world funWStrings ["a", "b", "c"]
+  -- msp $ valDWrite world funWInts (Update 1 500)
+  -- msp $ valRead world funWIntsI1
+  -- msp $ valWrite world funWIntsI1 1000
+  -- msp "hhi"
+  -- msp $ valDWrite world funWIntsI1 1000
+  -- msp $ apply world (valDWrite world funWIntsI1 1000)
+  -- msp $ apply ["one", "two", "three"] (Update' 1 (Prepend "sh"))
+  -- msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (Append "aa"))
+  -- msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (Append "aa")))
+  -- msp $ apply ["asdf", "zxcv", "qwer"] (Update' 1 (FullDelta "zzzz"))
+  -- msp $ apply [["a", "b"], ["asdf", "zxcv", "qwer"]] (Update' 1 (Update' 1 (FullDelta "xxxx")))
+  -- msp $ apply world (WStringsDelta (Update' 1 (Append "yy")))
+  -- msp $ apply world (WStringsDelta (Update' 1 (FullDelta "yy")))
+  -- msp $ valRead world (funWStringsI 0)
+  -- msp $ valRead world (funWStringsI 1)
+  -- -- prepend string to world strings 1
+  -- msp $ valDWrite world (funWStringsI 1) (Append "qq")
+  -- msp $ valDWrite world (funWStringsI' 1) (Append "qq")
+  -- msp $ apply world (valDWrite world (funWStringsI' 1) (Prepend "qq"))
+  -- -- append string to world strings 1
+  -- msp $ apply world (valDWrite world (funWStringsI' 2) (Append "qq"))
+  -- -- full delta to world strings 1
+  -- msp $ apply world (valDWrite world (funWStringsI' 0) (FullDelta "ful"))
+  -- msp $ apply world (WIntsDelta (FullDelta [7, 8, 9]))
+  -- msp $ apply world (valDWrite world funWInts' (FullDelta [11, 12, 13]))
   tmiRunShow world aTMI
   msp "shi"
