@@ -7,26 +7,44 @@ module Tmi
 
 import Util
 
-class V v where
-  type D v
-  type instance D a = a
-  (.+) :: v -> D v -> v
+class Delta d where
+  type V d
+  (.+) :: V d -> d -> V d
 
-instance V Int where
-  --type D Int = Int
-  _ .+ x = x
+data Full a = Full a
 
-data DList a = DListUpdate Int a | DListCons a | NDListUpdate Int (D a)
-instance V a => V [a] where
-  type D [a] = DList a
-  xs .+ (NDListUpdate i dx) = take i xs ++ [x .+ dx] ++ drop (i+1) xs
+instance Delta (Full a) where
+  type V (Full a) = a
+  x .+ Full x' = x'
+
+data F da db = F
+  { for :: V da -> V db
+  , rev :: V db -> V da -> V da
+  , drev :: db -> V da -> da }
+
+data W = W { ints :: [Int] }
+
+-- _ints :: F W [Int]
+-- _ints = F { for = ints
+--           , rev = \x w -> w { ints = x }
+--           , drev = \dx w -> w { ints = (ints w) .+ dx } }
+
+instance Delta da => Delta (DList da) where
+  type V (DList da) = [V da]
+  xs .+ DListMod i dx = take i xs ++ [x .+ dx] ++ drop (i+1) xs
     where x = xs !! i
-  xs .+ (DListUpdate i x) = take i xs ++ [x] ++ drop (i+1) xs
-  xs .+ (DListCons x) = x : xs
+  xs .+ DListCons x = x : xs
+
+data DList da = DListMod Int da | DListCons (V da)
+-- instance DeltaOf [a] (DList a) where
+
+-- arrIndex :: Int -> Fun [a] a (ListIndexDelta da) da
+-- arrIndex i = Fun { for, rev, drev }
+--   where for = (!!i)
+--         rev x xs = take i xs ++ [x] ++ drop (i+1) xs
+--         drev dx _ = Update i dx
 
 tmiMain = do
-  msp $ [1::Int, 2, 3] .+ (DListUpdate 1 (20::Int))
-  msp $ [1::Int, 2, 3] .+ (DListCons (10::Int))
-  msp $ [[5::Int], [1, 2, 3], [6]] .+ DListUpdate 1 [3, 2, 1]
-  msp $ [[5::Int], [1, 2, 3], [6]] .+ NDListUpdate 1 (DListUpdate 2 30)
+  let w = W { ints = [1, 2, 3, 4] }
+  msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
   msp "hihi"
