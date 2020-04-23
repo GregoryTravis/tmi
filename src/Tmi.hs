@@ -36,7 +36,13 @@ F { for = forBC, rev = revBC, drev = drevBC } .* F { for = forAB, rev = revAB, d
           where db = drevBC dc b
                 b = forAB a
 
-data W = W { ints :: [Int] }
+data W = W { ints :: [Int], strings :: [String] }
+  deriving Show
+data DW di ds = DWInts di | DWStrings ds
+--instance (Delta da, (V da) ~ [Int]) => Delta (WIntsDelta da) where
+instance (V di ~ [Int], V ds ~ [String], Delta di, Delta ds) => Delta (DW di ds) where
+  type V (DW di ds) = W
+  w .+ DWInts di = w { ints = (ints w) .+ di }
 
 -- _ints :: F W [Int]
 -- _ints = F { for = ints
@@ -79,10 +85,16 @@ encoder n = F { for, rev, drev }
 
 encoderF n x = encoder n .* x
 
+ooo = (DWInts (DListMod 1 (Full 20)))
+
 tmiMain = do
-  let w = W { ints = [1, 2, 3, 4] }
+  let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
   msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
   msp $ [[1, 2, 3, 4]] .+ DListMod 0 (DListMod 1 (Full 21))
   msp $ "asdf" .+ Prepend "zzz"
+
+  -- Doesn't work because of the unspecified string type
+  -- msp $ w .+ DWInts (DListMod 1 (Full 20))
+  msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)) (DList DString))
   --msp $ encoder 3 "asdf" .+ Prepend "zzz"
   msp "hihi"
