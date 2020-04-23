@@ -22,6 +22,18 @@ data F da db = F
   , rev :: V db -> V da -> V da
   , drev :: db -> V da -> da }
 
+(.*) :: F db dc -> F da db -> F da dc
+F { for = forBC, rev = revBC, drev = drevBC } .* F { for = forAB, rev = revAB, drev = drevAB } = F { for = forAC, rev = revAC, drev = drevAC }
+  where forAC = forBC . forAB
+        -- revAC :: c -> a -> a
+        revAC c a = revAB b a
+          where b = revBC c b'
+                b' = forAB a
+        -- drevAC :: dc -> a -> da
+        drevAC dc a = drevAB db a
+          where db = drevBC dc b
+                b = forAB a
+
 data W = W { ints :: [Int] }
 
 -- _ints :: F W [Int]
@@ -45,10 +57,11 @@ arrIndex i = F { for, rev, drev }
         --   where x' = (xs !! i) .+ dx
         drev dx xs = DListMod i dx
 
---(!!-) :: [V da] -> Int -> F (DLIst da) da
---x !!- i = composeFunFun (arrIndex' i) x
+(!!-) :: F da (DList db) -> Int -> F da db
+xs !!- i = arrIndex i .* xs
 
 tmiMain = do
   let w = W { ints = [1, 2, 3, 4] }
   msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
+  msp $ [[1, 2, 3, 4]] .+ DListMod 0 (DListMod 1 (Full 21))
   msp "hihi"
