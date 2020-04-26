@@ -6,10 +6,11 @@ import DVal
 import Example
 import Existential
 import Exp
+import FreshStart
 import OpenDeltas
 import SimpleDelta
-import FreshStart
 import Tmi
+import TypeFamilyDV
 import Util
 
 main = do
@@ -23,5 +24,6 @@ main = do
   -- simpleDeltaDemo
   -- freshStartMain
   -- existentialMain consequencesMain
+  -- typeFamilyDVMain
   tmiMain
   msp "hi"
