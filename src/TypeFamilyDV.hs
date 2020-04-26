@@ -1,7 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module TypeFamilyDV
 ( typeFamilyDVMain ) where
