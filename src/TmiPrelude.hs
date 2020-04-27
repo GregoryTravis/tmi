@@ -1,33 +1,27 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module TmiPrelude
-( read
-, dwrite
-, somePairs
+( Umm
+, (TFDV.<--)
+, (TFDV.<-+)
 , (!!)
-, snd
-, E.DDoubleAdd(..)
-, E.Delta(..)
-, Double
--- , w
+, TFDV.DString(..)
+, ints
+, strings
+, encoder
 ) where
 
 import Prelude ()
 import qualified Prelude as P
 
-import qualified Existential as E
+import qualified TypeFamilyDV as TFDV
 import Util
 
-somePairs = E.somep
+type Umm a = TFDV.TMI TFDV.W a
 
-w :: E.W
-w = E.W { E.anInt = 10
-        , E.aDouble = 3.3
-        , E.aList = [1, 2, 3]
-        , E.somePairs = [(100, [1, 2, 3]), (200, [2, 3, 4])] }
-read = E.read' w
-dwrite = E.dwrite' w
-
-(!!) = (E.!!-)
-
-snd = E.sndF
-
-type Double = E.Lens E.W P.Double
+(!!) = (TFDV.!!-)
+encoder = TFDV.encoderF
+strings :: TFDV.V dli ~ [P.String] => TFDV.F (TFDV.DWStrings dli) dli
+strings = TFDV.stringsL
+ints :: TFDV.V dli ~ [P.Int] => TFDV.F (TFDV.DWInts dli) dli
+ints = TFDV.intsL

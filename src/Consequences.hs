@@ -7,16 +7,7 @@ import qualified Prelude as P
 
 import Util
 
-consequencesMain :: IO ()
+consequencesMain :: Umm ()
 consequencesMain = do
-
-  let d :: Delta P.Double
-      d = Delta (DDoubleAdd 25)
-
-  let zoom :: Double
-      zoom = (snd $ (somePairs !! 1)) !! 2
-
-  msp $ dwrite zoom d
-  msp $ read zoom
-
-  msp "You've been consequenced."
+  encoder 2 (strings !! 1) <-+ (Prepend "sss")
+  ints !! 1 <-- 35

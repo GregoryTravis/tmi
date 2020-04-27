@@ -5,7 +5,22 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module TypeFamilyDV
-( typeFamilyDVMain ) where
+( typeFamilyDVMain
+, intsL
+, stringsL
+, encoderF
+, (!!-)
+, TMI
+, (<--)
+, (<-+)
+, DString(..)
+, DWInts
+, DWStrings
+, W(..)
+, Delta
+, V
+, F
+) where
 
 import Control.Monad.State
 import Data.Char (chr, ord)
@@ -173,16 +188,18 @@ anAction = do
   encoderF 2 (stringsL !!- 1) <-+ (Prepend "sss")
   return ()
 
-typeFamilyDVMain = do
+typeFamilyDVMain tmiProgramMain = do
   let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
+  tmiRunShow w tmiProgramMain
 
-  tmiRunShow w $ do
-    intsL <-+ (DListMod 1 (Full 20))
-    stringsL <-+ (DListMod 1 (Prepend "jjj"))
-  tmiRunShow w $ do
-    idL <-+ Compound [EDelta $ DWInts (DListMod 1 (Full 22)), EDelta $ DWStrings (DListMod 1 (Prepend "nnnn"))]
-  tmiRunShow w $ do
-    encoderF 2 (stringsL !!- 1) <-+ (Prepend "sss")
+  -- This all works
+  -- tmiRunShow w $ do
+  --   intsL <-+ (DListMod 1 (Full 20))
+  --   stringsL <-+ (DListMod 1 (Prepend "jjj"))
+  -- tmiRunShow w $ do
+  --   idL <-+ Compound [EDelta $ DWInts (DListMod 1 (Full 22)), EDelta $ DWStrings (DListMod 1 (Prepend "nnnn"))]
+  -- tmiRunShow w $ do
+  --   encoderF 2 (stringsL !!- 1) <-+ (Prepend "sss")
 
   -- This all works
   --msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
