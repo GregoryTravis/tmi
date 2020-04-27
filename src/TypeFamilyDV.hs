@@ -1,3 +1,6 @@
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -16,6 +19,30 @@ data Full a = Full a
 instance Delta (Full a) where
   type V (Full a) = a
   x .+ Full x' = x'
+
+--data EDelta a = forall da. (Delta da, V da ~ a) => EDelta (a -> a)
+--data EDelta a = forall da. (Delta da, V da ~ a) => EDelta (a -> a)
+data EDelta a = forall da. (Delta da, V da ~ a) => EDelta da
+instance Delta (EDelta a) where
+  type V (EDelta a) = a
+  x .+ EDelta dx = x .+ dx
+
+data Compound a = Compound [EDelta a]
+
+instance Delta (Compound a) where
+  type V (Compound a) = a
+  -- TODO should be a fold
+  x .+ Compound [] = x
+  x .+ Compound (dx:dxs) = (x .+ dx) .+ Compound dxs
+
+-- ok
+--data Deltaa a = forall da. (DeltaOf a da) => Deltaa da | Fulll a
+-- ok
+-- data Deltaa a = forall da. (Delta da, V da ~ a) => Deltaa da | Fulll a
+--not ok, I guess cuz it's missing the secret existential
+--data Deltaa a = forall da. (Delta da, V da ~ a) => Fulll a
+-- class DeltaOf a da | da -> a where 
+--   (..+) :: a -> da -> a
 
 data F da db = F
   { for :: V da -> V db
@@ -97,6 +124,11 @@ typeFamilyDVMain = do
   -- Doesn't work because of the unspecified string type
   msp $ w .+ DWInts (DListMod 1 (Full 20))
   msp $ w .+ DWStrings (DListMod 1 (Prepend "qqqq"))
+  let edeltas :: [EDelta W]
+      edeltas = [EDelta $ DWInts (DListMod 1 (Full 20)), EDelta $ DWStrings (DListMod 1 (Prepend "qqqq"))]
+      --edeltas = [DWInts (DListMod 1 (Full 20)), DWStrings (DListMod 1 (Prepend "qqqq"))]
+  msp $ w .+ Compound edeltas
+
   --msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)))
   --msp $ encoder 3 "asdf" .+ Prepend "zzz"
   msp "hihi"
