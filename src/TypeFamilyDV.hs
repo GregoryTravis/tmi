@@ -36,11 +36,16 @@ F { for = forBC, rev = revBC, drev = drevBC } .* F { for = forAB, rev = revAB, d
 
 data W = W { ints :: [Int], strings :: [String] }
   deriving Show
-data DW di ds = DWInts di | DWStrings ds
+data DWInts di = DWInts di
 --instance (Delta da, (V da) ~ [Int]) => Delta (WIntsDelta da) where
-instance (V di ~ [Int], V ds ~ [String], Delta di, Delta ds) => Delta (DW di ds) where
-  type V (DW di ds) = W
+instance (V di ~ [Int], Delta di) => Delta (DWInts di) where
+  type V (DWInts di) = W
   w .+ DWInts di = w { ints = (ints w) .+ di }
+
+data DWStrings ds = DWStrings ds
+instance (V ds ~ [String], Delta ds) => Delta (DWStrings ds) where
+  type V (DWStrings ds) = W
+  w .+ DWStrings ds = w { strings = (strings w) .+ ds }
 
 -- _ints :: F W [Int]
 -- _ints = F { for = ints
@@ -83,8 +88,6 @@ encoder n = F { for, rev, drev }
 
 encoderF n x = encoder n .* x
 
-ooo = (DWInts (DListMod 1 (Full 20)))
-
 typeFamilyDVMain = do
   let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
   msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
@@ -92,7 +95,8 @@ typeFamilyDVMain = do
   msp $ "asdf" .+ Prepend "zzz"
 
   -- Doesn't work because of the unspecified string type
-  -- msp $ w .+ DWInts (DListMod 1 (Full 20))
-  msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)) (DList DString))
+  msp $ w .+ DWInts (DListMod 1 (Full 20))
+  msp $ w .+ DWStrings (DListMod 1 (Prepend "qqqq"))
+  --msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)))
   --msp $ encoder 3 "asdf" .+ Prepend "zzz"
   msp "hihi"
