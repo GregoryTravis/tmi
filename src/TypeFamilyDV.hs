@@ -7,6 +7,7 @@
 module TypeFamilyDV
 ( typeFamilyDVMain ) where
 
+import Control.Monad.State
 import Data.Char (chr, ord)
 
 import Util
@@ -128,26 +129,65 @@ encoder n = F { for, rev, drev }
 
 encoderF n x = encoder n .* x
 
+---- Monad
+
+type TMI w a = StateT w IO a
+
+tmiRun :: w -> TMI w a -> IO (a, w)
+tmiRun world action = do
+  (x, world') <- runStateT action world
+  -- TODO world or world'?
+  --let result = (for x) world
+  return (x, world')
+
+infix 4 <-+
+(<-+) :: Delta da => F da db -> db -> TMI (V da) ()
+dest <-+ src = do
+  w <- get
+  let w' = w .+ drev dest src w
+  --let w' = apply w (valDWrite w dest src)
+  put w'
+
+infix 4 <--
+-- I think this should be right but it's not
+-- (<--) :: (Delta da, Delta db) => Fun (V da) (V db) da db -> V db -> TMI (V da) ()
+--(<--) :: Delta da => F da db -> db -> TMI (V da) ()
+dest <-- src = dest <-+ (Full src)
+
+tmiRunShow world action = do
+  (x, world') <- tmiRun world action
+  msp world'
+  msp x
+
+---- main
+
+anAction :: TMI W ()
+anAction = do
+  encoderF 2 (stringsL !!- 1) <-+ (Prepend "sss")
+  return ()
+
 typeFamilyDVMain = do
   let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
-  msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
-  msp $ [[1, 2, 3, 4]] .+ DListMod 0 (DListMod 1 (Full 21))
-  msp $ "asdf" .+ Prepend "zzz"
 
-  -- Doesn't work because of the unspecified string type
-  msp $ w .+ DWInts (DListMod 1 (Full 20))
-  msp $ w .+ DWStrings (DListMod 1 (Prepend "qqqq"))
-  let edeltas :: [EDelta W]
-      edeltas = [EDelta $ DWInts (DListMod 1 (Full 20)), EDelta $ DWStrings (DListMod 1 (Prepend "qqqq"))]
-      --edeltas = [DWInts (DListMod 1 (Full 20)), DWStrings (DListMod 1 (Prepend "qqqq"))]
-  msp $ w .+ Compound edeltas
+  tmiRunShow w anAction
 
-  msp $ w .+ drev intsL (DListMod 1 (Full 20)) w
-  msp $ w .+ drev stringsL (DListMod 1 (Prepend "jjj")) w
-  msp $ w .+ (drev (arrIndex 1 .* stringsL) (Prepend "uuu") w)
-  msp $ w .+ (drev (stringsL !!- 1) (Prepend "vvv") w)
-  msp $ w .+ (drev (encoderF 2 (stringsL !!- 1)) (Prepend "sss") w)
+  -- This all works
+  --msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
+  --msp $ [[1, 2, 3, 4]] .+ DListMod 0 (DListMod 1 (Full 21))
+  --msp $ "asdf" .+ Prepend "zzz"
 
-  --msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)))
-  --msp $ encoder 3 "asdf" .+ Prepend "zzz"
+  ---- Doesn't work because of the unspecified string type
+  --msp $ w .+ DWInts (DListMod 1 (Full 20))
+  --msp $ w .+ DWStrings (DListMod 1 (Prepend "qqqq"))
+  --let edeltas :: [EDelta W]
+  --    edeltas = [EDelta $ DWInts (DListMod 1 (Full 20)), EDelta $ DWStrings (DListMod 1 (Prepend "qqqq"))]
+  --    --edeltas = [DWInts (DListMod 1 (Full 20)), DWStrings (DListMod 1 (Prepend "qqqq"))]
+  --msp $ w .+ Compound edeltas
+
+  --msp $ w .+ drev intsL (DListMod 1 (Full 20)) w
+  --msp $ w .+ drev stringsL (DListMod 1 (Prepend "jjj")) w
+  --msp $ w .+ (drev (arrIndex 1 .* stringsL) (Prepend "uuu") w)
+  --msp $ w .+ (drev (stringsL !!- 1) (Prepend "vvv") w)
+  --msp $ w .+ (drev (encoderF 2 (stringsL !!- 1)) (Prepend "sss") w)
+
   msp "hihi"
