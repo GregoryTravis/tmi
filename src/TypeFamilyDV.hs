@@ -87,40 +87,17 @@ instance Delta DString where
   s .+ (Prepend s') = s' ++ s
   s .+ (Append s') = s ++ s'
 
-boo =
-  let k :: W
-      k = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
-      k' :: V (DWInts (DList Int))
-      k' = k
-      h :: [Int]
-      h = [1, 2, 3]
-      h' :: V (DList (Full Int))
-      h' = h
-   in k
-
-urf :: V (DList Int)
-urf = undefined
-
--- instance Delta Int where
---   type V Int = Int
---   _ .+ x = x
-
--- urgh :: V (DWInts (DList Int)) -> V (DList Int)
--- urgh = ints
-
--- hoo =
---   let k :: V (DWInts (DList Int)) -> V (DList Int)
---       k = ints
---    in k
-
 -- Field lenses
---intsL :: F (DWInts (DList Int)) (DList (Full Int))
---intsL :: F (DWInts (DList Int)) (DList Int)
 intsL :: V dli ~ [Int] => F (DWInts dli) dli
 intsL = F { for, rev, drev }
   where for = ints
         rev = \ints w -> w { ints }
         drev di _ = DWInts di
+stringsL :: V dli ~ [String] => F (DWStrings dli) dli
+stringsL = F { for, rev, drev }
+  where for = strings
+        rev = \strings w -> w { strings }
+        drev di _ = DWStrings di
 
 data DList da = DListMod Int da | DListCons (V da)
 instance Delta da => Delta (DList da) where
@@ -166,6 +143,10 @@ typeFamilyDVMain = do
   msp $ w .+ Compound edeltas
 
   msp $ w .+ drev intsL (DListMod 1 (Full 20)) w
+  msp $ w .+ drev stringsL (DListMod 1 (Prepend "jjj")) w
+  msp $ w .+ (drev (arrIndex 1 .* stringsL) (Prepend "uuu") w)
+  msp $ w .+ (drev (stringsL !!- 1) (Prepend "vvv") w)
+  msp $ w .+ (drev (encoderF 2 (stringsL !!- 1)) (Prepend "sss") w)
 
   --msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)))
   --msp $ encoder 3 "asdf" .+ Prepend "zzz"
