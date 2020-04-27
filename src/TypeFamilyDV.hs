@@ -100,6 +100,13 @@ stringsL = F { for, rev, drev }
         rev = \strings w -> w { strings }
         drev di _ = DWStrings di
 
+-- Identity
+idL :: (V dw ~ W) => F dw dw
+idL = F { for, rev, drev }
+  where for = id
+        rev w' _ = w'
+        drev dw _ = dw
+
 data DList da = DListMod Int da | DListCons (V da)
 instance Delta da => Delta (DList da) where
   type V (DList da) = [V da]
@@ -169,7 +176,13 @@ anAction = do
 typeFamilyDVMain = do
   let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
 
-  tmiRunShow w anAction
+  tmiRunShow w $ do
+    intsL <-+ (DListMod 1 (Full 20))
+    stringsL <-+ (DListMod 1 (Prepend "jjj"))
+  tmiRunShow w $ do
+    idL <-+ Compound [EDelta $ DWInts (DListMod 1 (Full 22)), EDelta $ DWStrings (DListMod 1 (Prepend "nnnn"))]
+  tmiRunShow w $ do
+    encoderF 2 (stringsL !!- 1) <-+ (Prepend "sss")
 
   -- This all works
   --msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
