@@ -1,98 +1,71 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Tmi
 ( tmiMain ) where
 
-import Data.Char (chr, ord)
-
 import Util
 
-class Delta d where
-  type V d
-  (.+) :: V d -> d -> V d
+class V a where
+  type D a
+  type instance D a = Full a
+  --data F a :: a -> da
+  -- type F a
+  -- type instance F a = Full a
+  (.+) :: a -> D a -> a
+  --(.+) = undefined
+  x .+ dx = unFuller dx
+  -- _ .+ (Full x') = x'
+  fuller :: a -> D a
+  unFuller :: D a -> a
 
 data Full a = Full a
-instance Delta (Full a) where
-  type V (Full a) = a
-  x .+ Full x' = x'
 
-data F da db = F
-  { for :: V da -> V db
-  , rev :: V db -> V da -> V da
-  , drev :: db -> V da -> da }
+--data Full a = Full a
 
-(.*) :: F db dc -> F da db -> F da dc
-F { for = forBC, rev = revBC, drev = drevBC } .* F { for = forAB, rev = revAB, drev = drevAB } = F { for = forAC, rev = revAC, drev = drevAC }
-  where forAC = forBC . forAB
-        -- revAC :: c -> a -> a
-        revAC c a = revAB b a
-          where b = revBC c b'
-                b' = forAB a
-        -- drevAC :: dc -> a -> da
-        drevAC dc a = drevAB db a
-          where db = drevBC dc b
-                b = forAB a
+instance V Int where
+  fuller x = Full x
+  unFuller (Full x) = x
 
-data W = W { ints :: [Int], strings :: [String] }
+data Wah = Wah
   deriving Show
-data DW di ds = DWInts di | DWStrings ds
---instance (Delta da, (V da) ~ [Int]) => Delta (WIntsDelta da) where
-instance (V di ~ [Int], V ds ~ [String], Delta di, Delta ds) => Delta (DW di ds) where
-  type V (DW di ds) = W
-  w .+ DWInts di = w { ints = (ints w) .+ di }
+data DWah = FDWah Wah
 
--- _ints :: F W [Int]
--- _ints = F { for = ints
---           , rev = \x w -> w { ints = x }
---           , drev = \dx w -> w { ints = (ints w) .+ dx } }
+instance V Wah where
+  type D Wah = DWah
+  fuller wah = FDWah wah
+  unFuller (FDWah wah) = wah
 
-data DString = Prepend String | Append String
-  deriving Show
-instance Delta DString where
-  type V DString = String
-  s .+ (Prepend s') = s' ++ s
-  s .+ (Append s') = s ++ s'
-
-data DList da = DListMod Int da | DListCons (V da)
-instance Delta da => Delta (DList da) where
-  type V (DList da) = [V da]
+-- D a == da
+data DList a da = DListMod Int da | DListCons a | Prepend [a] | Append [a] | FList [a]
+instance V a => V [a] where
+  type D [a] = DList a (D a)
   xs .+ DListMod i dx = take i xs ++ [x .+ dx] ++ drop (i+1) xs
     where x = xs !! i
   xs .+ DListCons x = x : xs
+  xs .+ Prepend xs' = xs' ++ xs
+  xs .+ Append xs' = xs ++ xs'
+  xs .+ (FList xs') = xs'
+  fuller xs = FList xs
+  unFuller (FList xs) = xs
 
-arrIndex :: Int -> F (DList da) da
-arrIndex i = F { for, rev, drev }
-  where for = (!!i)
-        rev x xs = xs .+ DListMod i (Full x)
-        -- Or is it this?
-        -- drev dx xs = DListMod i x'
-        --   where x' = (xs !! i) .+ dx
-        drev dx xs = DListMod i dx
+-- This is not right -- this should be (F W a) as the first arg, but it demonstrates the right issue, for now
+(<-+) :: V a => a -> D a -> a
+(<-+) = (.+)
 
-(!!-) :: F da (DList db) -> Int -> F da db
-xs !!- i = arrIndex i .* xs
+(<--) :: V a => a -> a -> a
+x <-- y = x <-+ (fuller y)
 
-encoder :: Int -> F DString DString
-encoder n = F { for, rev, drev }
-  where for s = map fc s
-        rev = undefined
-        drev (Prepend prefix) _ = Prepend (map rc prefix)
-        fc c = chr (ord c + n)
-        rc c = chr (ord c - n)
-
-encoderF n x = encoder n .* x
-
-ooo = (DWInts (DListMod 1 (Full 20)))
+arf = [1::Int, 2, 3] .+ Append [4, 5]
+--arf = [1::Int, 2, 3] .+ undefined
+--arf = DListMod 1 20
 
 tmiMain = do
-  let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
-  msp $ [1, 2, 3, 4] .+ DListMod 1 (Full 20)
-  msp $ [[1, 2, 3, 4]] .+ DListMod 0 (DListMod 1 (Full 21))
-  msp $ "asdf" .+ Prepend "zzz"
-
-  -- Doesn't work because of the unspecified string type
-  -- msp $ w .+ DWInts (DListMod 1 (Full 20))
-  msp $ w .+ ((DWInts (DListMod 1 (Full 20))) :: DW (DList (Full Int)) (DList DString))
-  --msp $ encoder 3 "asdf" .+ Prepend "zzz"
+  msp $ [Wah, Wah, Wah] .+ DListMod 1 (fuller Wah)
+  msp $ [Wah, Wah, Wah] <-+ DListMod 1 (fuller Wah)
+  msp $ [Wah, Wah, Wah] <-- [Wah, Wah]
+  msp $ [1::Int, 2, 3] .+ Append [4, 5]
+--arf = [1::Int, 2, 3] .+ undefined
   msp "hihi"

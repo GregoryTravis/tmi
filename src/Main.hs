@@ -24,6 +24,6 @@ main = do
   -- simpleDeltaDemo
   -- freshStartMain
   -- existentialMain consequencesMain
-  typeFamilyDVMain consequencesMain
-  -- tmiMain
+  -- typeFamilyDVMain consequencesMain
+  tmiMain
   msp "hi"
