@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Tmi
 ( tmiMain ) where
@@ -57,6 +58,17 @@ instance (V a, V b) => V (a, b) where
   fuller = FPair
   unFuller (FPair p) = p
 
+data W = W { ints :: [Int], strings :: [String] }
+  deriving Show
+data DW = DWInts (DList Int (Full Int)) | FDWInts [Int] | DWStrings (DList String (DList Char (Full Char))) | FDWStrings [String] | FDW W
+instance V W where
+  type D W = DW
+  w .+ DWInts di = w { ints = (ints w) .+ di }
+  w .+ DWStrings ds = w { strings = (strings w) .+ ds }
+  w .+ FDWInts ints = w { ints }
+  w .+ FDWStrings strings = w { strings }
+  _ .+ FDW w = w
+
 -- This is not right -- this should be (F W a) as the first arg, but it demonstrates the right issue, for now
 (<-+) :: V a => a -> D a -> a
 (<-+) = (.+)
@@ -65,6 +77,7 @@ instance (V a, V b) => V (a, b) where
 x <-- y = x <-+ (fuller y)
 
 tmiMain = do
+  let w = W { ints = [1, 2, 3, 4], strings = ["asdf", "zxcv", "qwer"] }
   msp $ [Empty, Empty, Empty] .+ DListMod 1 (fuller Empty)
   msp $ [Empty, Empty, Empty] <-+ DListMod 1 (fuller Empty)
   msp $ [Empty, Empty, Empty] <-- [Empty, Empty]
@@ -76,4 +89,10 @@ tmiMain = do
   msp $ (1::Int, "foo") .+ FPair (2, "bar")
   msp $ [([1::Int, 2, 3], ("asdf", "zxcv"))] .+ DListMod 0 (DFst (DListMod 1 (fuller (20::Int))))
   msp $ [([1::Int, 2, 3], ("asdf", "zxcv"))] .+ DListMod 0 (DSnd (DFst (Append "g")))
+  msp $ w .+ DWInts (DListMod 2 (fuller (30::Int)))
+  msp $ w .+ DWStrings (DListMod 1 (fuller "lkjh"))
+  msp $ w .+ DWStrings (DListMod 1 (Prepend "eee"))
+  msp $ w .+ FDWInts [5, 6]
+  msp $ w .+ FDWStrings ["ttt"]
+  msp $ w .+ FDW (W { ints = [2, 3], strings = ["qwer"] })
   msp "hihi"
