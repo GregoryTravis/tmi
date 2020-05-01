@@ -22,6 +22,10 @@ instance V Int where
   fuller x = Full x
   unFuller (Full x) = x
 
+instance V Char where
+  fuller x = Full x
+  unFuller (Full x) = x
+
 data Empty = Empty
   deriving Show
 
@@ -38,9 +42,20 @@ instance V a => V [a] where
   xs .+ DListCons x = x : xs
   xs .+ Prepend xs' = xs' ++ xs
   xs .+ Append xs' = xs ++ xs'
-  xs .+ (FList xs') = xs'
+  _ .+ (FList xs') = xs'
   fuller xs = FList xs
   unFuller (FList xs) = xs
+
+data DPair a da b db = DFst da | FDFst a | DSnd db | FDSnd b | FPair (a, b)
+instance (V a, V b) => V (a, b) where
+  type D (a, b) = DPair a (D a) b (D b)
+  (a, b) .+ DFst da = (a .+ da, b)
+  (a, b) .+ DSnd db = (a, b .+ db)
+  (a, b) .+ FDFst a' = (a', b)
+  (a, b) .+ FDSnd b' = (a, b')
+  _ .+ (FPair p) = p
+  fuller = FPair
+  unFuller (FPair p) = p
 
 -- This is not right -- this should be (F W a) as the first arg, but it demonstrates the right issue, for now
 (<-+) :: V a => a -> D a -> a
@@ -54,4 +69,9 @@ tmiMain = do
   msp $ [Empty, Empty, Empty] <-+ DListMod 1 (fuller Empty)
   msp $ [Empty, Empty, Empty] <-- [Empty, Empty]
   msp $ [1::Int, 2, 3] .+ Append [4, 5]
+  msp $ (1::Int, "foo") .+ FDFst 2
+  msp $ (1::Int, "foo") .+ DSnd (DListMod 1 (fuller 'q'))
+  msp $ (1::Int, "foo") .+ DSnd (Prepend "s")
+  msp $ (1::Int, "foo") .+ FDSnd "rrr"
+  msp $ (1::Int, "foo") .+ FPair (2, "bar")
   msp "hihi"
