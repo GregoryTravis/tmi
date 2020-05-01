@@ -68,6 +68,21 @@ instance V W where
   w .+ FDWInts ints = w { ints }
   w .+ FDWStrings strings = w { strings }
   _ .+ FDW w = w
+  fuller = FDW
+  unFuller (FDW w) = w
+
+data VW a b = VW { as :: [a], bs :: [b] }
+ deriving Show
+data DVW a da b db = DVWAs (DList a da) | FDVWAs [a] | DVWBs (DList b db) | FDVWBs [b] | FDVW (VW a b)
+instance (V a, V b) => V (VW a b) where
+  type D (VW a b) = DVW a (D a) b (D b)
+  vw .+ DVWAs das = vw { as = (as vw) .+ das }
+  vw .+ DVWBs dbs = vw { bs = (bs vw) .+ dbs }
+  vw .+ FDVWAs as = vw { as }
+  vw .+ FDVWBs bs = vw { bs }
+  _ .+ FDVW vw = vw
+  fuller = FDVW
+  unFuller (FDVW vw) = vw
 
 -- This is not right -- this should be (F W a) as the first arg, but it demonstrates the right issue, for now
 (<-+) :: V a => a -> D a -> a
@@ -95,4 +110,10 @@ tmiMain = do
   msp $ w .+ FDWInts [5, 6]
   msp $ w .+ FDWStrings ["ttt"]
   msp $ w .+ FDW (W { ints = [2, 3], strings = ["qwer"] })
+  let vw :: VW (Int, String) Char
+      vw = VW { as = [(1, "one")], bs = "sdfgz" }
+  msp $ vw .+ DVWAs (DListMod 0 (DFst (fuller (10::Int))))
+  msp $ vw .+ DVWBs (DListMod 0 (fuller 'S'))
+  msp $ vw .+ FDVWAs [(100, "hundred")]
+  msp $ vw .+ FDVWBs "pppp"
   msp "hihi"
