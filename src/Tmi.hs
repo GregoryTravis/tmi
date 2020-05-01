@@ -74,4 +74,6 @@ tmiMain = do
   msp $ (1::Int, "foo") .+ DSnd (Prepend "s")
   msp $ (1::Int, "foo") .+ FDSnd "rrr"
   msp $ (1::Int, "foo") .+ FPair (2, "bar")
+  msp $ [([1::Int, 2, 3], ("asdf", "zxcv"))] .+ DListMod 0 (DFst (DListMod 1 (fuller (20::Int))))
+  msp $ [([1::Int, 2, 3], ("asdf", "zxcv"))] .+ DListMod 0 (DSnd (DFst (Append "g")))
   msp "hihi"
