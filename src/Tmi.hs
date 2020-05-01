@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -84,6 +85,13 @@ instance (V a, V b) => V (VW a b) where
   fuller = FDVW
   unFuller (FDVW vw) = vw
 
+data Something a b = This a | That a [b]
+  deriving Show
+data DSomething a da b db = DThis da | FDThis a | DThat0 da | DThat1 (DList b db) | FDThat0 a | FDThat1 [b] | FDSomething (Something a b)
+instance (V a, V b) => V (Something a b) where
+  type D (Something a b) = DSomething a (D a) b (D b)
+  This a .+ DThis da = This (a .+ da)
+
 -- This is not right -- this should be (F W a) as the first arg, but it demonstrates the right issue, for now
 (<-+) :: V a => a -> D a -> a
 (<-+) = (.+)
@@ -116,4 +124,8 @@ tmiMain = do
   msp $ vw .+ DVWBs (DListMod 0 (fuller 'S'))
   msp $ vw .+ FDVWAs [(100, "hundred")]
   msp $ vw .+ FDVWBs "pppp"
+  let th :: Something [Int] (Char, String)
+      th = This [1::Int, 2, 3]
+  msp $ th .+ DThis (DListMod 2 (fuller (30::Int)))
+  msp $ This @[Int] @(Char, String) [1::Int, 2, 3] .+ DThis (DListMod 2 (fuller (31::Int)))
   msp "hihi"
