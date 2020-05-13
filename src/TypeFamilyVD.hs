@@ -6,6 +6,10 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- The unfortunately named TypeFamilyVD uses a type family that maps a single
+-- delta to any type. It still seems to require type annotation in int
+-- literals.
+
 module TypeFamilyVD
 ( typeFamilyVDMain ) where
 
