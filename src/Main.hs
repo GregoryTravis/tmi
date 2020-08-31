@@ -47,4 +47,5 @@ applyNC1 (NC1 nameBC forBC revBC) (NC1 nameAB forAB revAB) = NC1 nameAC forAC re
 main = do
   msp $ r _anInt w
   msp $ r anIntInc w
+  msp $ r (applyNC1 incer anIntInc) w
   msp "hi"
