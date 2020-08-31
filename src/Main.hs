@@ -10,6 +10,11 @@ data NC1 a b  = NC1 { nodeName :: String
 
 data N1 a b = N1 { nc1 :: NC1 a b, arg0 :: a }
 
+type V b = NC1 W b
+
+r :: V b -> W -> b
+r (NC1 { for }) w = for w
+
 incer :: NC1 Int Int
 incer = NC1 { nodeName = "adder"
             , for = (+1)
@@ -19,17 +24,14 @@ data W = W { anInt :: Int }
 w :: W
 w = W { anInt = 10 }
 
-_anInt :: NC1 W Int
+--_anInt :: NC1 W Int
+_anInt :: V Int
 _anInt = NC1 { nodeName = "_anInt"
              , for = anInt
              , rev = \w i -> w { anInt = i } }
 
-type V b = NC1 W b
-
-r :: V b -> W -> b
-r (NC1 { for }) w = for w
-
-anIntInc :: NC1 W Int
+--anIntInc :: NC1 W Int
+anIntInc :: V Int
 anIntInc = applyNC1 incer _anInt
 
 applyNC1 :: NC1 b c -> NC1 a b -> NC1 a c
