@@ -29,6 +29,20 @@ type V b = NC1 W b
 r :: V b -> W -> b
 r (NC1 { for }) w = for w
 
+anIntInc :: NC1 W Int
+anIntInc = applyNC1 incer _anInt
+
+applyNC1 :: NC1 b c -> NC1 a b -> NC1 a c
+applyNC1 (NC1 nameBC forBC revBC) (NC1 nameAB forAB revAB) = NC1 nameAC forAC revAC
+  where nameAC = nameBC ++ "+" ++ nameAB
+        forAC = forBC . forAB
+        -- revAC :: a -> c -> a
+        revAC = \a c -> revAB a (revBC (forAB a) c)
+        -- a -> b
+        -- a -> b -> a
+        -- b -> c -> b
+
 main = do
   msp $ r _anInt w
+  msp $ r anIntInc w
   msp "hi"
