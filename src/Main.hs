@@ -23,14 +23,23 @@ class Hashable a => Keyable a where
 instance Keyable Int
 
 data NamedFunction a b = NamedFunction String (a -> b)
-  --deriving Generic
 nfApply :: NamedFunction a b -> a -> b
 nfApply (NamedFunction _ f) = f
 nameOf :: NamedFunction a b -> String
 nameOf (NamedFunction s _) = s
 
+data NamedFunction2 a b c = NamedFunction2 String (a -> b -> c)
+nfApply2 :: NamedFunction2 a b c -> a -> b -> c
+nfApply2 (NamedFunction2 _ f) = f
+nameOf2 :: NamedFunction2 a b c -> String
+nameOf2 (NamedFunction2 s _) = s
+
 instance Hashable (NamedFunction a b) where
   hash (NamedFunction s _) = hash s
+  hashWithSalt = hws
+
+instance Hashable (NamedFunction2 a b c) where
+  hash (NamedFunction2 s _) = hash s
   hashWithSalt = hws
 
 --data Voo b = forall a. Hashable a => Voo a | forall a. Hashable a => Voo' a a
@@ -38,6 +47,7 @@ instance Hashable (NamedFunction a b) where
 
 data V b = V0 { val :: b  }
          | forall a. (Hashable a, Typeable a) => V1 { for :: NamedFunction a b, arg1_0 :: V a }
+         | forall a c. (Hashable a, Typeable a, Hashable c, Typeable c) => V2 { for2 :: NamedFunction2 a c b, arg2_0 :: V a, arg2_1 :: V c }
   --deriving Generic
 
 --deriving instance Generic (V1 a)
@@ -47,7 +57,8 @@ hws salt x = hash (salt, hash x)
 
 instance Hashable a => Hashable (V a) where
   hash V0 {..} = hash val
-  hash V1 {..} = hash (for, arg1_0) -- (87::Int, for, hash arg1_0) -- hash (for, arg1_0)
+  hash V1 {..} = hash (for, arg1_0)
+  hash V2 {..} = hash (for2, arg2_0, arg2_1)
   hashWithSalt = hws
 
 instance Hashable a => Keyable (V a)
@@ -67,6 +78,7 @@ r1 cache v =
 applyV :: Cache -> V b -> b
 applyV cache (V0 {..}) = val
 applyV cache (V1 {..}) = nfApply for (r1 cache arg1_0)
+applyV cache (V2 {..}) = nfApply2 for2 (r1 cache arg2_0) (r1 cache arg2_1)
 
 incer :: NamedFunction Int Int
 incer = NamedFunction "incer" (+1)
@@ -86,6 +98,12 @@ showN = NamedFunction "show" show
 showNextInt :: V String
 showNextInt = V1 { for = showN, arg1_0 = nextInt }
 
+plusN :: NamedFunction2 Int Int Int
+plusN = NamedFunction2 "+" (+)
+
+aSum :: V Int
+aSum = V2 { for2 = plusN, arg2_0 = nextInt, arg2_1 = twelve }
+
 emptyCache :: Cache
 emptyCache = Cache M.empty
 
@@ -102,6 +120,7 @@ main = do
   msp $ r1 theCache nextInt
   msp $ r1 theCache twelve
   msp $ r1 theCache showNextInt
+  msp $ r1 theCache aSum
   msp "hi"
 
 {-
