@@ -22,32 +22,19 @@ class Hashable a => Keyable a where
 
 instance Keyable Int
 
-data NamedFunction a b = NamedFunction String (a -> b)
-nfApply :: NamedFunction a b -> a -> b
-nfApply (NamedFunction _ f) = f
-nameOf :: NamedFunction a b -> String
-nameOf (NamedFunction s _) = s
+data Named a = Named String a
+unName :: Named a -> a
+unName (Named _ x) = x
+nameOf :: Named a -> String
+nameOf (Named s _) = s
 
-data NamedFunction2 a b c = NamedFunction2 String (a -> b -> c)
-nfApply2 :: NamedFunction2 a b c -> a -> b -> c
-nfApply2 (NamedFunction2 _ f) = f
-nameOf2 :: NamedFunction2 a b c -> String
-nameOf2 (NamedFunction2 s _) = s
-
-instance Hashable (NamedFunction a b) where
-  hash (NamedFunction s _) = hash s
+instance Hashable (Named a) where
+  hash = hash . nameOf
   hashWithSalt = hws
-
-instance Hashable (NamedFunction2 a b c) where
-  hash (NamedFunction2 s _) = hash s
-  hashWithSalt = hws
-
---data Voo b = forall a. Hashable a => Voo a | forall a. Hashable a => Voo' a a
---data Voo b = forall a. (Hashable a, Typeable a) => Voo { for' :: (a, b) }
 
 data V b = V0 { val :: b  }
-         | forall a. (Hashable a, Typeable a) => V1 { for :: NamedFunction a b, arg1_0 :: V a }
-         | forall a c. (Hashable a, Typeable a, Hashable c, Typeable c) => V2 { for2 :: NamedFunction2 a c b, arg2_0 :: V a, arg2_1 :: V c }
+         | forall a. (Hashable a, Typeable a) => V1 { for :: Named (a -> b), arg1_0 :: V a }
+         | forall a c. (Hashable a, Typeable a, Hashable c, Typeable c) => V2 { for2 :: Named (a -> c -> b), arg2_0 :: V a, arg2_1 :: V c }
   --deriving Generic
 
 --deriving instance Generic (V1 a)
@@ -77,11 +64,11 @@ r1 cache v =
 
 applyV :: Cache -> V b -> b
 applyV cache (V0 {..}) = val
-applyV cache (V1 {..}) = nfApply for (r1 cache arg1_0)
-applyV cache (V2 {..}) = nfApply2 for2 (r1 cache arg2_0) (r1 cache arg2_1)
+applyV cache (V1 {..}) = unName for (r1 cache arg1_0)
+applyV cache (V2 {..}) = unName for2 (r1 cache arg2_0) (r1 cache arg2_1)
 
-incer :: NamedFunction Int Int
-incer = NamedFunction "incer" (+1)
+incer :: Named (Int -> Int)
+incer = Named "incer" (+1)
 
 anInt :: V Int
 anInt = V0 { val = 10 }
@@ -92,14 +79,14 @@ twelve = V0 { val = 12 }
 nextInt :: V Int
 nextInt = V1 { for = incer, arg1_0 = anInt }
 
-showN :: Show a => NamedFunction a String
-showN = NamedFunction "show" show
+showN :: Show a => Named (a -> String)
+showN = Named "show" show
 
 showNextInt :: V String
 showNextInt = V1 { for = showN, arg1_0 = nextInt }
 
-plusN :: NamedFunction2 Int Int Int
-plusN = NamedFunction2 "+" (+)
+plusN :: Named (Int -> Int -> Int)
+plusN = Named "+" (+)
 
 aSum :: V Int
 aSum = V2 { for2 = plusN, arg2_0 = nextInt, arg2_1 = twelve }
