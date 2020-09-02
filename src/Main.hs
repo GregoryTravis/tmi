@@ -32,9 +32,9 @@ instance Hashable (Named a) where
   hash = hash . nameOf
   hashWithSalt = hws
 
-data V b = V0 { val :: b  }
-         | forall a. (Hashable a, Typeable a) => V1 { for :: Named (a -> b), arg1_0 :: V a }
-         | forall a c. (Hashable a, Typeable a, Hashable c, Typeable c) => V2 { for2 :: Named (a -> c -> b), arg2_0 :: V a, arg2_1 :: V c }
+data V a = V0 { val :: a  }
+         | forall b. (Hashable b, Typeable b) => V1 { for :: Named (b -> a), arg1_0 :: V b }
+         | forall b c. (Hashable b, Typeable b, Hashable c, Typeable c) => V2 { for2 :: Named (b -> c -> a), arg2_0 :: V b, arg2_1 :: V c }
   --deriving Generic
 
 --deriving instance Generic (V1 a)
