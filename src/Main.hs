@@ -20,6 +20,7 @@ data Key = Key Int deriving (Eq, Ord, Show)
 class Hashable a => Keyable a where
   toKey :: a -> Key
   toKey x | TR.trace "toKey" False = undefined
+          | TR.trace (show ("toKey'", hash x)) False = undefined
           | otherwise = (Key . hash) x
 
 instance Keyable Int
@@ -35,20 +36,30 @@ instance Hashable (NamedFunction a b) where
   hash (NamedFunction s _) | TR.trace (show ("vog", s)) False = undefined
                            | otherwise = hash s
   hashWithSalt salt nf | TR.trace (show ("h1", nameOf nf)) False = undefined
-                       | otherwise = hash (salt, nf)
+                       | otherwise = hash (salt, hash nf)
 
-data V1 b = forall a. (Hashable a, Typeable a) => V1 { for :: NamedFunction a b, arg1_0 :: V1 a }
+--data Voo b = forall a. Hashable a => Voo a | forall a. Hashable a => Voo' a a
+--data Voo b = forall a. (Hashable a, Typeable a) => Voo { for' :: (a, b) }
+
+data V b = V0 { val :: b  }
+         | forall a. (Hashable a, Typeable a) => V1 { for :: NamedFunction a b, arg1_0 :: V a }
   --deriving Generic
 
 --deriving instance Generic (V1 a)
 
-instance Hashable a => Hashable (V1 a) where
-  hash V1 {..} | TR.trace (show ("h0", nameOf for)) False = undefined
-               | otherwise = hash (for, arg1_0)
-  hashWithSalt salt v@(V1 { for }) | TR.trace (show ("h2", nameOf for)) False = undefined
-                                   | otherwise = hash (salt, v)
+hws :: Hashable a => Int -> a -> Int
+hws salt x = hash (salt, hash x)
 
-instance Hashable a => Keyable (V1 a)
+instance Hashable a => Hashable (V a) where
+  hash V0 {..} = hash val
+  hash V1 {..} = hash (for, arg1_0) -- (87::Int, for, hash arg1_0) -- hash (for, arg1_0)
+  hashWithSalt = hws
+  -- hash V1 {..} | TR.trace (show ("h0", nameOf for)) False = undefined
+  --              | otherwise = hash (for, arg1_0)
+  -- hashWithSalt salt v@(V1 { for }) | TR.trace (show ("h2", nameOf for)) False = undefined
+  --                                  | otherwise = hash (salt, v)
+
+instance Hashable a => Keyable (V a)
 
 data Cache = Cache (M.Map Key Dynamic)
 
@@ -59,36 +70,60 @@ readCache (Cache m) k = case m M.!? k of Just dyn -> fromJust $ fromDynamic dyn
 -- readCacheS :: (Show a, Typeable a) => Cache -> Key -> Maybe a
 -- readCacheS = readCache
 
-r1 :: (Hashable b, Typeable b) => Cache -> V1 b -> b
-r1 cache v =
+r1 :: (Hashable b, Typeable b) => Cache -> V b -> b
+r1 cache v | TR.trace "r1" False = undefined
+           ----    | TR.trace (show ("r1'", toKey v)) False = undefined
+           | otherwise =
   case readCache cache (toKey v) of Just x -> x
-                                    Nothing -> apply1 cache v
+                                    Nothing -> applyV cache v
   -- case cache M.!? (toKey v) of Just dyn -> fromJust $ fromDynamic dyn
   --                              Nothing -> apply1 v
 
-apply1 :: Cache -> V1 b -> b
-apply1 cache (V1 {..}) = nfApply for (r1 cache arg1_0)
+applyV :: Cache -> V b -> b
+applyV cache (V0 {..}) = val
+applyV cache (V1 {..}) = nfApply for (r1 cache arg1_0)
 
 incer :: NamedFunction Int Int
 incer = NamedFunction "incer" (+1)
 
-anInt :: V1 Int
-anInt = V1 { for = NamedFunction "10" (\() -> 10), arg1_0 = error "10" }
+anInt :: V Int
+-- anInt = V1 { for = NamedFunction "10" (\() -> 10), arg1_0 = error "10" }
+anInt = V0 { val = 10 }
+
+twelve :: V Int
+twelve = V0 { val = 12 }
+
+nextInt :: V Int
+nextInt = V1 { for = incer, arg1_0 = anInt }
+
+emptyCache :: Cache
+emptyCache = Cache M.empty
 
 theCache :: Cache
 theCache = Cache $ M.fromList
-  [ (toKey anInt, toDyn (10::Int)) ]
+  [] --  (toKey twelve, toDyn $ applyV emptyCache twelve) ] -- (toKey anInt, toDyn (10::Int)) ]
 
 main = do
-  --msp $ r1 theCache anInt
+  msp $ r1 theCache anInt
+  msp $ r1 theCache nextInt
+  msp $ toKey twelve
+  msp $ applyV emptyCache twelve
+  let cc = Cache $ M.fromList [(toKey twelve, toDyn $ applyV emptyCache twelve)]
+  msp $ case cc of Cache m -> M.keys m
+  msp $ case cc of Cache m -> M.elems m
+  msp $ case cc of Cache m -> m M.!? (toKey twelve)
+  msp $ case cc of Cache m -> ((fromDynamic $ fromJust $ m M.!? (toKey twelve)) :: Maybe Int)
+  msp $ r1 cc anInt
+  msp $ r1 emptyCache nextInt
+  msp $ r1 cc nextInt
   --msp $ readCache theCache (toKey anInt)
   -- let x :: Int
   --     x = fromJust $ readCache theCache (toKey anInt)
-  let j :: Dynamic
-      j = fromJust $ case theCache of Cache m -> m M.!? (toKey anInt)
-  let x :: Int
-      x = fromJust $ fromDynamic j
-  --msp $ toKey anInt
+  -- let j :: Dynamic
+  --     j = fromJust $ case theCache of Cache m -> m M.!? (toKey anInt)
+  -- let x :: Int
+  --     x = fromJust $ fromDynamic j
+  -- msp $ toKey anInt
   --msp x
   --msp $ toKey (3::Int)
   msp "hi"
