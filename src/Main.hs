@@ -80,6 +80,12 @@ twelve = V0 { val = 12 }
 nextInt :: V Int
 nextInt = V1 { for = incer, arg1_0 = anInt }
 
+showN :: Show a => NamedFunction a String
+showN = NamedFunction "show" show
+
+showNextInt :: V String
+showNextInt = V1 { for = showN, arg1_0 = nextInt }
+
 emptyCache :: Cache
 emptyCache = Cache M.empty
 
@@ -95,6 +101,7 @@ main = do
   msp $ r1 theCache anInt
   msp $ r1 theCache nextInt
   msp $ r1 theCache twelve
+  msp $ r1 theCache showNextInt
   msp "hi"
 
 {-
