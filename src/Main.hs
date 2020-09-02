@@ -59,13 +59,6 @@ readCache :: Typeable a => Cache -> Key -> Maybe a
 readCache (Cache m) k = case m M.!? k of Just dyn -> fromDynamic dyn
                                          Nothing -> Nothing
 
--- readCacheI :: Cache -> Key -> Maybe Int
--- readCacheI (Cache m) k = case m M.!? k of Just dyn -> fromJust $ fromDynamic $ eesp ("uh", k, dyn) dyn
---                                           Nothing -> Nothing
-
--- readCacheS :: (Show a, Typeable a) => Cache -> Key -> Maybe a
--- readCacheS = readCache
-
 r1 :: (Hashable b, Typeable b) => Cache -> V b -> b
 r1 cache v =
   case readCache cache (toKey v) of Just x -> x
@@ -79,7 +72,6 @@ incer :: NamedFunction Int Int
 incer = NamedFunction "incer" (+1)
 
 anInt :: V Int
--- anInt = V1 { for = NamedFunction "10" (\() -> 10), arg1_0 = error "10" }
 anInt = V0 { val = 10 }
 
 twelve :: V Int
@@ -91,55 +83,18 @@ nextInt = V1 { for = incer, arg1_0 = anInt }
 emptyCache :: Cache
 emptyCache = Cache M.empty
 
+-- uses the empty cache to evaluate, not the passed-in one
+seedCache :: (Typeable a, Hashable a) => Cache -> V a -> Cache
+seedCache (Cache m) v = Cache m'
+  where m' = M.insert (toKey v) (toDyn (applyV emptyCache v)) m
+
 theCache :: Cache
-theCache = Cache $ M.fromList
-  [ (toKey twelve, toDyn $ (12::Int)) ] -- (toKey anInt, toDyn (10::Int)) ]
-  --[ (toKey twelve, toDyn $ ((applyV emptyCache twelve)::Int)) ] -- (toKey anInt, toDyn (10::Int)) ]
-
-rr :: Cache -> Key -> Int
-rr c key = case c of Cache m -> case m M.!? key of Just dyn -> case fromDynamic dyn of Just x -> x
-
-rrr :: Cache -> Key -> Maybe Int
-rrr c key = case c of Cache m -> case m M.!? key of Just dyn -> fromDynamic dyn
-
-rrrr :: Typeable a => Cache -> Key -> Maybe a
-rrrr c key = case c of Cache m -> case m M.!? key of Just dyn -> fromDynamic dyn
-
-rrrrr :: Typeable a => Cache -> Key -> a
-rrrrr c key = case c of Cache m -> case m M.!? key of Just dyn -> fromJust $ fromDynamic dyn
+theCache = seedCache emptyCache twelve
 
 main = do
   msp $ r1 theCache anInt
   msp $ r1 theCache nextInt
-  --msp theCache
-  --msp $ ((fromDynamic (toDyn (12::Int))) :: Maybe Int)
-  -- let q = case theCache of Cache m -> m M.!? (toKey twelve)
-  -- msp q
-  -- msp $ fromJust ((fromDynamic (fromJust q)) :: Maybe Int)
-  -- let q :: Int
-  --     q = case theCache of Cache m -> case m M.!? (toKey twelve) of Just dyn -> case fromDynamic dyn of Just x -> x
-  -- msp q
-  -- let r :: Cache -> Key -> Int
-  --     r c key = case c of Cache m -> case m M.!? key of Just dyn -> case fromDynamic dyn of Just x -> x
-  -- msp $ r theCache (toKey twelve)
-  -- msp $ rr theCache (toKey twelve)
-  -- msp $ rrr theCache (toKey twelve)
-
-  -- -- msp "here"
-  -- -- msp $ ((rrrr theCache (toKey twelve)) :: Maybe Int)
-  -- -- msp $ fromJust (((rrrr theCache (toKey twelve)) :: Maybe Int))
-  -- -- msp $ ((rrrrr theCache (toKey twelve)) :: Maybe Int)
-
-  -- msp "but"
-  -- msp $ ((readCache theCache (toKey twelve)) :: Maybe Int)
   msp $ r1 theCache twelve
-
-  --msp $ ((readCacheI theCache (toKey twelve)) :: Maybe Int)
-  --msp $ applyV emptyCache twelve
-  --msp $ (r1 theCache twelve :: Int)
-  -- let x :: Int
-  --     x = r1 theCache twelve
-  --msp x
   msp "hi"
 
 {-
