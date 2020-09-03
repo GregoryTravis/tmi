@@ -54,6 +54,7 @@ module Util
 , imap
 , takeLast
 , prefixes
+, cascade
 ) where
 
 import Control.Exception
@@ -334,3 +335,8 @@ takeLast n = reverse . (take n) . reverse
 prefixes :: [a] -> [[a]]
 prefixes [] = []
 prefixes (x:xs) = [x] : (map (x:) (prefixes xs))
+
+-- Apply the function to the provided seed, then repeat with the results. This
+-- will loop forever if any value gives rise to itself.
+cascade :: (a -> [a]) -> a -> [a]
+cascade f x = x : concat (map (cascade f) (f x))
