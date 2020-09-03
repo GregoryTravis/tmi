@@ -32,18 +32,32 @@ instance Hashable (Named a) where
   hash = hash . nameOf
   hashWithSalt = hws
 
+instance Show (Named a) where
+  show (Named s _) = "(Named " ++ s ++ ")"
+
+-- Show here is for development, it should be removed.
 data V a = V0 { val :: a  }
-         | forall b. (Hashable b, Typeable b) => V1 { for :: Named (b -> a)
-                                                    , rev :: Named (b -> a -> b)
-                                                    , arg1_0 :: V b }
-         | forall b c. (Hashable b, Typeable b, Hashable c, Typeable c) => V2 { for2 :: Named (b -> c -> a)
-                                                                              , rev2 :: Named (b -> c -> a -> (b, c))
-                                                                              , arg2_0 :: V b, arg2_1 :: V c }
+         | forall b. (Show b, Hashable b, Typeable b) =>
+           V1 { for :: Named (b -> a)
+              , rev :: Named (b -> a -> b)
+              , arg1_0 :: V b }
+         | forall b c. (Show b, Hashable b, Typeable b, Show c, Hashable c, Typeable c) =>
+           V2 { for2 :: Named (b -> c -> a)
+              , rev2 :: Named (b -> c -> a -> (b, c))
+              , arg2_0 :: V b, arg2_1 :: V c }
+
+instance Show a => Show (V a) where
+  show (V0 {..}) = "(" ++ (show val) ++ ")"
+  show (V1 {..}) = "(" ++ (nameOf for) ++ "/" ++ (nameOf rev) ++ " " ++ (show arg1_0) ++ ")"
+  show (V2 {..}) = "(" ++ (nameOf for2) ++ "/" ++ (nameOf rev2) ++ " " ++ (show arg2_0) ++ " " ++ (show arg2_1) ++ ")"
 
 noRev :: Named (a -> b)
 noRev = Named "noRev" (\_ -> error "noRev")
 
-data Write = forall a. (Hashable a, Typeable a) => Write (V a) a
+data Write = forall a. (Show a, Hashable a, Typeable a) => Write (V a) a
+
+instance Show Write where
+  show (Write v x) = "Write " ++ (show v) ++ " " ++ (show x) ++ ")"
 
 propagateWrite :: Cache -> Write -> [Write]
 propagateWrite cache write = propagateWrites cache [write]
@@ -76,15 +90,25 @@ propagateOnce cache (Write (V2 {..}) x) = [Write arg2_0 b', Write arg2_1 c']
 -- propagateWrite :: WriteSet -> Write -> WriteSet
 
 hws :: Hashable a => Int -> a -> Int
-hws salt x = hash (salt, hash x)
+hws salt x = hash [salt, hash x]
 
-instance Hashable a => Hashable (V a) where
-  hash V0 {..} = hash val
-  hash V1 {..} = hash (for, rev, arg1_0)
-  hash V2 {..} = hash (for2, rev2, arg2_0, arg2_1)
+instance (Show a, Hashable a) => Hashable (V a) where
+  hash V0 {..} = hash $ eeesp ("v0", hash val) val
+  hash V1 {..} = hash $ eeesp ("v1", huff, hash (for, rev, arg1_0)) (for, rev, arg1_0)
+    where huff = [
+            999999,
+            hash (for, rev, arg1_0),
+            hash for,
+            hash for `hashWithSalt` rev,
+            hash for `hashWithSalt` rev `hashWithSalt` arg1_0,
+            7924319637608323919 `hashWithSalt` arg1_0
+              ]
+  hash V2 {..} = hash $ eeesp ("v2", hash (for2, rev2, arg2_0, arg2_1)) (for2, rev2, arg2_0, arg2_1)
   hashWithSalt = hws
 
-instance Hashable a => Keyable (V a)
+      -- hash (a1, a2, a3) = hash a1 `hashWithSalt` a2 `hashWithSalt` a3
+
+instance (Show a, Hashable a) => Keyable (V a)
 
 data Cache = Cache (M.Map Key Dynamic)
   deriving Show
@@ -93,7 +117,7 @@ readCache :: Typeable a => Cache -> Key -> Maybe a
 readCache (Cache m) k = case m M.!? k of Just dyn -> fromDynamic dyn
                                          Nothing -> Nothing
 
-r1 :: (Hashable b, Typeable b) => Cache -> V b -> b
+r1 :: (Show b, Hashable b, Typeable b) => Cache -> V b -> b
 r1 cache v =
   case readCache cache (toKey v) of Just x -> x
                                     Nothing -> applyV cache v
@@ -107,6 +131,7 @@ applyV cache (V2 {..}) = unName for2 (r1 cache arg2_0) (r1 cache arg2_1)
 
 incer :: Named (Int -> Int)
 incer = Named "incer" (+1)
+incer_r = Named "incer_r" (\_ x -> x-1)
 
 anInt :: V Int
 anInt = V0 { val = 10 }
@@ -115,7 +140,10 @@ twelve :: V Int
 twelve = V0 { val = 12 }
 
 nextInt :: V Int
-nextInt = V1 { for = incer, rev = noRev, arg1_0 = anInt }
+nextInt = V1 { for = incer, rev = incer_r, arg1_0 = anInt }
+
+nextNextInt :: V Int
+nextNextInt = V1 { for = incer, rev = incer_r, arg1_0 = nextInt }
 
 showN :: Show a => Named (a -> String)
 showN = Named "show" show
@@ -133,19 +161,38 @@ emptyCache :: Cache
 emptyCache = Cache M.empty
 
 -- uses the empty cache to evaluate, not the passed-in one
-seedCache :: (Typeable a, Hashable a) => Cache -> V a -> Cache
+seedCache :: (Show a, Typeable a, Hashable a) => Cache -> V a -> Cache
 seedCache (Cache m) v = Cache m'
   where m' = M.insert (toKey v) (toDyn (applyV emptyCache v)) m
+
+-- seedCache' :: (Typeable a, Hashable a) => Cache -> [Write] -> Cache
+-- seedCace' cache writes = 
 
 theCache :: Cache
 theCache = seedCache emptyCache twelve
 
+-- for writes
+cache2 :: Cache
+cache2 = seedCache (seedCache emptyCache anInt) nextInt
+
 main = do
-  msp $ r1 theCache anInt
-  msp $ r1 theCache nextInt
-  msp $ r1 theCache twelve
-  msp $ r1 theCache showNextInt
-  msp $ r1 theCache aSum
+  msp $ toKey nextInt
+  msp "----"
+  msp $ toKey nextNextInt
+  msp "----"
+  msp $ r1 cache2 anInt
+  msp $ r1 cache2 nextInt
+  msp $ r1 cache2 nextNextInt
+  msp $ map toKey [anInt, nextInt, nextNextInt]
+  msp $ propagateOnce cache2 (Write nextInt 111)
+  msp $ propagateOnce cache2 (Write nextNextInt 112)
+  msp $ propagateWrite cache2 (Write nextNextInt 113)
+
+  -- msp $ r1 theCache anInt
+  -- msp $ r1 theCache nextInt
+  -- msp $ r1 theCache twelve
+  -- msp $ r1 theCache showNextInt
+  -- msp $ r1 theCache aSum
   msp "hi"
 
 {-
