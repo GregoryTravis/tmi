@@ -53,13 +53,20 @@ noRev = Named "noRev" (\_ -> error "noRev")
 data Write = forall a. (Show a, Typeable a) => Write (V a) a
 
 instance Show Write where
-  show (Write v x) = "Write " ++ (show v) ++ " " ++ (show x) ++ ")"
+  --show (Write v x) = "Write " ++ (show v) ++ " " ++ (show x) ++ ")"
+  show (Write v x) = "Write " ++ (show v) ++ " " ++ (show x)
 
 propagateWrite :: Cache -> Write -> [Write]
 propagateWrite cache write = propagateWrites cache [write]
 
 propagateWrites :: Cache -> [Write] -> [Write]
-propagateWrites cache writes = concat (map (cascade (propagateOnce cache)) writes)
+--propagateWrites cache writes = concat (map (cascade (propagateOnce cache)) writes)
+propagateWrites cache (w:ws) = eesp ("lol", propagateOnce' cache w) $ (w : (eeesp "jfc" bbb))
+  where bbb = eesp "wtf" $ propagateWrites cache $ eeesp "SHIT" ((propagateOnce' cache w) ++ ws)
+propagateWrites cache [] = eeesp "gov" []
+
+propagateOnce' :: Cache -> Write -> [Write]
+propagateOnce' c w = eeesp ("um", w) $ propagateOnce c $ eesp "zxcv" w
 
 propagateOnce :: Cache -> Write -> [Write]
 propagateOnce cache (Write (V0 {..}) x) = []
@@ -159,17 +166,23 @@ cache2 :: Cache
 cache2 = seedCache (seedCache emptyCache anInt) nextInt
 
 main = do
-  msp $ toKey nextInt
-  msp "----"
-  msp $ toKey nextNextInt
-  msp "----"
   msp $ r1 cache2 anInt
   msp $ r1 cache2 nextInt
   msp $ r1 cache2 nextNextInt
-  msp $ map toKey [anInt, nextInt, nextNextInt]
+  msp $ propagateOnce cache2 (Write anInt 110)
   msp $ propagateOnce cache2 (Write nextInt 111)
   msp $ propagateOnce cache2 (Write nextNextInt 112)
+  msp "um"
   msp $ propagateWrite cache2 (Write nextNextInt 113)
+  msp $ length $ propagateWrite cache2 (Write nextNextInt 113)
+  let omg = propagateWrite cache2 (Write nextNextInt 113)
+  msp "omg"
+  msp omg
+  msp $ length omg
+  msp omg
+  msp $ tail omg
+  mapM_ msp omg
+  msp omg
 
   -- msp $ r1 theCache anInt
   -- msp $ r1 theCache nextInt
