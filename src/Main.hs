@@ -7,16 +7,16 @@
 module Main where
 
 import Data.Dynamic
-import Data.Hashable
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
 --import GHC.Generics hiding (V1)
 
+import Hash
 import Util
 
-data Key = Key Int deriving (Eq, Ord, Show)
+data Key = Key String deriving (Eq, Ord, Show)
 
-class Hashable a => Keyable a where
+class Show a => Keyable a where
   toKey :: a -> Key
   toKey = Key . hash
 
@@ -28,20 +28,16 @@ unName (Named _ x) = x
 nameOf :: Named a -> String
 nameOf (Named s _) = s
 
-instance Hashable (Named a) where
-  hash = hash . nameOf
-  hashWithSalt = hws
-
 instance Show (Named a) where
   show (Named s _) = "(Named " ++ s ++ ")"
 
 -- Show here is for development, it should be removed.
 data V a = V0 { val :: a  }
-         | forall b. (Show b, Hashable b, Typeable b) =>
+         | forall b. (Show b, Typeable b) =>
            V1 { for :: Named (b -> a)
               , rev :: Named (b -> a -> b)
               , arg1_0 :: V b }
-         | forall b c. (Show b, Hashable b, Typeable b, Show c, Hashable c, Typeable c) =>
+         | forall b c. (Show b, Typeable b, Show c, Typeable c) =>
            V2 { for2 :: Named (b -> c -> a)
               , rev2 :: Named (b -> c -> a -> (b, c))
               , arg2_0 :: V b, arg2_1 :: V c }
@@ -54,7 +50,7 @@ instance Show a => Show (V a) where
 noRev :: Named (a -> b)
 noRev = Named "noRev" (\_ -> error "noRev")
 
-data Write = forall a. (Show a, Hashable a, Typeable a) => Write (V a) a
+data Write = forall a. (Show a, Typeable a) => Write (V a) a
 
 instance Show Write where
   show (Write v x) = "Write " ++ (show v) ++ " " ++ (show x) ++ ")"
@@ -89,16 +85,16 @@ propagateOnce cache (Write (V2 {..}) x) = [Write arg2_0 b', Write arg2_1 c']
 
 -- propagateWrite :: WriteSet -> Write -> WriteSet
 
-hws :: Hashable a => Int -> a -> Int
-hws salt x = hash [salt, hash x]
+-- hws :: Show a => Int -> a -> Int
+-- hws salt x = hash [salt, hash x]
 
-instance (Show a, Hashable a) => Hashable (V a) where
-  hash V0 {..} = hash val
-  hash V1 {..} = hash (for, rev, arg1_0)
-  hash V2 {..} = hash (for2, rev2, arg2_0, arg2_1)
-  hashWithSalt = hws
+-- instance (Show a) => Show (V a) where
+--   hash V0 {..} = hash val
+--   hash V1 {..} = hash (for, rev, arg1_0)
+--   hash V2 {..} = hash (for2, rev2, arg2_0, arg2_1)
+--   hashWithSalt = hws
 
-instance (Show a, Hashable a) => Keyable (V a)
+instance (Show a) => Keyable (V a)
 
 data Cache = Cache (M.Map Key Dynamic)
   deriving Show
@@ -107,7 +103,7 @@ readCache :: Typeable a => Cache -> Key -> Maybe a
 readCache (Cache m) k = case m M.!? k of Just dyn -> fromDynamic dyn
                                          Nothing -> Nothing
 
-r1 :: (Show b, Hashable b, Typeable b) => Cache -> V b -> b
+r1 :: (Show b, Typeable b) => Cache -> V b -> b
 r1 cache v =
   case readCache cache (toKey v) of Just x -> x
                                     Nothing -> applyV cache v
@@ -151,12 +147,9 @@ emptyCache :: Cache
 emptyCache = Cache M.empty
 
 -- uses the empty cache to evaluate, not the passed-in one
-seedCache :: (Show a, Typeable a, Hashable a) => Cache -> V a -> Cache
+seedCache :: (Show a, Typeable a) => Cache -> V a -> Cache
 seedCache (Cache m) v = Cache m'
   where m' = M.insert (toKey v) (toDyn (applyV emptyCache v)) m
-
--- seedCache' :: (Typeable a, Hashable a) => Cache -> [Write] -> Cache
--- seedCace' cache writes = 
 
 theCache :: Cache
 theCache = seedCache emptyCache twelve
