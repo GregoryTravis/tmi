@@ -93,20 +93,10 @@ hws :: Hashable a => Int -> a -> Int
 hws salt x = hash [salt, hash x]
 
 instance (Show a, Hashable a) => Hashable (V a) where
-  hash V0 {..} = hash $ eeesp ("v0", hash val) val
-  hash V1 {..} = hash $ eeesp ("v1", huff, hash (for, rev, arg1_0)) (for, rev, arg1_0)
-    where huff = [
-            999999,
-            hash (for, rev, arg1_0),
-            hash for,
-            hash for `hashWithSalt` rev,
-            hash for `hashWithSalt` rev `hashWithSalt` arg1_0,
-            7924319637608323919 `hashWithSalt` arg1_0
-              ]
-  hash V2 {..} = hash $ eeesp ("v2", hash (for2, rev2, arg2_0, arg2_1)) (for2, rev2, arg2_0, arg2_1)
+  hash V0 {..} = hash val
+  hash V1 {..} = hash (for, rev, arg1_0)
+  hash V2 {..} = hash (for2, rev2, arg2_0, arg2_1)
   hashWithSalt = hws
-
-      -- hash (a1, a2, a3) = hash a1 `hashWithSalt` a2 `hashWithSalt` a3
 
 instance (Show a, Hashable a) => Keyable (V a)
 
