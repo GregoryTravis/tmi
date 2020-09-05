@@ -14,6 +14,40 @@ import Data.Maybe (fromJust)
 import Hash
 import Util
 
+-- A thing that can produce an a, given a world
+data W = W { haha :: Int, hoho :: String }
+data VV a  = VV (W -> a)
+r :: W -> VV a -> a
+r w (VV f) = f w
+
+instance Functor VV where
+  fmap f (VV wa) = VV f'
+    where f' w = f (wa w)
+
+instance Applicative VV where
+  pure x = VV (\_ -> x)
+  (VV wf) <*> (VV wx) = VV (\w -> (wf w) (wx w))
+
+world :: W
+world = W { haha = 10, hoho = "twelve" }
+
+concatty :: Int -> String -> String
+concatty i s = (show i) ++ s
+
+main = do
+  let _haha = VV haha
+      _hoho = VV hoho
+      c = (VV (\_ -> concatty)) <*> _haha <*> _hoho
+      c' = pure concatty <*> _haha <*> _hoho
+      c'' = concatty <$> _haha <*> _hoho
+  msp $ r world _haha
+  msp $ r world c
+  msp $ r world c'
+  msp $ r world c''
+  msp "hi"
+
+---- Below is an impl that works (forward-only) but requires over arity; the above is an attempt to fix this and get currying back.
+
 data Key = Key String
   deriving (Eq, Ord, Show)
 
@@ -169,7 +203,7 @@ theCache = seedCache emptyCache twelve
 cache2 :: Cache
 cache2 = seedCache (seedCache emptyCache anInt) nextInt
 
-main = do
+_main = do
   msp $ r1 cache2 anInt
   msp $ r1 cache2 nextInt
   msp $ r1 cache2 nextNextInt
