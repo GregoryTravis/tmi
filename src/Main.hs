@@ -14,13 +14,25 @@ import Data.Maybe (fromJust)
 import Hash
 import Util
 
-data Key = Key String deriving (Eq, Ord, Show)
+data Key = Key String
+  deriving (Eq, Ord, Show)
 
 class Show a => Keyable a where
   toKey :: a -> Key
   toKey = Key . hash
 
+combineKeys :: Key -> Key -> Key
+combineKeys (Key x) (Key y) = Key (hash $ x ++ y)
+
+instance (Keyable a, Keyable b) => Keyable (a, b) where
+  toKey (x, y) = (toKey x) `combineKeys` (toKey y)
+instance (Keyable a, Keyable b, Keyable c) => Keyable (a, b, c) where
+  toKey (x, y, z) = (toKey x) `combineKeys` (toKey y) `combineKeys` (toKey z)
+instance (Keyable a, Keyable b, Keyable c, Keyable d) => Keyable (a, b, c, d) where
+  toKey (x, y, z, w) = (toKey x) `combineKeys` (toKey y) `combineKeys` (toKey z) `combineKeys` (toKey w)
+
 instance Keyable Int
+--instance Keyable String
 
 data Named a = Named String a
 unName :: Named a -> a
@@ -31,21 +43,39 @@ nameOf (Named s _) = s
 instance Show (Named a) where
   show (Named s _) = "(Named " ++ s ++ ")"
 
+instance Keyable (Named a) where
+  toKey (Named s _) = Key $ hash $ "(Named " ++ s ++ ")"
+
 -- Show here is for development, it should be removed.
-data V a = V0 { val :: a  }
+data V a = V0 { key0 :: Key
+              , val :: a  }
          | forall b. (Show b, Typeable b) =>
-           V1 { for :: Named (b -> a)
+           V1 { key1 :: Key
+              , for :: Named (b -> a)
               , rev :: Named (b -> a -> b)
               , arg1_0 :: V b }
          | forall b c. (Show b, Typeable b, Show c, Typeable c) =>
-           V2 { for2 :: Named (b -> c -> a)
+           V2 { key2 :: Key
+              , for2 :: Named (b -> c -> a)
               , rev2 :: Named (b -> c -> a -> (b, c))
               , arg2_0 :: V b, arg2_1 :: V c }
 
+getKey :: V a -> Key
+getKey V0 {..} = key0
+getKey V1 {..} = key1
+getKey V2 {..} = key2
+
+v0 :: Keyable a => a -> V a
+v0 x = V0 { key0 = toKey x, val = x }
+v1 :: (Show b, Typeable b, Keyable a) => Named (b -> a) -> Named (b -> a -> b) -> V b -> V a
+v1 f r b = V1 { key1 = toKey (f, r, b), for = f, rev = r, arg1_0 = b }
+v2 :: (Show b, Typeable b, Show c, Typeable c, Keyable a) => Named (b -> c -> a) -> Named (b -> c -> a -> (b, c)) -> V b -> V c -> V a
+v2 f r b c = V2 { key2 = toKey (f, r, b, c), for2 = f, rev2 = r, arg2_0 = b, arg2_1 = c }
+
 instance Show a => Show (V a) where
-  show (V0 {..}) = "(" ++ (show val) ++ ")"
-  show (V1 {..}) = "(" ++ (nameOf for) ++ "/" ++ (nameOf rev) ++ " " ++ (show arg1_0) ++ ")"
-  show (V2 {..}) = "(" ++ (nameOf for2) ++ "/" ++ (nameOf rev2) ++ " " ++ (show arg2_0) ++ " " ++ (show arg2_1) ++ ")"
+  show (V0 {..}) = "(" ++ (show key0) ++ " " ++ (show val) ++ ")"
+  show (V1 {..}) = "(" ++ (show key1) ++ " " ++ (nameOf for) ++ "/" ++ (nameOf rev) ++ " " ++ (show arg1_0) ++ ")"
+  show (V2 {..}) = "(" ++ (show key2) ++ " " ++ (nameOf for2) ++ "/" ++ (nameOf rev2) ++ " " ++ (show arg2_0) ++ " " ++ (show arg2_1) ++ ")"
 
 noRev :: Named (a -> b)
 noRev = Named "noRev" (\_ -> error "noRev")
@@ -78,29 +108,6 @@ propagateOnce cache (Write (V2 {..}) x) = [Write arg2_0 b', Write arg2_1 c']
         c = r1 cache arg2_1
         (b', c') = unName rev2 b c x
 
--- prepareToStore :: Write -> (Key, Dynamic)
--- prepareToStore (Write v x) = (toKey v, toDyn x)
-
--- data WriteSet = WriteSet (M.Map Key [Write])
-
--- add :: WriteSet -> Write -> WriteSet
--- add (WriteSet m) write =
---   let (key, dyn) = prepareToStore write
---       existingWrites = M.findWithDefault [] key m
---       m' = M.insert key (existingWrites ++ [dyn]) m
---    in WriteSet m'
-
--- propagateWrite :: WriteSet -> Write -> WriteSet
-
--- hws :: Show a => Int -> a -> Int
--- hws salt x = hash [salt, hash x]
-
--- instance (Show a) => Show (V a) where
---   hash V0 {..} = hash val
---   hash V1 {..} = hash (for, rev, arg1_0)
---   hash V2 {..} = hash (for2, rev2, arg2_0, arg2_1)
---   hashWithSalt = hws
-
 instance (Show a) => Keyable (V a)
 
 data Cache = Cache (M.Map Key Dynamic)
@@ -112,8 +119,8 @@ readCache (Cache m) k = case m M.!? k of Just dyn -> fromDynamic dyn
 
 r1 :: (Show b, Typeable b) => Cache -> V b -> b
 r1 cache v =
-  case readCache cache (toKey v) of Just x -> x
-                                    Nothing -> applyV cache v
+  case readCache cache (getKey v) of Just x -> x
+                                     Nothing -> applyV cache v
 
 applyV :: Cache -> V b -> b
 applyV cache (V0 {..}) = val
@@ -127,28 +134,28 @@ incer = Named "incer" (+1)
 incer_r = Named "incer_r" (\_ x -> x-1)
 
 anInt :: V Int
-anInt = V0 { val = 10 }
+anInt = v0 10
 
 twelve :: V Int
-twelve = V0 { val = 12 }
+twelve = v0 12
 
 nextInt :: V Int
-nextInt = V1 { for = incer, rev = incer_r, arg1_0 = anInt }
+nextInt = v1 incer incer_r anInt
 
 nextNextInt :: V Int
-nextNextInt = V1 { for = incer, rev = incer_r, arg1_0 = nextInt }
+nextNextInt = v1 incer incer_r nextInt
 
 showN :: Show a => Named (a -> String)
 showN = Named "show" show
 
-showNextInt :: V String
-showNextInt = V1 { for = showN, rev = noRev, arg1_0 = nextInt }
+-- showNextInt :: V String
+-- showNextInt = v1 showN noRev nextInt
 
 plusN :: Named (Int -> Int -> Int)
 plusN = Named "+" (+)
 
 aSum :: V Int
-aSum = V2 { for2 = plusN, rev2 = noRev, arg2_0 = nextInt, arg2_1 = twelve }
+aSum = v2 plusN noRev nextInt twelve
 
 emptyCache :: Cache
 emptyCache = Cache M.empty
@@ -156,7 +163,7 @@ emptyCache = Cache M.empty
 -- uses the empty cache to evaluate, not the passed-in one
 seedCache :: (Show a, Typeable a) => Cache -> V a -> Cache
 seedCache (Cache m) v = Cache m'
-  where m' = M.insert (toKey v) (toDyn (applyV emptyCache v)) m
+  where m' = M.insert (getKey v) (toDyn (applyV emptyCache v)) m
 
 theCache :: Cache
 theCache = seedCache emptyCache twelve
