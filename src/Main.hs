@@ -91,12 +91,12 @@ propagateWrite cache write = propagateWrites cache [write]
 
 propagateWrites :: Cache -> [Write] -> [Write]
 --propagateWrites cache writes = concat (map (cascade (propagateOnce cache)) writes)
-propagateWrites cache (w:ws) = eesp ("lol", propagateOnce' cache w) $ (w : (eeesp "jfc" bbb))
-  where bbb = eesp "wtf" $ propagateWrites cache $ eeesp "SHIT" ((propagateOnce' cache w) ++ ws)
-propagateWrites cache [] = eeesp "gov" []
+propagateWrites cache (w:ws) = w : ws'
+  where ws' = propagateWrites cache $ (propagateOnce' cache w) ++ ws
+propagateWrites cache [] = []
 
 propagateOnce' :: Cache -> Write -> [Write]
-propagateOnce' c w = eeesp ("um", w) $ propagateOnce c $ eesp "zxcv" w
+propagateOnce' c w = propagateOnce c w
 
 propagateOnce :: Cache -> Write -> [Write]
 propagateOnce cache (Write (V0 {..}) x) = []
