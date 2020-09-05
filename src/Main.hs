@@ -90,10 +90,7 @@ propagateWrite :: Cache -> Write -> [Write]
 propagateWrite cache write = propagateWrites cache [write]
 
 propagateWrites :: Cache -> [Write] -> [Write]
---propagateWrites cache writes = concat (map (cascade (propagateOnce cache)) writes)
-propagateWrites cache (w:ws) = w : ws'
-  where ws' = propagateWrites cache $ (propagateOnce' cache w) ++ ws
-propagateWrites cache [] = []
+propagateWrites cache writes = concat (map (cascade (propagateOnce cache)) writes)
 
 propagateOnce' :: Cache -> Write -> [Write]
 propagateOnce' c w = propagateOnce c w
