@@ -1,5 +1,6 @@
 --{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -13,6 +14,115 @@ import Data.Maybe (fromJust)
 
 import Hash
 import Util
+
+-- data F0 a = F0 a
+-- data F1 a b = F1 (Named (a -> b)) (Named (a -> b) -> a)
+-- data F2 a b c = F2 (Named (a -> b -> c)) (Named (a -> b -> c -> (a, b)))
+-- data VV a where
+--   VV0 :: F0 a -> VV a
+--   VV1 :: F1 a b -> VV a -> VV b
+--   VV2 :: F2 a b c -> VV a -> VV b -> VV c
+
+-- Collection of Writes?
+data DW = DW [Write]
+data Write = forall a. Write (VV a) a
+
+data FF i o where
+  FF0 :: String -> (() -> a) -> (a -> () -> DW) -> FF () a
+  FF1 :: String -> ((a) -> b) -> (b -> (a) -> DW) -> FF (a) b
+  FF2 :: String -> ((a, b) -> c) -> (c -> (a, b) -> DW) -> FF (a, b) c
+  -- FF0 :: () -> b -> FF () b
+  -- FF1 :: (a) -> b -> FF (a) b
+  -- FF2 :: (a, b) -> c -> FF (a, b) c
+  -- FF3 :: (a, b, c) -> d -> FF (a, b, c) d
+
+data W = W { anInt :: Int }
+world :: W
+world = W { anInt = 12 }
+
+data VV a = forall i. VV (FF i a) i
+
+ten :: VV Int
+-- Gonna leave this undefined rev because I'm not sure that a constant that
+-- doesn't come from the World actually exists?
+ten = VV (FF0 "ten" (\() -> (10::Int)) undefined) ()
+
+_anInt :: FF W Int
+_anInt = FF1 "_anInt" anInt undefined
+
+__anInt :: VV Int
+__anInt = VV _anInt world
+
+r :: W -> VV a -> a
+r w (VV (FF0 _ for rev) i) = for i
+r w (VV (FF1 _ for rev) i) = for i
+r w (VV (FF2 _ for rev) i) = for i
+
+main = do
+  msp $ r world ten
+  msp $ r world __anInt
+  msp "hi"
+
+
+{-
+{-
+infixr 9 -->
+data (-->) a b = F { for :: a -> b
+                   , rev :: a -> b -> a }
+arity2 :: a --> b --> c
+arity2 :: a --> (b --> c)
+arity2 = F { for :: a -> (b --> c)
+           , rev :: a -> (b --> c) -> a  -- actual
+           , rev :: a -> b -> c -> (a, b)  -- desired
+           , rev :: a -> (b -> c -> b) -> a  -- just the rev part, we're getting a b and an a here, sorta (a b)
+
+-- What we want
+whatWeWant :: (a -> b -> c -> (a, b)) -> (a -> (b --> c) -> a, b -> c -> b)
+
+b --> c is
+b -> c
+b -> c -> b
+
+Given
+(a -> b -> c -> (a, b))
+If we are given an a, we have
+(b -> c -> (a, b))
+We can discard the output a and then have
+(b -> c -> b)
+
+The forward direction is easy; given
+a -> b -> c
+And an a, we get
+b -> c
+
+The remaining mystery is how to get a -> b -> a from this:
+(a -> b -> c -> (a, b))
+We need a c; once we have that we can just drop the output b (just like we discared the output a, earlier).
+And what we actually have for the first rev is
+a -> (b --> c) -> a
+And we want a -> b -> a.
+but this
+a -> (b --> c) -> a
+is really this
+a -> (b -> c, b -> c -> b) -> a
+
+We do write a c to the second stage, and with b->c->b we can get a b that we need for a->b->a
+
+The first stage isn't really bidirectional; we aren't writing a modified bidi
+to it, but that's what the type looks like, if this is to be compositional and
+symmetrical.
+
+Once we've partially applied to a, we have something that no longer has a in it
+-- it's not possible to expose a write to that. This is solved using
+-- existentials: a Write has no paramters, and that seems to work fine.
+
+The reverse type could be changed from a->b->a to a->b->[Write], in which case
+we can hide writes of other types in there too. We're basically doing that now.
+
+a -> b
+a -> b -> DW -- DW == [Write]
+a -> (b -> c)
+-}
 
 data Key = Key String
   deriving (Eq, Ord, Show)
@@ -45,6 +155,15 @@ instance Show (Named a) where
 
 instance Keyable (Named a) where
   toKey (Named s _) = Key $ hash $ "(Named " ++ s ++ ")"
+
+-- -- Combine just the bidi into one thing
+-- data F1 b a = F1 { for' :: Named (b -> a), rev' :: Named (b -> a -> b) }
+-- -- apply-like
+-- uhpply :: (Show b, Keyable a, Typeable b) => F1 b a -> V b -> V a
+-- uhpply (F1 {..}) vb = v1 for' rev' vb
+-- -- make it function-like
+-- liftF1 :: (Show b, Keyable a, Typeable b) => F1 b a -> (V b -> V a)
+-- liftF1 = uhpply
 
 -- Show here is for development, it should be removed.
 data V a = V0 { key0 :: Key
@@ -184,3 +303,4 @@ main = do
   -- msp $ r1 theCache showNextInt
   -- msp $ r1 theCache aSum
   msp "hi"
+-}
