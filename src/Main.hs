@@ -30,9 +30,10 @@ data F a b = F (a -> b)
 infixr 9 -->
 type (-->) a b = V (F a b)
 
-lift :: (a -> b) -> V (F a b)
+lift :: (a -> b) -> (a --> b)
 lift f = Const (F f)
-lift2 :: (a -> b -> c) -> V (F a (F b c))
+-- Not quite, this should be a --> b --> c
+lift2 :: (a -> b -> c) -> (a --> (F b c))
 lift2 f  = Const (F (\a -> F (\b -> f a b)))
 
 world :: W
