@@ -39,49 +39,49 @@ instance Show a => Show (V a) where
   show (App vf va) = "(App " ++ (show vf) ++ " " ++ (show va) ++ ")"
   show Root = "(W)"
 
----- TODO don't like having app2
----- TODO this requires that 'r' not be passed a world, so the changing World isn't a part of any computation
---app2 :: (Show a, Show b) => V (V (F a b)) -> V a -> V b
-----app2 f x | TR.trace (show ("app2", f, x)) False = undefined
---app2 (Const vf) vx = app vf vx
-----app2 app@(App vf va) vb = App (r undefined app) vb
-----app2 app@(App vf va) vb = App app vb
---app2 app@(App vf va) vb = App (argh app) vb
----- app is (V (V (F a b))) but should be (V (F a b))
----- ("app2",(App (Const (Fun bother)) (App (Const (Fun _anInt)) (W))),(App (Const (Fun _aString)) (W)))
-----         (App (V (F a~Int b~(String->String)))          (V a~Int))
+data Write = forall a. Write (V a) a
+data DW = DW [Write]
+instance Monoid DW where
+  mempty = DW []
+instance Semigroup DW where
+  DW ws0 <> DW ws1 = DW (ws0 ++ ws1)
 
-data F a b = F String (a -> b)
+data F a b = F String (a -> b) (a -> b -> DW)
 instance Show (F a b) where
-  show (F name _) = "(Fun " ++ name ++ ")"
+  show (F name _ _) = "(Fun " ++ name ++ ")"
 
 infixr 9 -->
 type (-->) a b = V (F a b)
 
 -- TODO can lift2 be written in terms of lift?
-lift :: String -> (a -> b) -> (a --> b)
-lift name f = Const (F name f)
+lift :: String -> (a -> b) -> (a -> b -> DW) -> (a --> b)
+lift name f r = Const (F name f r)
 -- Not quite, this should be a --> b --> c
-lift2 :: String -> (a -> b -> c) -> (a --> (F b c))
-lift2 name f  = Const (F name (\a -> (F (name ++ "'2") (\b -> f a b))))
+lift2 :: String -> (a -> b -> c) -> (a -> b -> c -> DW) -> (a --> (F b c))
+lift2 name f r = Const (F name
+                          (\a -> (F (name ++ "'2")
+                                    (\b -> f a b)
+                                    (\b -> r a b)))
+                          undefined)
+--lift2 name f r = Const (F name (\a -> (F (name ++ "'2") (\b -> f a b) r)))
 
 vworld :: V W
 vworld = Root
 
 _anInt :: W --> Int
-_anInt = lift "_anInt" anInt
+_anInt = lift "_anInt" anInt undefined
 
 __anInt :: V Int
 __anInt = app _anInt vworld
 
 _aString :: W --> String
-_aString = lift "_aString" aString
+_aString = lift "_aString" aString undefined
 
 __aString :: V String
 __aString = app _aString vworld
 
 incer :: Int --> Int
-incer = lift "incer" (+1)
+incer = lift "incer" (+1) (\_ i -> DW 
 
 __nextInt :: V Int
 __nextInt = app incer __anInt
@@ -98,7 +98,7 @@ r :: W -> V a -> a
 r w (Const x) = x
 r w Root = w
 --r w (App (F f) v) = f (r w v)
-r w (App vf vx) = case r w vf of F _ f -> f (r w vx)
+r w (App vf vx) = case r w vf of F _ f _ -> f (r w vx)
 --r :: V a -> a
 --r (Const x) = x
 ----r w (App (F f) v) = f (r w v)
