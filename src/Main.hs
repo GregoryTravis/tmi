@@ -5,6 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
@@ -26,6 +27,9 @@ app = App
 
 data F a b = F (a -> b)
 
+infixr 9 -->
+type (-->) a b = V (F a b)
+
 lift :: (a -> b) -> V (F a b)
 lift f = Const (F f)
 lift2 :: (a -> b -> c) -> V (F a (F b c))
@@ -37,25 +41,26 @@ world = W { anInt = 12, aString = "asdf" }
 vworld :: V W
 vworld = Const world
 
-_anInt :: V (F W Int)
+_anInt :: W --> Int
 _anInt = lift anInt
 
 __anInt :: V Int
 __anInt = app _anInt vworld
 
-_aString :: V (F W String)
+_aString :: W --> String
 _aString = lift aString
 
 __aString :: V String
 __aString = app _aString vworld
 
-incer :: F Int Int
-incer = F (+1)
+incer :: Int --> Int
+incer = lift (+1)
 
 __nextInt :: V Int
-__nextInt = app (Const incer) __anInt
+__nextInt = app incer __anInt
 
-bother :: V (F Int (F String String))
+-- Not quite, this should be Int --> String --> String
+bother :: Int --> F String String
 bother = lift2 (\i s -> (show i) ++ s)
 
 both :: V String
