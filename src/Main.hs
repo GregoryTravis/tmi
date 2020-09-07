@@ -13,28 +13,48 @@ import Data.Dynamic
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
 --import GHC.Generics hiding (V1)
+--import qualified Debug.Trace as TR
 
 import Hash
 import Util
 
 data W = W { anInt :: Int, aString :: String }
+  deriving Show
 
 data V b where
-  --Const :: V W
   Const :: a -> V a
-  App :: V (F a b) -> V a -> V b
+  App :: (Show a, Show b) => V (F a b) -> V a -> V b
+
+app :: (Show a, Show b) => V (F a b) -> V a -> V b
 app = App
 
-data F a b = F (a -> b)
+instance Show a => Show (V a) where
+  show (Const x) = "(Const " ++ show x ++ ")"
+  show (App vf va) = "(App " ++ (show vf) ++ " " ++ (show va) ++ ")"
+
+-- TODO don't like having app2
+-- TODO this requires that 'r' not be passed a world, so the changing World isn't a part of any computation
+app2 :: (Show a, Show b) => V (V (F a b)) -> V a -> V b
+--app2 f x | TR.trace (show ("app2", f, x)) False = undefined
+app2 (Const vf) vx = app vf vx
+--app2 app@(App vf va) vb = App app vb
+-- app is (V (V (F a b))) but should be (V (F a b))
+--("app2",(App (Const (Fun bother)) (App (Const (Fun _anInt)) (Const W {anInt = 12, aString = "asdf"}))),(App (Const (Fun _aString)) (Const W {anInt = 12, aString = "asdf"})))
+--        (App (V (F a~Int b~(String->String)))          (V a~Int))
+
+data F a b = F String (a -> b)
+instance Show (F a b) where
+  show (F name _) = "(Fun " ++ name ++ ")"
 
 infixr 9 -->
 type (-->) a b = V (F a b)
 
-lift :: (a -> b) -> (a --> b)
-lift f = Const (F f)
+-- TODO can lift2 be written in terms of lift?
+lift :: String -> (a -> b) -> (a --> b)
+lift name f = Const (F name f)
 -- Not quite, this should be a --> b --> c
-lift2 :: (a -> b -> c) -> (a --> (F b c))
-lift2 f  = Const (F (\a -> F (\b -> f a b)))
+lift2 :: String -> (a -> b -> c) -> (a --> b --> c)
+lift2 name f  = Const (F name (\a -> Const (F (name ++ "'2") (\b -> f a b))))
 
 world :: W
 world = W { anInt = 12, aString = "asdf" }
@@ -43,34 +63,38 @@ vworld :: V W
 vworld = Const world
 
 _anInt :: W --> Int
-_anInt = lift anInt
+_anInt = lift "_anInt" anInt
 
 __anInt :: V Int
 __anInt = app _anInt vworld
 
 _aString :: W --> String
-_aString = lift aString
+_aString = lift "_aString" aString
 
 __aString :: V String
 __aString = app _aString vworld
 
 incer :: Int --> Int
-incer = lift (+1)
+incer = lift "incer" (+1)
 
 __nextInt :: V Int
 __nextInt = app incer __anInt
 
 -- Not quite, this should be Int --> String --> String
-bother :: Int --> F String String
-bother = lift2 (\i s -> (show i) ++ s)
+bother :: Int --> String --> String
+bother = lift2 "bother" (\i s -> (show i) ++ s)
 
 both :: V String
-both = app (app bother __anInt) __aString
+both = app2 (app bother __anInt) __aString
 
 r :: W -> V a -> a
 r w (Const x) = x
 --r w (App (F f) v) = f (r w v)
-r w (App vf vx) = case r w vf of F f -> f (r w vx)
+r w (App vf vx) = case r w vf of F _ f -> f (r w vx)
+--r :: V a -> a
+--r (Const x) = x
+----r w (App (F f) v) = f (r w v)
+--r (App vf vx) = case r vf of F _ f -> f (r vx)
 
 main = do
   msp $ r world __anInt
