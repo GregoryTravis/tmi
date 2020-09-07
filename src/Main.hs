@@ -16,6 +16,44 @@ import Data.Maybe (fromJust)
 import Hash
 import Util
 
+data W = W { anInt :: Int, aString :: String }
+
+data V b where
+  Const :: V W
+  App :: (F a b) -> (V a) -> V b
+
+data F a b = F (a -> b)
+
+world :: W
+world = W { anInt = 12, aString = "asdf" }
+
+vworld :: V W
+vworld = Const
+
+_anInt :: F W Int
+_anInt = F anInt
+
+__anInt :: V Int
+__anInt = App _anInt vworld
+
+incer :: F Int Int
+incer = F (+1)
+
+__nextInt :: V Int
+__nextInt = App incer __anInt
+
+-- both :: VV String
+-- both = App (FF2 "both" (\(i, s) -> show i ++ s) (\_ -> (120, "zxcv")) (__anInt, __aString)
+r :: W -> V a -> a
+r w Const = w
+r w (App (F f) v) = f (r w v)
+
+main = do
+  msp $ r world __anInt
+  msp $ r world __nextInt
+  msp "hi"
+
+{-
 -- data F0 a = F0 a
 -- data F1 a b = F1 (Named (a -> b)) (Named (a -> b) -> a)
 -- data F2 a b c = F2 (Named (a -> b -> c)) (Named (a -> b -> c -> (a, b)))
@@ -97,6 +135,7 @@ main = do
   msp $ r world __aString
   msp $ r world both
   msp "hi"
+-}
 
 {-
 {-
