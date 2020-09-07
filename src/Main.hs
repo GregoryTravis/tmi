@@ -22,27 +22,34 @@ data W = W { anInt :: Int, aString :: String }
   deriving Show
 
 data V b where
-  Root :: V W
-  Const :: a -> V a
-  App :: (Show a, Show b) => V (F a b) -> V a -> V b
+  Root :: V W  -- Technically, the only value that just exists, that isn't produced somehow
+  Const :: a -> V a  -- For globals/constants that spiritually exist in the world but are just constant haskell values
+  App :: (Show a, Show b) => V (F a b) -> V a -> V b  -- Produce a value from a previous value
 
 app :: (Show a, Show b) => V (F a b) -> V a -> V b
 app = App
+
+argh :: Show a => V (V a) -> V a
+argh x | TR.trace (show ("argh", x)) False = undefined
+argh x = undefined
+-- (App (Const (Fun bother)) (App (Const (Fun _anInt)) (W)))
 
 instance Show a => Show (V a) where
   show (Const x) = "(Const " ++ show x ++ ")"
   show (App vf va) = "(App " ++ (show vf) ++ " " ++ (show va) ++ ")"
   show Root = "(W)"
 
--- TODO don't like having app2
--- TODO this requires that 'r' not be passed a world, so the changing World isn't a part of any computation
-app2 :: (Show a, Show b) => V (V (F a b)) -> V a -> V b
-app2 f x | TR.trace (show ("app2", f, x)) False = undefined
-app2 (Const vf) vx = app vf vx
---app2 app@(App vf va) vb = App (r undefined app) vb
--- app is (V (V (F a b))) but should be (V (F a b))
---("app2",(App (Const (Fun bother)) (App (Const (Fun _anInt)) (Const W {anInt = 12, aString = "asdf"}))),(App (Const (Fun _aString)) (Const W {anInt = 12, aString = "asdf"})))
---        (App (V (F a~Int b~(String->String)))          (V a~Int))
+---- TODO don't like having app2
+---- TODO this requires that 'r' not be passed a world, so the changing World isn't a part of any computation
+--app2 :: (Show a, Show b) => V (V (F a b)) -> V a -> V b
+----app2 f x | TR.trace (show ("app2", f, x)) False = undefined
+--app2 (Const vf) vx = app vf vx
+----app2 app@(App vf va) vb = App (r undefined app) vb
+----app2 app@(App vf va) vb = App app vb
+--app2 app@(App vf va) vb = App (argh app) vb
+---- app is (V (V (F a b))) but should be (V (F a b))
+---- ("app2",(App (Const (Fun bother)) (App (Const (Fun _anInt)) (W))),(App (Const (Fun _aString)) (W)))
+----         (App (V (F a~Int b~(String->String)))          (V a~Int))
 
 data F a b = F String (a -> b)
 instance Show (F a b) where
@@ -55,8 +62,8 @@ type (-->) a b = V (F a b)
 lift :: String -> (a -> b) -> (a --> b)
 lift name f = Const (F name f)
 -- Not quite, this should be a --> b --> c
-lift2 :: String -> (a -> b -> c) -> (a --> b --> c)
-lift2 name f  = Const (F name (\a -> Const (F (name ++ "'2") (\b -> f a b))))
+lift2 :: String -> (a -> b -> c) -> (a --> (F b c))
+lift2 name f  = Const (F name (\a -> (F (name ++ "'2") (\b -> f a b))))
 
 vworld :: V W
 vworld = Root
@@ -80,11 +87,12 @@ __nextInt :: V Int
 __nextInt = app incer __anInt
 
 -- Not quite, this should be Int --> String --> String
-bother :: Int --> String --> String
+bother :: Int --> (F String String)
 bother = lift2 "bother" (\i s -> (show i) ++ s)
+rah = app bother __anInt
 
 both :: V String
-both = app2 (app bother __anInt) __aString
+both = app (app bother __anInt) __aString
 
 r :: W -> V a -> a
 r w (Const x) = x
