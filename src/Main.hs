@@ -19,29 +19,32 @@ import Util
 data W = W { anInt :: Int, aString :: String }
 
 data V b where
-  Const :: V W
-  App :: (F a b) -> (V a) -> V b
+  --Const :: V W
+  Const :: a -> V a
+  App :: V (F a b) -> V a -> V b
 app = App
 
 data F a b = F (a -> b)
 
-lift2 :: (a -> b -> c) -> F a (F b c)
-lift2 f  = F (\a -> F (\b -> f a b))
+lift :: (a -> b) -> V (F a b)
+lift f = Const (F f)
+lift2 :: (a -> b -> c) -> V (F a (F b c))
+lift2 f  = Const (F (\a -> F (\b -> f a b)))
 
 world :: W
 world = W { anInt = 12, aString = "asdf" }
 
 vworld :: V W
-vworld = Const
+vworld = Const world
 
-_anInt :: F W Int
-_anInt = F anInt
+_anInt :: V (F W Int)
+_anInt = lift anInt
 
 __anInt :: V Int
 __anInt = app _anInt vworld
 
-_aString :: F W String
-_aString = F aString
+_aString :: V (F W String)
+_aString = lift aString
 
 __aString :: V String
 __aString = app _aString vworld
@@ -50,23 +53,24 @@ incer :: F Int Int
 incer = F (+1)
 
 __nextInt :: V Int
-__nextInt = app incer __anInt
+__nextInt = app (Const incer) __anInt
 
-bother :: F Int (F String String)
+bother :: V (F Int (F String String))
 bother = lift2 (\i s -> (show i) ++ s)
 
---both :: V String
---both = app (app bother __anInt) __aString
-rah = app bother __anInt
+both :: V String
+both = app (app bother __anInt) __aString
 
 r :: W -> V a -> a
-r w Const = w
-r w (App (F f) v) = f (r w v)
+r w (Const x) = x
+--r w (App (F f) v) = f (r w v)
+r w (App vf vx) = case r w vf of F f -> f (r w vx)
 
 main = do
   msp $ r world __anInt
   msp $ r world __nextInt
   msp $ r world __aString
+  msp $ r world both
   msp "hi"
 
 {-
