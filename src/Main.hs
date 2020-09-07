@@ -4,6 +4,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Main where
 
@@ -27,42 +28,75 @@ import Util
 data DW = DW [Write]
 data Write = forall a. Write (VV a) a
 
+class Lifty a where
+  type Lifted a
+
+data Single a = Single a
+  deriving Show
+instance Lifty (Single a) where
+  type Lifted (Single a) = VV a
+instance Lifty (a, b) where
+  type Lifted (a, b) = (VV a, VV b)
+
+-- No, don't use DW here, just return the values; the caller can pack them into a DW
 data FF i o where
-  FF0 :: String -> (() -> a) -> (a -> () -> DW) -> FF () a
-  FF1 :: String -> ((a) -> b) -> (b -> (a) -> DW) -> FF (a) b
+  --FF0 :: String -> (() -> a) -> (a -> () -> DW) -> FF () a
+  -- FF0 :: String -> FF () a
+  FF1 :: String -> ((a) -> b) -> (b -> (a) -> DW) -> FF (Single a) b
   FF2 :: String -> ((a, b) -> c) -> (c -> (a, b) -> DW) -> FF (a, b) c
-  -- FF0 :: () -> b -> FF () b
-  -- FF1 :: (a) -> b -> FF (a) b
-  -- FF2 :: (a, b) -> c -> FF (a, b) c
-  -- FF3 :: (a, b, c) -> d -> FF (a, b, c) d
 
-data W = W { anInt :: Int }
+data W = W { anInt :: Int, aString :: String }
 world :: W
-world = W { anInt = 12 }
+world = W { anInt = 12, aString = "asdf" }
 
-data VV a = forall i. VV (FF i a) i
+-- I want e.g. i to be (b, c), but the thing at the end is (VV b, VV c).
+-- Maybe a type family?
+data VV a = forall i. App (FF i a) (Lifted i) | Base a
+
+worldVV :: VV W
+worldVV = Base world
 
 ten :: VV Int
--- Gonna leave this undefined rev because I'm not sure that a constant that
--- doesn't come from the World actually exists?
-ten = VV (FF0 "ten" (\() -> (10::Int)) undefined) ()
+ten = Base 10
+-- -- Gonna leave this undefined rev because I'm not sure that a constant that
+-- -- doesn't come from the World actually exists?
+-- ten = VV (FF0 "ten" (\() -> (10::Int)) undefined) ()
 
-_anInt :: FF W Int
+_anInt :: FF (Single W) Int
 _anInt = FF1 "_anInt" anInt undefined
 
 __anInt :: VV Int
-__anInt = VV _anInt world
+__anInt = App _anInt worldVV
 
+incer :: FF (Single Int) Int
+incer = FF1 "incer" (+1) undefined
+
+__nextInt :: VV Int
+__nextInt = App incer __anInt
+
+_aString :: FF (Single W) String
+_aString = FF1 "_aString" aString undefined
+
+__aString :: VV String
+__aString = App _aString worldVV
+
+both :: VV String
+both = App (FF2 "both" (\(i, s) -> show i ++ s) undefined) (__anInt, __aString)
+
+-- This doesn't use the w param!
 r :: W -> VV a -> a
-r w (VV (FF0 _ for rev) i) = for i
-r w (VV (FF1 _ for rev) i) = for i
-r w (VV (FF2 _ for rev) i) = for i
+--r w (VV (FF0 _) i) = r w i
+r w (Base a) = a
+r w (App (FF1 _ for rev) iv) = for (r w iv)
+r w (App (FF2 _ for rev) (iva, ivb)) = for ((r w iva), (r w ivb))
 
 main = do
   msp $ r world ten
   msp $ r world __anInt
+  msp $ r world __nextInt
+  msp $ r world __aString
+  msp $ r world both
   msp "hi"
-
 
 {-
 {-
