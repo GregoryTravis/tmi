@@ -21,6 +21,63 @@ import Util
 data W = W { anInt :: Int, aString :: String }
   deriving Show
 
+-- Contains a hash or fake hash
+data Key = Key String
+  deriving (Eq, Ord)
+
+class Keyable a where
+  toKey :: a -> Key
+
+-- compositeKey :: Keyable a => [a] -> Key
+-- compositeKey keyables = Key $ hash $ concat $ map (\(Key s) -> s) $ map toKey keyables
+compositeKey :: [Key] -> Key
+compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
+
+-- Values amenable to TMI.
+-- Show in here for development, should remove
+class (Show a, Typeable a) => Nice a
+
+data ValueCache = ValueCache (M.Map Key Dynamic)
+readCache :: Nice a => ValueCache -> V a -> a
+readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)))
+
+data Write = forall a. Write (V a) a
+data DW = DW [Write]
+
+-- Need to support:
+-- - give me a list of your arguments (as Keys)
+-- - please pull values for your arguments from this map/fn, compute your output, and return it
+-- - please pull values for your arguments from this map/fn, take a new output to compute new values for your arguments, and return those wrapped as writes
+data V a = forall args. V { getKey :: Key
+                          , getArgKeys :: [Key]
+                          , runForward :: ValueCache -> a
+                          , runReverse :: ValueCache -> a -> DW }
+instance Keyable (V a) where
+  toKey v = getKey v
+
+data F2 a b c = F2 String (a -> b -> c) (a -> b -> c -> (a, b))
+instance Keyable (F2 a b c) where
+  toKey (F2 name _ _) = Key (hash name)
+
+lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
+lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
+                                 , getArgKeys = [getKey va, getKey vb]
+                                 , runForward
+                                 , runReverse }
+  where runForward cache = let a = readCache cache va
+                               b = readCache cache vb
+                            in for a b
+        runReverse cache c' = let a = readCache cache va
+                                  b = readCache cache vb
+                                  (a', b') = rev a b c'
+                               in DW [Write va a', Write vb b']
+
+main = do
+  let world :: W
+      world = W { anInt = 12, aString = "asdf" }
+  msp "hi"
+
+{-
 data V b where
   Root :: V W  -- Technically, the only value that just exists, that isn't produced somehow
   Const :: a -> V a  -- For globals/constants that spiritually exist in the world but are just constant haskell values
@@ -436,4 +493,5 @@ main = do
   -- msp $ r1 theCache showNextInt
   -- msp $ r1 theCache aSum
   msp "hi"
+-}
 -}
