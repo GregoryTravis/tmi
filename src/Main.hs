@@ -55,9 +55,24 @@ data V a = forall args. V { getKey :: Key
 instance Keyable (V a) where
   toKey v = getKey v
 
+data F a b = F String (a -> b) (a -> b -> a)
+instance Keyable (F a b) where
+  toKey (F name _ _) = Key (hash name)
+
 data F2 a b c = F2 String (a -> b -> c) (a -> b -> c -> (a, b))
 instance Keyable (F2 a b c) where
   toKey (F2 name _ _) = Key (hash name)
+
+lift :: (Nice a, Nice b) => F a b -> (V a -> V b)
+lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
+                              , getArgKeys = [getKey va]
+                              , runForward
+                              , runReverse }
+  where runForward cache = let a = readCache cache va
+                            in for a
+        runReverse cache b' = let a = readCache cache va
+                                  a' = rev a b'
+                               in DW [Write va a']
 
 lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
 lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
