@@ -117,12 +117,21 @@ _anInt :: V W -> V Int
 _anInt = lift $ F "anInt" anInt anInt_r
   where anInt_r w i = w { anInt = i }
 
+incer :: F Int Int
+incer = F "incer" (+1) (\_ x -> x-1)
+
+nextInt = lift incer
+
 main = do
   let world :: W
       world = W { anInt = 12, aString = "asdf" }
   let vw = makeRoot world
       cache = writeCache emptyValueCache vw world
       vai = _anInt vw
-  msp $ runForward vai cache 
+      vni = nextInt vai
+  msp $ runForward vai cache
   msp $ runReverse vai cache 120
+  let cache' = writeCache cache vai (runForward vai cache)
+  msp $ runForward vni cache'
+  msp $ runReverse vni cache' 130
   msp "hi"
