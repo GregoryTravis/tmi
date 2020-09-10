@@ -20,6 +20,14 @@ import qualified Debug.Trace as TR
 import Hash
 import Util
 
+{-
+
+Punt: aside from the working stuff at the top here, below is a series of
+increasingly misguided attempts to try to avoid having to treat different arity
+nodes differently.
+
+-}
+
 data W = W { anInt :: Int, aString :: String }
   deriving (Show, Typeable)
 instance Nice W
