@@ -28,7 +28,7 @@ instance Nice String
 
 -- Contains a hash or fake hash
 data Key = Key String
-  deriving (Eq, Ord)
+  deriving (Show, Eq, Ord)
 
 class Keyable a where
   toKey :: a -> Key
@@ -45,13 +45,16 @@ class (Show a, Typeable a) => Nice a
 data ValueCache = ValueCache (M.Map Key Dynamic)
 readCache :: Nice a => ValueCache -> V a -> a
 readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)))
-writeCache :: Nice a => ValueCache -> Key -> a -> ValueCache
-writeCache (ValueCache m) k v = ValueCache m'
-  where m' = M.insert k (toDyn v) m
+writeCache :: Nice a => ValueCache -> V a -> a -> ValueCache
+writeCache (ValueCache m) v x = ValueCache m'
+  where m' = M.insert (getKey v) (toDyn x) m
 emptyValueCache = ValueCache M.empty
 
-data Write = forall a. Write (V a) a
+data Write = forall a. Show a => Write (V a) a
+instance Show Write where
+  show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
 data DW = DW [Write]
+  deriving Show
 
 -- Need to support:
 -- - give me a list of your arguments (as Keys)
@@ -61,19 +64,22 @@ data V a = forall args. V { getKey :: Key
                           , getArgKeys :: [Key]
                           , runForward :: ValueCache -> a
                           , runReverse :: ValueCache -> a -> DW }
+instance Show (V a) where
+  show (V {..}) = "(V " ++ show getKey ++ " " ++ show getArgKeys ++ ")"
 instance Keyable (V a) where
   toKey v = getKey v
 
 -- This is the only way to make a V without applying an F to an existing one
 makeRoot :: W -> V W
 makeRoot w =
+  -- Recursive use of this v
   let v = V { getKey = worldKey
             , getArgKeys = []
             , runForward = \cache -> readCache cache v
-            , runReverse = error "Cannot write to the root" }
+            , runReverse = \cache w -> DW [Write v w] }
    in v
 worldKey :: Key
-worldKey = Key "d41d8cd98f00b204e9800998ecf8427e"  -- md5 hash of empty string
+worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any V
 
 data F a b = F String (a -> b) (a -> b -> a)
 instance Keyable (F a b) where
@@ -114,10 +120,11 @@ _anInt = lift $ F "anInt" anInt anInt_r
 main = do
   let world :: W
       world = W { anInt = 12, aString = "asdf" }
-  let cache = writeCache emptyValueCache worldKey world
-      vw = makeRoot world
+  let vw = makeRoot world
+      cache = writeCache emptyValueCache vw world
       vai = _anInt vw
-  msp $ runForward  vai cache 
+  msp $ runForward vai cache 
+  msp $ runReverse vai cache 120
   msp "hi"
 
 {-
