@@ -1,11 +1,13 @@
 --{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Main where
 
@@ -19,7 +21,10 @@ import Hash
 import Util
 
 data W = W { anInt :: Int, aString :: String }
-  deriving Show
+  deriving (Show, Typeable)
+instance Nice W
+instance Nice Int
+instance Nice String
 
 -- Contains a hash or fake hash
 data Key = Key String
@@ -40,6 +45,10 @@ class (Show a, Typeable a) => Nice a
 data ValueCache = ValueCache (M.Map Key Dynamic)
 readCache :: Nice a => ValueCache -> V a -> a
 readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)))
+writeCache :: Nice a => ValueCache -> Key -> a -> ValueCache
+writeCache (ValueCache m) k v = ValueCache m'
+  where m' = M.insert k (toDyn v) m
+emptyValueCache = ValueCache M.empty
 
 data Write = forall a. Write (V a) a
 data DW = DW [Write]
@@ -54,6 +63,17 @@ data V a = forall args. V { getKey :: Key
                           , runReverse :: ValueCache -> a -> DW }
 instance Keyable (V a) where
   toKey v = getKey v
+
+-- This is the only way to make a V without applying an F to an existing one
+makeRoot :: W -> V W
+makeRoot w =
+  let v = V { getKey = worldKey
+            , getArgKeys = []
+            , runForward = \cache -> readCache cache v
+            , runReverse = error "Cannot write to the root" }
+   in v
+worldKey :: Key
+worldKey = Key "d41d8cd98f00b204e9800998ecf8427e"  -- md5 hash of empty string
 
 data F a b = F String (a -> b) (a -> b -> a)
 instance Keyable (F a b) where
@@ -87,9 +107,17 @@ lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toK
                                   (a', b') = rev a b c'
                                in DW [Write va a', Write vb b']
 
+_anInt :: V W -> V Int
+_anInt = lift $ F "anInt" anInt anInt_r
+  where anInt_r w i = w { anInt = i }
+
 main = do
   let world :: W
       world = W { anInt = 12, aString = "asdf" }
+  let cache = writeCache emptyValueCache worldKey world
+      vw = makeRoot world
+      vai = _anInt vw
+  msp $ runForward  vai cache 
   msp "hi"
 
 {-
