@@ -58,8 +58,6 @@ updateValueCache = undefined
 data Write = forall a. Show a => Write (V a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
-data DW = DW [Write]
-  deriving Show
 
 -- Need to support:
 -- - give me a list of your arguments (as Keys)
@@ -68,7 +66,7 @@ data DW = DW [Write]
 data V a = forall args. V { getKey :: Key
                           , getArgKeys :: [Key]
                           , runForward :: ValueCache -> a
-                          , runReverse :: ValueCache -> a -> DW }
+                          , runReverse :: ValueCache -> a -> [Write] }
 instance Show (V a) where
   show (V {..}) = "(V " ++ show getKey ++ " " ++ show getArgKeys ++ ")"
 instance Keyable (V a) where
@@ -81,7 +79,7 @@ makeRoot =
   let v = V { getKey = worldKey
             , getArgKeys = []
             , runForward = \cache -> readCache cache v
-            , runReverse = \cache w -> DW [Write v w] }
+            , runReverse = \cache w -> [Write v w] }
    in v
 worldKey :: Key
 worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any V
@@ -103,7 +101,7 @@ lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
                             in for a
         runReverse cache b' = let a = readCache cache va
                                   a' = rev a b'
-                               in DW [Write va a']
+                               in [Write va a']
 
 lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
 lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
@@ -116,7 +114,7 @@ lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toK
         runReverse cache c' = let a = readCache cache va
                                   b = readCache cache vb
                                   (a', b') = rev a b c'
-                               in DW [Write va a', Write vb b']
+                               in [Write va a', Write vb b']
 
 _anInt :: V W -> V Int
 _anInt = lift $ F "anInt" anInt anInt_r
@@ -131,14 +129,14 @@ data History = History [ValueCache]
   deriving Show
 
 initHistory :: W -> History
-initHistory w = updateHistory fauxEmptyHistory (DW [Write makeRoot w])
+initHistory w = updateHistory fauxEmptyHistory [Write makeRoot w]
   where -- This is 'faux' because the initial value cache has nothing in it,
         -- which is fine because it doesn't need to be read
         fauxEmptyHistory = History [emptyValueCache]
 
-updateHistory :: History -> DW -> History
+updateHistory :: History -> [Write] -> History
 updateHistory (History []) _ = error "updateHistory: empty history"
-updateHistory (History vcs) (DW writes) = History (vcs ++ [vc'])
+updateHistory (History vcs) writes = History (vcs ++ [vc'])
   where allWrites = assertWritesOk $ propagateWrites mostRecentValueCache writes
         mostRecentValueCache = last vcs
         vc' = updateValueCache mostRecentValueCache allWrites
