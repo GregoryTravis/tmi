@@ -165,6 +165,10 @@ propagateWrite :: ValueCache -> Write -> [Write]
 --propagateWrite _ w | trace ("propagateWrite", w) = undefined
 propagateWrite vc (Write v x) = runReverse v vc x
 
+r :: Nice a => History -> V a -> a
+r (History []) _ = error "r: empty history"
+r (History vcs) v = readCache (last vcs) v
+
 main = do
   noBuffering
   let world :: W
@@ -180,13 +184,5 @@ main = do
   msp vni
   msp write
   msp h'
-  -- let vw = makeRoot
-  --     cache = writeCache emptyValueCache vw world
-  --     vai = _anInt vw
-  --     vni = nextInt vai
-  -- msp $ runForward vai cache
-  -- msp $ runReverse vai cache 120
-  -- let cache' = writeCache cache vai (runForward vai cache)
-  -- msp $ runForward vni cache'
-  -- msp $ runReverse vni cache' 130
+  msp $ r h vw
   msp "hi"
