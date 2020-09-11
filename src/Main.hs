@@ -15,7 +15,6 @@ import Data.Dynamic
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
 --import GHC.Generics hiding (V1)
-import qualified Debug.Trace as TR
 
 import Hash
 import Util
@@ -86,7 +85,7 @@ makeRoot =
   let v = V { getKey = worldKey
             , getArgKeys = []
             , runForward = \cache -> readCache cache v
-            , runReverse = \cache w -> [Write v w] }
+            , runReverse = \_ _ -> [] }
    in v
 worldKey :: Key
 worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any V
@@ -142,6 +141,7 @@ initHistory w = updateHistory fauxEmptyHistory [Write makeRoot w]
         fauxEmptyHistory = History [emptyValueCache]
 
 updateHistory :: History -> [Write] -> History
+--updateHistory _ ws | trace ("updateHistory", ws) = undefined
 updateHistory (History []) _ = error "updateHistory: empty history"
 updateHistory (History vcs) writes = History (vcs ++ [vc'])
   where allWrites = assertWritesOk $ propagateWrites mostRecentValueCache writes
@@ -156,23 +156,37 @@ checkWrites :: [Write] -> Bool
 checkWrites ws = True
  
 propagateWrites :: ValueCache -> [Write] -> [Write]
+--propagateWrites _ ws | trace ("propagateWrites", ws) = undefined
 propagateWrites cache [] = []
 propagateWrites cache (w:ws) = w : ws'
   where ws' = propagateWrites cache (propagateWrite cache w ++ ws)
 
 propagateWrite :: ValueCache -> Write -> [Write]
+--propagateWrite _ w | trace ("propagateWrite", w) = undefined
 propagateWrite vc (Write v x) = runReverse v vc x
 
 main = do
+  noBuffering
   let world :: W
       world = W { anInt = 12, aString = "asdf" }
-  let vw = makeRoot
-      cache = writeCache emptyValueCache vw world
+      h = initHistory world
+      vw = makeRoot
       vai = _anInt vw
       vni = nextInt vai
-  msp $ runForward vai cache
-  msp $ runReverse vai cache 120
-  let cache' = writeCache cache vai (runForward vai cache)
-  msp $ runForward vni cache'
-  msp $ runReverse vni cache' 130
+      write = Write vni 130
+      h' = updateHistory h [write]
+  msp vw
+  msp vai
+  msp vni
+  msp write
+  msp h'
+  -- let vw = makeRoot
+  --     cache = writeCache emptyValueCache vw world
+  --     vai = _anInt vw
+  --     vni = nextInt vai
+  -- msp $ runForward vai cache
+  -- msp $ runReverse vai cache 120
+  -- let cache' = writeCache cache vai (runForward vai cache)
+  -- msp $ runForward vni cache'
+  -- msp $ runReverse vni cache' 130
   msp "hi"
