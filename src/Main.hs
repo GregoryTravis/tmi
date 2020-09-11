@@ -43,12 +43,17 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 class (Show a, Typeable a) => Nice a
 
 data ValueCache = ValueCache (M.Map Key Dynamic)
+  deriving Show
 readCache :: Nice a => ValueCache -> V a -> a
 readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)))
 writeCache :: Nice a => ValueCache -> V a -> a -> ValueCache
 writeCache (ValueCache m) v x = ValueCache m'
   where m' = M.insert (getKey v) (toDyn x) m
 emptyValueCache = ValueCache M.empty
+
+-- Does not check that the set of writes is ok
+updateValueCache :: ValueCache -> [Write] -> ValueCache
+updateValueCache = undefined
 
 data Write = forall a. Show a => Write (V a) a
 instance Show Write where
@@ -70,8 +75,8 @@ instance Keyable (V a) where
   toKey v = getKey v
 
 -- This is the only way to make a V without applying an F to an existing one
-makeRoot :: W -> V W
-makeRoot w =
+makeRoot :: V W
+makeRoot =
   -- Recursive use of this v
   let v = V { getKey = worldKey
             , getArgKeys = []
@@ -122,10 +127,41 @@ incer = F "incer" (+1) (\_ x -> x-1)
 
 nextInt = lift incer
 
+data History = History [ValueCache]
+  deriving Show
+
+initHistory :: W -> History
+initHistory w = updateHistory fauxEmptyHistory (DW [Write makeRoot w])
+  where -- This is 'faux' because the initial value cache has nothing in it,
+        -- which is fine because it doesn't need to be read
+        fauxEmptyHistory = History [emptyValueCache]
+
+updateHistory :: History -> DW -> History
+updateHistory (History []) _ = error "updateHistory: empty history"
+updateHistory (History vcs) (DW writes) = History (vcs ++ [vc'])
+  where allWrites = assertWritesOk $ propagateWrites mostRecentValueCache writes
+        mostRecentValueCache = last vcs
+        vc' = updateValueCache mostRecentValueCache allWrites
+
+assertWritesOk :: [Write] -> [Write]
+assertWritesOk writes = assertM "checkWrites" (checkWrites writes) writes
+
+-- TODO diagnostics, like # of repeated but same writes
+checkWrites :: [Write] -> Bool
+checkWrites = undefined
+ 
+propagateWrites :: ValueCache -> [Write] -> [Write]
+propagateWrites cache [] = []
+propagateWrites cache (w:ws) = w : ws'
+  where ws' = propagateWrites cache (propagateWrite cache w ++ ws)
+
+propagateWrite :: ValueCache -> Write -> [Write]
+propagateWrite = undefined
+
 main = do
   let world :: W
       world = W { anInt = 12, aString = "asdf" }
-  let vw = makeRoot world
+  let vw = makeRoot
       cache = writeCache emptyValueCache vw world
       vai = _anInt vw
       vni = nextInt vai
