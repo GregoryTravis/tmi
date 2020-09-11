@@ -20,7 +20,7 @@ import Hash
 import Util
 
 data W = W { anInt :: Int, aString :: String }
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 instance Nice W
 instance Nice Int
 instance Nice String
@@ -38,8 +38,8 @@ compositeKey :: [Key] -> Key
 compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 -- Values amenable to TMI.
--- Show in here for development, should remove
-class (Show a, Typeable a) => Nice a
+-- Eq, Show in here for development, should remove.
+class (Eq a, Show a, Typeable a) => Nice a
 
 data ValueCache = ValueCache (M.Map Key Dynamic)
   deriving Show
@@ -179,10 +179,12 @@ main = do
       vni = nextInt vai
       write = Write vni 130
       h' = updateHistory h [write]
-  msp vw
-  msp vai
-  msp vni
-  msp write
-  msp h'
-  msp $ r h vw
+  let writes = propagateWrites (case h of History vcs -> last vcs) [write]
+  msp writes
+  -- msp vw
+  -- msp vai
+  -- msp vni
+  -- msp write
+  -- msp h'
+  -- msp $ r h vw
   msp "hi"
