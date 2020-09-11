@@ -49,13 +49,20 @@ readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)
 writeCache :: Nice a => ValueCache -> V a -> a -> ValueCache
 writeCache (ValueCache m) v x = ValueCache m'
   where m' = M.insert (getKey v) (toDyn x) m
+writeCacheWrite :: ValueCache -> Write -> ValueCache
+writeCacheWrite vc (Write v x) = writeCache vc v x
 emptyValueCache = ValueCache M.empty
+valueCacheUnion :: ValueCache -> ValueCache -> ValueCache
+valueCacheUnion (ValueCache m0) (ValueCache m1) = ValueCache $ m0 `M.union` m1
 
 -- Does not check that the set of writes is ok
 updateValueCache :: ValueCache -> [Write] -> ValueCache
-updateValueCache = undefined
+updateValueCache vc writes = vc `valueCacheUnion` (writesToValueCache writes)
 
-data Write = forall a. Show a => Write (V a) a
+writesToValueCache :: [Write] -> ValueCache
+writesToValueCache writes = foldl writeCacheWrite emptyValueCache writes
+
+data Write = forall a. (Show a, Nice a) => Write (V a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
 
@@ -146,7 +153,7 @@ assertWritesOk writes = assertM "checkWrites" (checkWrites writes) writes
 
 -- TODO diagnostics, like # of repeated but same writes
 checkWrites :: [Write] -> Bool
-checkWrites = undefined
+checkWrites ws = True
  
 propagateWrites :: ValueCache -> [Write] -> [Write]
 propagateWrites cache [] = []
@@ -154,7 +161,7 @@ propagateWrites cache (w:ws) = w : ws'
   where ws' = propagateWrites cache (propagateWrite cache w ++ ws)
 
 propagateWrite :: ValueCache -> Write -> [Write]
-propagateWrite = undefined
+propagateWrite vc (Write v x) = runReverse v vc x
 
 main = do
   let world :: W
