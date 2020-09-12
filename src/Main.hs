@@ -11,6 +11,7 @@
 
 module Main where
 
+import Data.Containers.ListUtils
 import Data.Dynamic
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
@@ -42,26 +43,11 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 -- Eq, Show in here for development, should remove.
 class (Eq a, Show a, Typeable a) => Nice a
 
-data ValueCache = ValueCache (M.Map Key Dynamic)
+data ValueCache = ValueCache (V W) Dynamic
   deriving Show
 readCache :: Nice a => ValueCache -> V a -> a
-readCache (ValueCache m) v = fromJust $ fromDynamic (fromJust (m M.!? (getKey v)))
-writeCache :: Nice a => ValueCache -> V a -> a -> ValueCache
-writeCache (ValueCache m) v x = ValueCache m'
-  where m' = M.insert (getKey v) (toDyn x) m
-writeCacheWrite :: ValueCache -> Write -> ValueCache
-writeCacheWrite vc (Write v x) = writeCache vc v x
-emptyValueCache = ValueCache M.empty
-valueCacheUnion :: ValueCache -> ValueCache -> ValueCache
-valueCacheUnion (ValueCache m0) (ValueCache m1) = ValueCache $ m0 `M.union` m1
-
--- Does not check that the set of writes is ok
-updateValueCache :: ValueCache -> [Write] -> ValueCache
-updateValueCache vc writes = vc `valueCacheUnion` (writesToValueCache writes)
-
-writesToValueCache :: [Write] -> ValueCache
-writesToValueCache writes = foldl writeCacheWrite emptyValueCache writes
-
+readCache vc@(ValueCache vw w) v | getKey v == getKey vw = fromJust $ fromDynamic w
+                                 | otherwise = runForward v vc
 data Write = forall a. (Show a, Nice a) => Write (V a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
@@ -149,30 +135,34 @@ nextInt = lift incer
 bother :: V Int -> V String -> V (Int, String)
 bother = lift2 $ F2 "bother" (,) (\_ _ (i, s) -> (i, s))  -- Yeah I wanted to write it out
 
-data History = History [ValueCache]
+data History = History [W]
   deriving Show
 
 initHistory :: W -> History
-initHistory w = updateHistory fauxEmptyHistory [Write makeRoot w]
-  where -- This is 'faux' because the initial value cache has nothing in it,
-        -- which is fine because it doesn't need to be read
-        fauxEmptyHistory = History [emptyValueCache]
+initHistory w = History [w]
 
 updateHistory :: History -> [Write] -> History
 --updateHistory _ ws | trace ("updateHistory", ws) = undefined
 updateHistory (History []) _ = error "updateHistory: empty history"
-updateHistory (History vcs) writes = History (vcs ++ [vc'])
-  where allWrites = assertWritesOk $ propagateWrites mostRecentValueCache writes
-        mostRecentValueCache = last vcs
-        vc' = updateValueCache mostRecentValueCache allWrites
+updateHistory (History ws) writes = History (ws ++ [w])
+  where w = checkAndGetW $ propagateWrites vc writes
+        vc = ValueCache makeRoot (toDyn (last ws))
 
-assertWritesOk :: [Write] -> [Write]
-assertWritesOk writes = assertM "checkWrites" (checkWrites writes) writes
+-- Check that there is only one disinct write for each node, and that there is
+-- one such right for the root, and return that.
+-- Even more restrictive: there should only be one write for each node.
+checkAndGetW :: [Write] -> W
+checkAndGetW writes = assertM "checkAndGetW" ok w
+  where ok = length keys == length uniqueKeys
+        keys :: [Key]
+        keys = map get writes
+        uniqueKeys :: [Key]  -- Not sure why I had to break this out
+        uniqueKeys = nubOrd keys
+        get (Write v x) = getKey v
+        w :: W
+        w = case filter isW writes of [Write vx w] -> (fromJust . fromDynamic . toDyn) w
+        isW (Write v x) = getKey v == getKey makeRoot
 
--- TODO diagnostics, like # of repeated but same writes
-checkWrites :: [Write] -> Bool
-checkWrites ws = True
- 
 propagateWrites :: ValueCache -> [Write] -> [Write]
 --propagateWrites _ ws | trace ("propagateWrites", ws) = undefined
 propagateWrites cache [] = []
@@ -185,7 +175,8 @@ propagateWrite vc (Write v x) = runReverse v vc x
 
 r :: Nice a => History -> V a -> a
 r (History []) _ = error "r: empty history"
-r (History vcs) v = readCache (last vcs) v
+r (History ws) v = readCache vc v
+  where vc = ValueCache makeRoot (toDyn (last ws))
 
 main = do
   noBuffering
@@ -203,11 +194,19 @@ main = do
   -- msp writes
   let hmm :: M.Map Wrapped Int
       hmm = M.insert (wrapV vai) 88 (M.insert (wrapV vboth) 99 M.empty)
-  msp vw
-  msp vai
-  msp vni
-  msp vboth
+  -- msp vw
+  -- msp vai
+  -- msp vni
+  -- msp vboth
   -- msp write
-  -- msp h'
-  -- msp $ r h vw
+  msp $ r h vw
+  msp $ r h vai
+  msp $ r h vas
+  msp $ r h vni
+  msp $ r h vboth
+  msp $ r h' vw
+  msp $ r h' vai
+  msp $ r h' vas
+  msp $ r h' vni
+  msp $ r h' vboth
   msp "hi"
