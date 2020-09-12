@@ -81,6 +81,13 @@ instance Eq (V a) where
 instance Ord (V a) where
   compare x y = compare (getKey x) (getKey y)
 
+data Wrapped = forall a. Nice a => Wrapped a (a -> Key)
+
+instance Eq Wrapped where
+  (Wrapped x f) == (Wrapped x' f') = (f x) == (f' x')
+instance Ord Wrapped where
+  compare (Wrapped x f) (Wrapped x' f') = compare (f x) (f' x')
+
 -- This is the only way to make a V without applying an F to an existing one
 makeRoot :: V W
 makeRoot =
