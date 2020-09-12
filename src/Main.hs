@@ -43,11 +43,11 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 -- Eq, Show in here for development, should remove.
 class (Eq a, Show a, Typeable a) => Nice a
 
-data ValueCache = ValueCache (V W) Dynamic
+data Evaluator = Evaluator (V W) Dynamic
   deriving Show
-readCache :: Nice a => ValueCache -> V a -> a
-readCache vc@(ValueCache vw w) v | getKey v == getKey vw = fromJust $ fromDynamic w
-                                 | otherwise = runForward v vc
+evaluate :: Nice a => Evaluator -> V a -> a
+evaluate evaluator@(Evaluator vw w) v | getKey v == getKey vw = fromJust $ fromDynamic w
+                                      | otherwise = runForward v evaluator
 data Write = forall a. (Show a, Nice a) => Write (V a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
@@ -57,8 +57,8 @@ instance Show Write where
 -- - please pull values for your arguments from this map/fn, compute your output, and return it
 -- - please pull values for your arguments from this map/fn, take a new output to compute new values for your arguments, and return those wrapped as writes
 data V a = forall args. V { getKey :: Key
-                          , runForward :: ValueCache -> a
-                          , runReverse :: ValueCache -> a -> [Write] }
+                          , runForward :: Evaluator -> a
+                          , runReverse :: Evaluator -> a -> [Write] }
 instance Show (V a) where
   show (V {..}) = "(V " ++ show getKey ++ ")"
 instance Keyable (V a) where
@@ -83,7 +83,7 @@ makeRoot :: V W
 makeRoot =
   -- Recursive use of this v
   let v = V { getKey = worldKey
-            , runForward = \cache -> readCache cache v
+            , runForward = \cache -> evaluate cache v
             , runReverse = \_ _ -> [] }
    in v
 worldKey :: Key
@@ -101,9 +101,9 @@ lift :: (Nice a, Nice b) => F a b -> (V a -> V b)
 lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
                               , runForward
                               , runReverse }
-  where runForward cache = let a = readCache cache va
+  where runForward cache = let a = evaluate cache va
                             in for a
-        runReverse cache b' = let a = readCache cache va
+        runReverse cache b' = let a = evaluate cache va
                                   a' = rev a b'
                                in [Write va a']
 
@@ -111,11 +111,11 @@ lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
 lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
                                  , runForward
                                  , runReverse }
-  where runForward cache = let a = readCache cache va
-                               b = readCache cache vb
+  where runForward cache = let a = evaluate cache va
+                               b = evaluate cache vb
                             in for a b
-        runReverse cache c' = let a = readCache cache va
-                                  b = readCache cache vb
+        runReverse cache c' = let a = evaluate cache va
+                                  b = evaluate cache vb
                                   (a', b') = rev a b c'
                                in [Write va a', Write vb b']
 
@@ -145,8 +145,8 @@ updateHistory :: History -> [Write] -> History
 --updateHistory _ ws | trace ("updateHistory", ws) = undefined
 updateHistory (History []) _ = error "updateHistory: empty history"
 updateHistory (History ws) writes = History (ws ++ [w])
-  where w = checkAndGetW $ propagateWrites vc writes
-        vc = ValueCache makeRoot (toDyn (last ws))
+  where w = checkAndGetW $ propagateWrites evaluator writes
+        evaluator = Evaluator makeRoot (toDyn (last ws))
 
 -- Check that there is only one disinct write for each node, and that there is
 -- one such right for the root, and return that.
@@ -163,20 +163,20 @@ checkAndGetW writes = assertM "checkAndGetW" ok w
         w = case filter isW writes of [Write vx w] -> (fromJust . fromDynamic . toDyn) w
         isW (Write v x) = getKey v == getKey makeRoot
 
-propagateWrites :: ValueCache -> [Write] -> [Write]
+propagateWrites :: Evaluator -> [Write] -> [Write]
 --propagateWrites _ ws | trace ("propagateWrites", ws) = undefined
 propagateWrites cache [] = []
 propagateWrites cache (w:ws) = w : ws'
   where ws' = propagateWrites cache (propagateWrite cache w ++ ws)
 
-propagateWrite :: ValueCache -> Write -> [Write]
+propagateWrite :: Evaluator -> Write -> [Write]
 --propagateWrite _ w | trace ("propagateWrite", w) = undefined
-propagateWrite vc (Write v x) = runReverse v vc x
+propagateWrite evaluator (Write v x) = runReverse v evaluator x
 
 r :: Nice a => History -> V a -> a
 r (History []) _ = error "r: empty history"
-r (History ws) v = readCache vc v
-  where vc = ValueCache makeRoot (toDyn (last ws))
+r (History ws) v = evaluate evaluator v
+  where evaluator = Evaluator makeRoot (toDyn (last ws))
 
 main = do
   noBuffering
