@@ -135,8 +135,8 @@ incer = F "incer" (+1) (\_ x -> x-1)
 
 nextInt = lift incer
 
-bother :: V Int -> V String -> V String
-bother = lift2 $ F2 "bother" (\i s -> (show i) ++ s) (\_ _ _ -> (99, "fakey"))
+bother :: V Int -> V String -> V (Int, String)
+bother = lift2 $ F2 "bother" (,) (\_ _ (i, s) -> (i, s))  -- Yeah I wanted to write it out
 
 data History = History [ValueCache]
   deriving Show
