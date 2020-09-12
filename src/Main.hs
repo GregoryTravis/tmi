@@ -11,6 +11,7 @@
 
 module Main where
 
+import Control.Monad.State hiding (lift)
 import Data.Containers.ListUtils
 import Data.Dynamic
 import qualified Data.Map.Strict as M
@@ -182,6 +183,23 @@ r (History []) _ = error "r: empty history"
 r (History ws) v = evaluate evaluator v
   where evaluator = Evaluator makeRoot (toDyn (last ws))
 
+type TMI = StateT History IO ()
+
+infix 4 <--
+(<--) :: Nice a => V a -> a -> TMI
+v <-- x = do
+  history <- get
+  let history' = updateHistory history [Write v x]
+  put history'
+  return ()
+
+--rr :: Nice a => V a -> a
+
+tmiRun :: W -> TMI -> IO History
+tmiRun world action = do
+  ((), history) <- runStateT action (History [world])
+  return history
+
 main = do
   noBuffering
   let world :: W
@@ -213,4 +231,7 @@ main = do
   msp $ r h' vas
   msp $ r h' vni
   msp $ r h' vboth
+  h' <- tmiRun world $ do
+          vni <-- 30
+  msp $ r h' vni
   msp "hi"

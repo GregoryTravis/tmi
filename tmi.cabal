@@ -25,6 +25,7 @@ executable tmi
                        containers,
                        directory,
                        cryptohash-md5,
+                       mtl,
                        pretty-simple,
                        random,
                        text,
