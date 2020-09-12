@@ -24,6 +24,7 @@ data W = W { anInt :: Int, aString :: String }
 instance Nice W
 instance Nice Int
 instance Nice String
+instance (Nice a, Nice b) => Nice (a, b)
 
 -- Contains a hash or fake hash
 data Key = Key String
@@ -81,12 +82,15 @@ instance Eq (V a) where
 instance Ord (V a) where
   compare x y = compare (getKey x) (getKey y)
 
-data Wrapped = forall a. Nice a => Wrapped a (a -> Key)
+data Wrapped = forall a. Wrapped a (a -> Key)
 
 instance Eq Wrapped where
   (Wrapped x f) == (Wrapped x' f') = (f x) == (f' x')
 instance Ord Wrapped where
   compare (Wrapped x f) (Wrapped x' f') = compare (f x) (f' x')
+
+wrapV :: Nice a => V a -> Wrapped
+wrapV v = Wrapped v getKey
 
 -- This is the only way to make a V without applying an F to an existing one
 makeRoot :: V W
@@ -197,6 +201,8 @@ main = do
       h' = updateHistory h [write]
   -- let writes = propagateWrites (case h of History vcs -> last vcs) [write]
   -- msp writes
+  let hmm :: M.Map Wrapped Int
+      hmm = M.insert (wrapV vai) 88 (M.insert (wrapV vboth) 99 M.empty)
   msp vw
   msp vai
   msp vni
