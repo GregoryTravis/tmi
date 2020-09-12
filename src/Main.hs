@@ -76,6 +76,10 @@ instance Show (V a) where
   show (V {..}) = "(V " ++ show getKey ++ ")"
 instance Keyable (V a) where
   toKey v = getKey v
+instance Eq (V a) where
+  x == y = getKey x  == getKey y
+instance Ord (V a) where
+  compare x y = compare (getKey x) (getKey y)
 
 -- This is the only way to make a V without applying an F to an existing one
 makeRoot :: V W
