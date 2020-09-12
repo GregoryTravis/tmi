@@ -57,10 +57,11 @@ instance Show Write where
 -- - please pull values for your arguments from this map/fn, compute your output, and return it
 -- - please pull values for your arguments from this map/fn, take a new output to compute new values for your arguments, and return those wrapped as writes
 data V a = forall args. V { getKey :: Key
+                          , getArgKeys :: [Key]
                           , runForward :: Evaluator -> a
                           , runReverse :: Evaluator -> a -> [Write] }
 instance Show (V a) where
-  show (V {..}) = "(V " ++ show getKey ++ ")"
+  show (V {..}) = "(V " ++ show getKey ++ " " ++ show getArgKeys ++ ")"
 instance Keyable (V a) where
   toKey v = getKey v
 instance Eq (V a) where
@@ -83,6 +84,7 @@ makeRoot :: V W
 makeRoot =
   -- Recursive use of this v
   let v = V { getKey = worldKey
+            , getArgKeys = []
             , runForward = \cache -> evaluate cache v
             , runReverse = \_ _ -> [] }
    in v
@@ -99,6 +101,7 @@ instance Keyable (F2 a b c) where
 
 lift :: (Nice a, Nice b) => F a b -> (V a -> V b)
 lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
+                              , getArgKeys = [getKey va]
                               , runForward
                               , runReverse }
   where runForward cache = let a = evaluate cache va
@@ -109,6 +112,7 @@ lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
 
 lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
 lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
+                                 , getArgKeys = [getKey va, getKey vb]
                                  , runForward
                                  , runReverse }
   where runForward cache = let a = evaluate cache va
