@@ -183,22 +183,25 @@ r (History []) _ = error "r: empty history"
 r (History ws) v = evaluate evaluator v
   where evaluator = Evaluator makeRoot (toDyn (last ws))
 
-type TMI = StateT History IO ()
+type TMI a = StateT History IO a
 
 infix 4 <--
-(<--) :: Nice a => V a -> a -> TMI
+(<--) :: Nice a => V a -> a -> TMI ()
 v <-- x = do
   history <- get
   let history' = updateHistory history [Write v x]
   put history'
   return ()
 
---rr :: Nice a => V a -> a
+rr :: Nice a => V a -> TMI a
+rr v = do
+  history <- get
+  return $ r history v
 
-tmiRun :: W -> TMI -> IO History
+tmiRun :: W -> TMI a -> IO a
 tmiRun world action = do
-  ((), history) <- runStateT action (History [world])
-  return history
+  (x, history) <- runStateT action (History [world])
+  return x
 
 main = do
   noBuffering
@@ -231,7 +234,9 @@ main = do
   msp $ r h' vas
   msp $ r h' vni
   msp $ r h' vboth
-  h' <- tmiRun world $ do
-          vni <-- 30
+  tmiRun world $ do
+    vni <-- 30
+    ai <- rr vai
+    liftIO $ msp ("hey", ai)
   msp $ r h' vni
   msp "hi"
