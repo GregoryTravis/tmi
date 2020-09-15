@@ -22,7 +22,7 @@ import Hash
 import Util
 
 data W = W { anInt :: Int, aString :: String }
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Read, Show, Typeable)
 instance Nice W
 instance Nice Int
 instance Nice String
@@ -141,7 +141,7 @@ bother :: V Int -> V String -> V (Int, String)
 bother = lift2 $ F2 "bother" (,) (\_ _ (i, s) -> (i, s))  -- Yeah I wanted to write it out
 
 data History = History [W]
-  deriving Show
+  deriving (Read, Show)
 
 initHistory :: W -> History
 initHistory w = History [w]
@@ -200,7 +200,22 @@ rr v = do
 
 tmiRun :: W -> TMI a -> IO a
 tmiRun world action = do
-  (x, history) <- runStateT action (History [world])
+  (x, _) <- tmiRunHistory (History [world]) action
+  return x
+
+tmiRunHistory :: History -> TMI a -> IO (a, History)
+tmiRunHistory history action = do
+  runStateT action history
+
+-- Loads the initial state from a file, and saves the final state back to the
+-- file when done.
+persistentTmiRun :: FilePath -> TMI a -> IO a
+persistentTmiRun historyFile action = do
+  fileContents <- readFile historyFile
+  let history :: History
+      history = read fileContents
+  (x, history) <- tmiRunHistory history action
+  writeFile historyFile (show history)
   return x
 
 main = do
@@ -234,9 +249,15 @@ main = do
   msp $ r h' vas
   msp $ r h' vni
   msp $ r h' vboth
+  writeFile "history" (show (History [world]))
   tmiRun world $ do
     vni <-- 30
     ai <- rr vai
     liftIO $ msp ("hey", ai)
   msp $ r h' vni
+  msp "hi"
+  persistentTmiRun "history" $ do
+    vni <-- 30
+    ai <- rr vai
+    liftIO $ msp ("hey", ai)
   msp "hi"
