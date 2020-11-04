@@ -1,6 +1,9 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -14,6 +17,7 @@ module Tmi
 , Write(..)
 , lift
 , lift2
+, History(..)
 ) where
 
 import Data.Dynamic
@@ -31,8 +35,6 @@ instance (Nice a, Nice b) => Nice (a, b)
 data Write = forall a. (Show a, Nice a) => Write (V a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
-
-data Evaluator
 
 -- Contains a hash or fake hash
 data Key = Key String
@@ -56,8 +58,8 @@ class (Eq a, Show a, Typeable a) => Nice a
 -- - please pull values for your arguments from this map/fn, take a new output to compute new values for your arguments, and return those wrapped as writes
 data V a = forall args. V { getKey :: Key
                           , getArgKeys :: [Key]
-                          , runForward :: Evaluator -> a
-                          , runReverse :: Evaluator -> a -> [Write] }
+                          , runForward :: History W -> a
+                          , runReverse :: History W -> a -> [Write] }
 instance Show (V a) where
   show (V {..}) = "(V " ++ show getKey ++ " " ++ show getArgKeys ++ ")"
 instance Keyable (V a) where
@@ -88,11 +90,27 @@ instance Keyable (F2 a b c) where
 lift :: (Nice a, Nice b) => F a b -> (V a -> V b)
 lift f@(F _ for rev) va = V { getKey = compositeKey [toKey f, toKey va]
                               , getArgKeys = [getKey va]
-                              , runForward = undefined
-                              , runReverse = undefined }
+                              , runForward 
+                              , runReverse }
+  where runForward history = let a = readV history va
+                              in for a
+        runReverse history b' = let a = readV history va
+                                    a' = rev a b'
+                                 in [Write va a']
 
 lift2 :: (Nice a, Nice b) => F2 a b c -> (V a -> V b -> V c)
 lift2 f@(F2 _ for rev) va vb = V { getKey = compositeKey [toKey f, toKey va, toKey vb]
                                  , getArgKeys = [getKey va, getKey vb]
-                                 , runForward = undefined
-                                 , runReverse = undefined }
+                                 , runForward
+                                 , runReverse }
+  where runForward history = let a = readV history va
+                                 b = readV history vb
+                              in for a b
+        runReverse history c' = let a = readV history va
+                                    b = readV history vb
+                                    (a', b') = rev a b c'
+                                 in [Write va a', Write vb b']
+
+data History w = History
+  { readV :: forall a. V a -> a }
+  -- , writeV :: forall a. V a -> a -> Write }
