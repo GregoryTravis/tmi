@@ -20,17 +20,7 @@ import Hash
 import Tmi
 import Util
 
--- This is the only way to make a V without applying an F to an existing one
-makeRoot :: V W
-makeRoot =
-  -- Recursive use of this v
-  let v = V { getKey = worldKey
-            , getArgKeys = []
-            , runForward = undefined
-            , runReverse = undefined }
-   in v
-worldKey :: Key
-worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any V
+type V = VV
 
 _anInt :: V W -> V Int
 _anInt = lift $ F "anInt" anInt anInt_r
