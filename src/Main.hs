@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -30,7 +31,12 @@ instance Nice Int
 instance Nice String
 instance (Nice a, Nice b) => Nice (a, b)
 
-type V a = VV W a
+data UndefinedHistory w
+instance History UndefinedHistory W where
+  init = undefined
+  readV = undefined
+
+type V a = VV UndefinedHistory W a
 
 _anInt :: V W -> V Int
 _anInt = lift $ F "anInt" anInt anInt_r
