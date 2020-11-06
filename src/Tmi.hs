@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Tmi
-( VV(..)
+( VV
 , F(..)
 , F2(..)
 , Key(..)
