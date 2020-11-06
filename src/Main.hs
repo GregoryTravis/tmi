@@ -1,11 +1,13 @@
 --{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Main where
 
@@ -16,11 +18,20 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust)
 --import GHC.Generics hiding (V1)
 
+import Data.Dynamic
+
 import Hash
 import Tmi
 import Util
 
-type V = VV
+data W = W { anInt :: Int, aString :: String }
+  deriving (Eq, Read, Show, Typeable)
+instance Nice W
+instance Nice Int
+instance Nice String
+instance (Nice a, Nice b) => Nice (a, b)
+
+type V a = VV W a
 
 _anInt :: V W -> V Int
 _anInt = lift $ F "anInt" anInt anInt_r

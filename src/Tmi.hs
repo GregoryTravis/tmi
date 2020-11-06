@@ -12,13 +12,13 @@ module Tmi
 , F(..)
 , F2(..)
 , Key(..)
-, W(..)
 , Wrapped
 , Write(..)
 , lift
 , lift2
 , History(..)
 , makeRoot
+, Nice
 ) where
 
 import Data.Dynamic
@@ -26,14 +26,7 @@ import Data.Dynamic
 import Hash
 import Util
 
-data W = W { anInt :: Int, aString :: String }
-  deriving (Eq, Read, Show, Typeable)
-instance Nice W
-instance Nice Int
-instance Nice String
-instance (Nice a, Nice b) => Nice (a, b)
-
-data Write = forall a. (Show a, Nice a) => Write (VV a) a
+data Write = forall a w. (Show a, Nice a) => Write (VV w a) a
 instance Show Write where
   show (Write v x) = "(Write " ++ show v ++ " " ++ show x ++ ")"
 
@@ -57,17 +50,17 @@ class (Eq a, Show a, Typeable a) => Nice a
 -- - give me a list of your arguments (as Keys)
 -- - please pull values for your arguments from this map/fn, compute your output, and return it
 -- - please pull values for your arguments from this map/fn, take a new output to compute new values for your arguments, and return those wrapped as writes
-data VV a = forall args. VV { getKey :: Key
+data VV w a = forall args. VV { getKey :: Key
                           , getArgKeys :: [Key]
-                          , runForward :: History W -> a
-                          , runReverse :: History W -> a -> [Write] }
-instance Show (VV a) where
+                          , runForward :: History w -> a
+                          , runReverse :: History w -> a -> [Write] }
+instance Show (VV w a) where
   show (VV {..}) = "(VV " ++ show getKey ++ " " ++ show getArgKeys ++ ")"
-instance Keyable (VV a) where
+instance Keyable (VV w a) where
   toKey v = getKey v
-instance Eq (VV a) where
+instance Eq (VV w a) where
   x == y = getKey x  == getKey y
-instance Ord (VV a) where
+instance Ord (VV w a) where
   compare x y = compare (getKey x) (getKey y)
 
 data Wrapped = forall a. Wrapped a (a -> Key)
@@ -77,7 +70,7 @@ instance Eq Wrapped where
 instance Ord Wrapped where
   compare (Wrapped x f) (Wrapped x' f') = compare (f x) (f' x')
 
-wrapVV :: Nice a => VV a -> Wrapped
+wrapVV :: Nice a => VV w a -> Wrapped
 wrapVV v = Wrapped v getKey
 
 data F a b = F String (a -> b) (a -> b -> a)
@@ -88,7 +81,7 @@ data F2 a b c = F2 String (a -> b -> c) (a -> b -> c -> (a, b))
 instance Keyable (F2 a b c) where
   toKey (F2 name _ _) = Key (hash name)
 
-lift :: (Nice a, Nice b) => F a b -> (VV a -> VV b)
+lift :: (Nice a, Nice b) => F a b -> (VV w a -> VV w b)
 lift f@(F _ for rev) va = VV { getKey = compositeKey [toKey f, toKey va]
                               , getArgKeys = [getKey va]
                               , runForward 
@@ -99,7 +92,7 @@ lift f@(F _ for rev) va = VV { getKey = compositeKey [toKey f, toKey va]
                                     a' = rev a b'
                                  in [Write va a']
 
-lift2 :: (Nice a, Nice b) => F2 a b c -> (VV a -> VV b -> VV c)
+lift2 :: (Nice a, Nice b) => F2 a b c -> (VV w a -> VV w b -> VV w c)
 lift2 f@(F2 _ for rev) va vb = VV { getKey = compositeKey [toKey f, toKey va, toKey vb]
                                  , getArgKeys = [getKey va, getKey vb]
                                  , runForward
@@ -113,17 +106,17 @@ lift2 f@(F2 _ for rev) va vb = VV { getKey = compositeKey [toKey f, toKey va, to
                                  in [Write va a', Write vb b']
 
 data History w = History
-  { readVV :: forall a. VV a -> a }
-  -- , writeVV :: forall a. VV a -> a -> Write }
+  { readVV :: forall a. VV w a -> a }
+  -- , writeVV :: forall a. VV w a -> a -> Write }
 
 -- This is the only way to make a V without applying an F to an existing one
-makeRoot :: VV W
+makeRoot :: VV w w
 makeRoot =
   -- Recursive use of this v
   let v = VV { getKey = worldKey
-            , getArgKeys = []
-            , runForward = undefined
-            , runReverse = undefined }
+             , getArgKeys = []
+             , runForward = undefined
+             , runReverse = undefined }
    in v
 worldKey :: Key
 worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any VV
