@@ -11,6 +11,16 @@
 
 module Main where
 
+import Hash
+import Tmi
+import Util
+
+main = do
+  let v = mkV 12
+  msp v
+  msp "hi"
+
+{-
 import Control.Monad.State hiding (lift)
 import Data.Containers.ListUtils
 --import Data.Dynamic
@@ -71,3 +81,4 @@ main = do
   -- let hmm :: M.Map Wrapped Int
   --     hmm = M.insert (wrapV vai) 88 (M.insert (wrapV vboth) 99 M.empty)
   msp "hi"
+-}

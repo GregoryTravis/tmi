@@ -8,6 +8,17 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Tmi
+( V
+, mkV
+) where
+
+import Internal
+import Util
+
+mkV :: Int -> V
+mkV = V
+
+{-
 ( VV
 , F(..)
 , F2(..)
@@ -122,3 +133,4 @@ makeRoot =
    in v
 worldKey :: Key
 worldKey = Key (hash "")  -- md5 hash of empty string will probably not collide with any VV
+-}
