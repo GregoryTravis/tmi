@@ -1,4 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Internal
 ( V(..)
@@ -17,5 +19,10 @@ data N =
   N { i :: i
     , o :: o
     , f :: S i o }
+instance Show N where
+  show N {..} = "n"
 
 data V a = V N Int
+  deriving Show
+
+--type a +-> b

@@ -15,8 +15,9 @@ module Tmi
 import Internal
 import Util
 
-mkV :: Int -> V
-mkV = V
+mkV :: Int -> V a
+mkV i = V n i
+  where n = N { i = undefined, o = undefined, f = undefined }
 
 {-
 ( VV
