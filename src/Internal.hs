@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
@@ -25,4 +26,13 @@ instance Show N where
 data V a = V N Int
   deriving Show
 
---type a +-> b
+-- Some currying stuff
+
+data Write = forall a. Show a => Write { showIt :: String }
+data Q a b = Q (a -> ([Write], b))
+
+infixr 0 +->
+type a +-> b = Q a b
+
+foo :: a +-> (b +-> c)
+foo = undefined
