@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}
+--{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -112,16 +113,28 @@ konstV :: Typeable a => a -> V a
 konstV x = V n 0
   where n = konstN x
 
+-- dynMap :: (Typeable a, Typeable b) => (forall a b. a -> b) -> D -> D
+-- dynMap f = map (untype f)
+
 runNForwards :: N -> D
-runNForwards (N {..}) = for n_s args
+runNForwards (N {..}) = for n_s args -- (dynMap r args)
 
 runNBackwards :: N -> D -> D
 runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
 
 data V a = V N Int
+  -- deriving Typeable
 
 r :: Typeable a => V a -> a
 r (V n i) = undy $ (runNForwards n !! i)
+
+-- -- r but dynamic
+-- dynR :: Typeable a => Dynamic -> Dynamic
+-- dynR dva =
+--   let va = undy dva
+--       a = r va
+--       da = dy a
+--    in da
 
 applySD :: S -> D -> N
 applySD s d = N { n_s = s, args = d }
