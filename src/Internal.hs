@@ -142,7 +142,7 @@ hoist2 f va vb =
    in v
 
 anN :: N
---anN = applySD anS [dy (4::Int), dy (6::Int)]
+--anN = applySD anS [dy 4::Int), dy (6::Int)]
 anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
 
 aV :: V Int
@@ -164,13 +164,13 @@ w (V n@(N {..}) i) x =
    --in map (undy) outputs
 
 writ :: D
-writ = w aV (24::Int)
+writ = w aV 24
 writ' :: String
 writ' = show (map dynTypeRep writ)
 writ'' :: String
 writ'' = show $ ((case writ of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
 writ''' :: String
-writ''' = show $ ((case w aV' (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+writ''' = show $ ((case w aV' 260 of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
 avArgs :: String
 avArgs = case anN of N {..} -> dInfo args
 --writ' = show (length writ)
