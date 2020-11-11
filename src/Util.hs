@@ -7,6 +7,7 @@ module Util
 , esp
 , eesp
 , fesp
+, sfesp
 , faresp
 , faaresp
 , faaresp2
@@ -55,6 +56,7 @@ module Util
 , takeLast
 , prefixes
 , cascade
+, upd
 ) where
 
 import Control.Exception
@@ -87,6 +89,11 @@ eesp s a = unsafePerformIO $ do
 fesp :: Show b => (a -> b) -> a -> a
 fesp f a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ f a
+  return a
+
+sfesp :: (Show s, Show b) => s -> (a -> b) -> a -> a
+sfesp s f a = unsafePerformIO $ do
+  putStrLn $ evalString $ show (s, f a)
   return a
 
 -- function, arg, and result
@@ -340,3 +347,8 @@ prefixes (x:xs) = [x] : (map (x:) (prefixes xs))
 -- will loop forever if any value gives rise to itself.
 cascade :: (a -> [a]) -> a -> [a]
 cascade f x = x : concat (map (cascade f) (f x))
+
+upd :: [a] -> Int -> a -> [a]
+upd as i a
+  | i < 0 || i >= length as = error ("upd out of range: " ++ (show i) ++ " vs " ++ (show (length as)))
+  | otherwise = (take i as) ++ [a] ++ (drop (i+1) as)

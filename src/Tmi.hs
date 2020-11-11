@@ -9,7 +9,6 @@
 
 module Tmi
 ( V
---, mkV
 , huh
 ) where
 
