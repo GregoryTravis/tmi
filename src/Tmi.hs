@@ -9,15 +9,16 @@
 
 module Tmi
 ( V
-, mkV
+--, mkV
+, huh
 ) where
 
 import Internal
 import Util
 
-mkV :: Int -> V a
-mkV i = V n i
-  where n = N { i = undefined, o = undefined, f = undefined }
+-- mkV :: Int -> V a
+-- mkV i = V n i
+--   where n = N { i = undefined, o = undefined, f = undefined }
 
 {-
 ( VV

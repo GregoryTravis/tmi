@@ -16,8 +16,9 @@ import Tmi
 import Util
 
 main = do
-  let v = mkV 12
-  msp v
+  -- let v = mkV 12
+  -- msp v
+  msp huh
   msp "hi"
 
 {-
