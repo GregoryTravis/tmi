@@ -35,19 +35,15 @@ dInfo :: D -> String
 dInfo ds = show (map dynTypeRep ds)
 
 liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (D -> D)
-liftFor_1_1 f [dyx] = [untype f dyx]
+--liftFor_1_1 f [dyx] = [untype f dyx]
+liftFor_1_1 f [dyva] = [dy (f (r (undy dyva)))]
 liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (D -> D -> D)
-liftRev_1_1 r [dyoa] [dyb] = [dynb]
-  where dynb = dy nb
-        nb = r oa b
-        oa = undy dyoa
-        b = undy dyb
-
+liftRev_1_1 rev [dyoa] [dyb] = [dy (rev (r (undy dyoa)) (undy dyb))]
 liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (D -> D)
-liftFor_2_1 f [dyx, dyy] = [untype2 f dyx dyy]
+liftFor_2_1 f [dyx, dyy] = [dy (f (r (undy dyx)) (r (undy dyy)))]
 liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (D -> D -> D)
-liftRev_2_1 r [dyx, dyy] [dyz] = [dyx', dyy']
-  where (x', y') = r (undy dyx) (undy dyy) (undy dyz) 
+liftRev_2_1 rev [dyx, dyy] [dyz] = [dyx', dyy']
+  where (x', y') = rev (r (undy dyx)) (r (undy dyy)) (undy dyz) 
         dyx' = dy x'
         dyy' = dy y'
 --liftRev_2_1 r oins outs = error (show ("umm", dInfo oins, dInfo outs))
@@ -82,10 +78,10 @@ pluss :: Int -> Int -> Int
 pluss = (+)
 revPlus :: Int -> Int -> Int -> (Int, Int)
 revPlus _ _ x = split x
-liftedPlus :: D -> D
-liftedPlus = liftFor_2_1 pluss
-liftedRevPlus :: D -> D -> D
-liftedRevPlus = liftRev_2_1 revPlus
+-- liftedPlus :: D -> D
+-- liftedPlus = liftFor_2_1 pluss
+-- liftedRevPlus :: D -> D -> D
+-- liftedRevPlus = liftRev_2_1 revPlus
 plusF :: F2 Int Int Int
 plusF = F2 { ffor2 = pluss, frev2 = revPlus }
 
@@ -128,35 +124,34 @@ data V a = V N Int
 r :: Typeable a => V a -> a
 r (V n i) = undy $ (runNForwards n !! i)
 
--- -- r but dynamic
--- dynR :: Typeable a => Dynamic -> Dynamic
--- dynR dva =
---   let va = undy dva
---       a = r va
---       da = dy a
---    in da
-
 applySD :: S -> D -> N
 applySD s d = N { n_s = s, args = d }
 
--- -- Now we want a typed wrapper created from the typed primitive.
--- -- This should be the only interface to this stuff, since it enforces type
--- -- safety around the dynamic stuff.
--- hoist2 :: F2 a b c -> (V a -> V b -> V c)
--- host2 f va vb =
---   let s :: S
---       s = lift_2_1 f
---       d :: D
---       d = [dy 
---       n :: N
---       n = applySD s d
+-- Now we want a typed wrapper created from the typed primitive.
+-- This should be the only interface to this stuff, since it enforces type
+-- safety around the dynamic stuff.
+hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
+hoist2 f va vb =
+  let s :: S
+      s = lift_2_1 f
+      d :: D
+      d = [dy va, dy vb]
+      n :: N
+      n = applySD s d
+      v = V n 0
+   in v
 
 anN :: N
-anN = applySD anS [dy (4::Int), dy (6::Int)]
---anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
+--anN = applySD anS [dy (4::Int), dy (6::Int)]
+anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
 
 aV :: V Int
 aV = V anN 0
+
+aV' :: V Int
+aV' = hoist2 plusF (konstV (40::Int)) (konstV (60::Int))
+-- Nope, type error (good)
+-- aV'' = hoist2 plusF (konstV (40::Int)) (konstV ("aaa"::String))
 
 w :: Typeable a => V a -> a -> D
 w (V n@(N {..}) i) x =
@@ -174,6 +169,8 @@ writ' :: String
 writ' = show (map dynTypeRep writ)
 writ'' :: String
 writ'' = show $ ((case writ of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+writ''' :: String
+writ''' = show $ ((case w aV' (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
 avArgs :: String
 avArgs = case anN of N {..} -> dInfo args
 --writ' = show (length writ)
@@ -185,4 +182,4 @@ avArgs = case anN of N {..} -> dInfo args
 -- writ' = case writ of [dy] -> undy dy
 
 huh :: String
-huh = show (r aV, writ', writ'')
+huh = show (r aV, r aV', writ', writ'', writ''')
