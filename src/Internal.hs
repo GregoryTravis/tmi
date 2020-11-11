@@ -11,14 +11,21 @@ module Internal
 ) where
 
 import Data.Dynamic
-import Data.Maybe (fromJust) 
+--import Data.Maybe (fromJust) 
 
 import Util
 
+dy :: Typeable a => a -> Dynamic
+dy = toDyn
+undy :: Typeable a => Dynamic -> a
+undy dyn = case fromDynamic dyn of Just x -> x
+                                   Nothing -> error msg
+  where msg = "Can't convert " ++ (show (dynTypeRep dyn)) ++ " to a"
+
 untype :: (Typeable a, Typeable b) => (a -> b) -> (Dynamic -> Dynamic)
-untype f = toDyn . f . fromJust . fromDynamic
+untype f = dy . f . undy
 untype2 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (Dynamic -> Dynamic -> Dynamic)
-untype2 f dyx dyy = toDyn $ f (fromJust $ fromDynamic dyx) (fromJust $ fromDynamic dyy)
+untype2 f dyx dyy = dy $ f (undy dyx) (undy dyy)
 
 --type DynFun = [Dynamic] -> [Dynamic]
 type D = [Dynamic]
@@ -30,18 +37,18 @@ liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (D -> D)
 liftFor_1_1 f [dyx] = [untype f dyx]
 liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (D -> D -> D)
 liftRev_1_1 r [dyoa] [dyb] = [dynb]
-  where dynb = toDyn nb
+  where dynb = dy nb
         nb = r oa b
-        oa = fromJust $ fromDynamic dyoa
-        b = fromJust $ fromDynamic dyb
+        oa = undy dyoa
+        b = undy dyb
 
 liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (D -> D)
 liftFor_2_1 f [dyx, dyy] = [untype2 f dyx dyy]
 liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (D -> D -> D)
 liftRev_2_1 r [dyx, dyy] [dyz] = [dyx', dyy']
-  where (x', y') = r (fromJust $ fromDynamic dyx) (fromJust $ fromDynamic dyy) (fromJust $ fromDynamic dyz) 
-        dyx' = toDyn x'
-        dyy' = toDyn y'
+  where (x', y') = r (undy dyx) (undy dyy) (undy dyz) 
+        dyx' = dy x'
+        dyy' = dy y'
 --liftRev_2_1 r oins outs = error (show ("umm", dInfo oins, dInfo outs))
 
 -- TODO these two lifts are nearly the same
@@ -89,6 +96,22 @@ data N =
   N { n_s :: S
     , args :: D }
 
+-- Constant: like () -> a
+-- TODO: use a lifter here?
+konstS :: Typeable a => a -> S
+konstS x = S {..}
+  where for [] = [dy x]
+        rev _ _ = error "Constant: no reverse"
+
+konstN :: Typeable a => a -> N
+konstN x = N {..}
+  where n_s = konstS x
+        args = []
+
+konstV :: Typeable a => a -> V a
+konstV x = V n 0
+  where n = konstN x
+
 runNForwards :: N -> D
 runNForwards (N {..}) = for n_s args
 
@@ -98,23 +121,26 @@ runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
 data V a = V N Int
 
 r :: Typeable a => V a -> a
-r (V n i) = fromJust $ fromDynamic $ (runNForwards n !! i)
+r (V n i) = undy $ (runNForwards n !! i)
 
 applySD :: S -> D -> N
 applySD s d = N { n_s = s, args = d }
 
--- -- Now we want a typed wrapper created from the typed primitive
+-- -- Now we want a typed wrapper created from the typed primitive.
+-- -- This should be the only interface to this stuff, since it enforces type
+-- -- safety around the dynamic stuff.
 -- hoist2 :: F2 a b c -> (V a -> V b -> V c)
 -- host2 f va vb =
 --   let s :: S
 --       s = lift_2_1 f
 --       d :: D
---       d = [toDyn 
+--       d = [dy 
 --       n :: N
 --       n = applySD s d
 
 anN :: N
-anN = applySD anS [toDyn (4::Int), toDyn (6::Int)]
+anN = applySD anS [dy (4::Int), dy (6::Int)]
+--anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
 
 aV :: V Int
 aV = V anN 0
@@ -122,28 +148,28 @@ aV = V anN 0
 w :: Typeable a => V a -> a -> D
 w (V n@(N {..}) i) x =
   let outputs :: [Dynamic]
-      outputs = upd (runNForwards n) i (toDyn x)
+      outputs = upd (runNForwards n) i (dy x)
       origInputs :: [Dynamic]
       --origInputs = for n_s args
       origInputs = args
    in rev n_s (sfesp "origInputs" dInfo origInputs) (sfesp "origInputs" dInfo outputs)
-   --in map (fromJust . fromDynamic) outputs
+   --in map (undy) outputs
 
 writ :: D
 writ = w aV (24::Int)
 writ' :: String
 writ' = show (map dynTypeRep writ)
 writ'' :: String
-writ'' = show $ ((case writ of [dyx, dyy] -> (fromJust $ fromDynamic dyx, fromJust $ fromDynamic dyy)) :: (Int, Int))
+writ'' = show $ ((case writ of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
 avArgs :: String
 avArgs = case anN of N {..} -> dInfo args
 --writ' = show (length writ)
 --writ' = show (dynTypeRep (head writ))
---writ' = show ((fromJust $ fromDynamic (head writ)) :: Int)
+--writ' = show ((undy (head writ)) :: Int)
 --dynTypeRep
 -- writ' :: (Int, Int)
--- -- writ' = case writ of [dyx, dyy] -> (fromJust $ fromDynamic dyx, fromJust $ fromDynamic dyy)
--- writ' = case writ of [dy] -> fromJust $ fromDynamic dy
+-- -- writ' = case writ of [dyx, dyy] -> (undy dyx, undy dyy)
+-- writ' = case writ of [dy] -> undy dy
 
 huh :: String
 huh = show (r aV, writ', writ'')
