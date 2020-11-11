@@ -103,6 +103,16 @@ r (V n i) = fromJust $ fromDynamic $ (runNForwards n !! i)
 applySD :: S -> D -> N
 applySD s d = N { n_s = s, args = d }
 
+-- -- Now we want a typed wrapper created from the typed primitive
+-- hoist2 :: F2 a b c -> (V a -> V b -> V c)
+-- host2 f va vb =
+--   let s :: S
+--       s = lift_2_1 f
+--       d :: D
+--       d = [toDyn 
+--       n :: N
+--       n = applySD s d
+
 anN :: N
 anN = applySD anS [toDyn (4::Int), toDyn (6::Int)]
 
