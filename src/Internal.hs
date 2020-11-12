@@ -183,3 +183,19 @@ avArgs = case anN of N {..} -> dInfo args
 
 huh :: String
 huh = show (r aV, r aV', writ', writ'', writ''')
+
+-- Some currying stuff
+
+data Write = forall a. Show a => Write { showIt :: String }
+data Q a b = Q (a -> ([Write], b))
+
+infixr 0 +->
+type a +-> b = Q a b
+
+foo :: a +-> (b +-> c)
+foo = undefined
+
+data InOut a b = In (a -> b) | Out a b
+
+-- doInOut (In f) x = f x
+-- doInOut (Out a b) f
