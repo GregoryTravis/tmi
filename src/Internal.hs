@@ -55,8 +55,12 @@ dInfo ds = show (map dynTypeRep ds)
 -- TODO: decrease the amount of code using Dynamic, ideally containing it
 -- within a single function. It's easy to create bugs that get past the
 -- typechecker.
+liftFor_0_1 :: Typeable a => a -> (D -> D)
+liftFor_0_1 x [] = [dy x]
 liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (D -> D)
 liftFor_1_1 f [dyva] = [dy (f (r (undy dyva)))]
+liftRev_0_1 :: (Typeable a) => (a -> ()) -> (D -> D -> D)
+liftRev_0_1 _ = undefined
 liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (D -> D -> D)
 liftRev_1_1 rev [dyoa] [dyb] = [dy (rev (r (undy dyoa)) (undy dyb))]
 liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (D -> D)
@@ -68,6 +72,7 @@ liftRev_2_1 rev [dyx, dyy] [dyz] = [dyx', dyy']
         dyy' = dy y'
 
 -- An F is a plain Haskell lens.
+data F0 a = F0 { ffor0 :: a, frev0 :: a -> () }
 data F a b = F { ffor :: a -> b, frev :: a -> b -> a }
 data F2 a b c = F2 { ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
 
@@ -78,6 +83,11 @@ data S =
 
 -- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
+lift_0_1 :: Typeable a => F0 a -> S
+lift_0_1 (F0 {..}) = S { for, rev }
+  where for = liftFor_0_1 ffor0
+        rev = liftRev_0_1 frev0
+
 lift_1_1 :: (Typeable a, Typeable b) => F a b -> S
 lift_1_1 (F {..}) = S { for, rev }
   where for = liftFor_1_1 ffor
@@ -104,22 +114,6 @@ runNForwards (N {..}) = for n_s args -- (dynMap r args)
 runNBackwards :: N -> D -> D
 runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
 
--- Bootstrapping the dag with some constant nodes.
--- TODO: use a lifter here?
-konstS :: Typeable a => a -> S
-konstS x = S {..}
-  where for [] = [dy x]
-        rev _ _ = error "Constant: no reverse"
-
-konstN :: Typeable a => a -> N
-konstN x = N {..}
-  where n_s = konstS x
-        args = []
-
-konstV :: Typeable a => a -> V a
-konstV x = V n 0
-  where n = konstN x
-
 -- A V can produce a value. What it produces the value from -- function and
 -- arguments -- are hidden inside an S and a D, respectively, in turn held in
 -- an N. The Int selects which of the N's outputs is the producer of this V's
@@ -145,8 +139,13 @@ w (V n@(N {..}) i) x =
 -- If the lifters don't have any bugs, then all the Dynamic conversions will
 -- succeed, and outside code can't mess that up. This and konstV are the only
 -- things that user code should have access to.
+hoist_0_1 :: Typeable a => F0 a -> V a
+hoist_0_1 f = V (applySD (lift_0_1 f) []) 0
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
+
+konstV :: Typeable a => a -> V a
+konstV x = hoist_0_1 $ F0 { ffor0 = x, frev0 = undefined }
 
 -- Some currying stuff
 
