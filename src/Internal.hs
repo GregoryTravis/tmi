@@ -142,25 +142,16 @@ w (V n@(N {..}) i) x =
 -- If the lifters don't have any bugs, then all the Dynamic conversions will
 -- succeed, and outside code can't mess that up. This and konstV are the only
 -- things that user code should have access to.
-hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
-hoist2 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
+hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
+hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
 
--- reverse of (+)
-split :: Integral a => a -> (a, a)
-split x = (x', x'')
-  where x' = x `div` 2
-        x'' = x - x'
--- TODO why can't I make this Num?
-pluss :: Integral a => a -> a -> a
-pluss = (+)
-revPlus :: Integral a => a -> a -> a -> (a, a)
-revPlus _ _ x = split x
+-- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
 plusF :: Integral a => F2 a a a
-plusF = F2 { ffor2 = pluss, frev2 = revPlus }
+plusF = F2 { ffor2 = (+), frev2 = \_ _ x -> (x `div` 2, x - (x `div` 2)) }
 
 -- TODO If I annotate this, I get weird typeclass errors
 -- aV :: (Show a, Typeable a, Integral a) => V a
-aV = hoist2 plusF (konstV 40) (konstV 60)
+aV = hoist_2_1 plusF (konstV 40) (konstV 60)
 
 aWrite :: String
 aWrite = show $ ((case w aV (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
