@@ -8,6 +8,8 @@
 
 module Internal
 ( V
+, aV
+, r
 , huh  -- just for returning some debug stuff
 ) where
 
@@ -144,23 +146,27 @@ hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c
 hoist2 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
 
 -- reverse of (+)
-split :: Int -> (Int, Int)
+split :: Integral a => a -> (a, a)
 split x = (x', x'')
   where x' = x `div` 2
         x'' = x - x'
 -- TODO why can't I make this Num?
-pluss :: Int -> Int -> Int
+pluss :: Integral a => a -> a -> a
 pluss = (+)
-revPlus :: Int -> Int -> Int -> (Int, Int)
+revPlus :: Integral a => a -> a -> a -> (a, a)
 revPlus _ _ x = split x
-plusF :: F2 Int Int Int
+plusF :: Integral a => F2 a a a
 plusF = F2 { ffor2 = pluss, frev2 = revPlus }
 
-aV :: V Int
-aV = hoist2 plusF (konstV (40::Int)) (konstV (60::Int))
+-- TODO If I annotate this, I get weird typeclass errors
+-- aV :: (Show a, Typeable a, Integral a) => V a
+aV = hoist2 plusF (konstV 40) (konstV 60)
 
 aWrite :: String
-aWrite = show $ ((case w aV 260 of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+aWrite = show $ ((case w aV (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+
+--umm :: Show a => a
+umm = r aV
 
 huh :: String
 huh = show (r aV, aWrite)
