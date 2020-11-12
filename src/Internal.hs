@@ -9,6 +9,7 @@ module Internal
 ( V(..)
 , F(..)
 , F2(..)
+, hoist_1_1
 , hoist_2_1
 , konstV
 , undy -- Just for debugging in the absence of an evaluator
@@ -141,6 +142,8 @@ w (V n@(N {..}) i) x =
 -- things that user code should have access to.
 hoist_0_1 :: Typeable a => F0 a -> V a
 hoist_0_1 f = V (applySD (lift_0_1 f) []) 0
+hoist_1_1 :: (Typeable a, Typeable b) => F a b -> (V a -> V b)
+hoist_1_1 f va = V (applySD (lift_1_1 f) [dy va]) 0
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
 

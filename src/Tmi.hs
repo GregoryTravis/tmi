@@ -11,6 +11,7 @@ module Tmi
 ( V
 , F(..)
 , F2(..)
+, hoist_1_1
 , hoist_2_1
 , konstV
 , undy -- Just for debugging in the absence of an evaluator
