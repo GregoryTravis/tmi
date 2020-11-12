@@ -138,7 +138,7 @@ w (V n@(N {..}) i) x =
       origInputs :: [Dynamic]
       --origInputs = for n_s args
       origInputs = args
-   in rev n_s (sfesp "origInputs" dInfo origInputs) (sfesp "origInputs" dInfo outputs)
+   in rev n_s origInputs outputs
    --in map (undy) outputs
 
 -- Lifting the dynamic back into a static. This makes sure the types are right.
@@ -161,56 +161,22 @@ split :: Int -> (Int, Int)
 split x = (x', x'')
   where x' = x `div` 2
         x'' = x - x'
---pluss :: (Num a, Typeable a) => a -> a -> a
---pluss x y = x + y
 -- TODO why can't I make this Num?
 pluss :: Int -> Int -> Int
 pluss = (+)
 revPlus :: Int -> Int -> Int -> (Int, Int)
 revPlus _ _ x = split x
--- liftedPlus :: D -> D
--- liftedPlus = liftFor_2_1 pluss
--- liftedRevPlus :: D -> D -> D
--- liftedRevPlus = liftRev_2_1 revPlus
 plusF :: F2 Int Int Int
 plusF = F2 { ffor2 = pluss, frev2 = revPlus }
 
-anS :: S
---anS = S { for = liftedPlus, rev = liftedRevPlus }
-anS = lift_2_1 plusF
-
-anN :: N
---anN = applySD anS [dy 4::Int), dy (6::Int)]
-anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
-
 aV :: V Int
-aV = V anN 0
+aV = hoist2 plusF (konstV (40::Int)) (konstV (60::Int))
 
-aV' :: V Int
-aV' = hoist2 plusF (konstV (40::Int)) (konstV (60::Int))
--- Nope, type error (good)
--- aV'' = hoist2 plusF (konstV (40::Int)) (konstV ("aaa"::String))
-
-writ :: D
-writ = w aV 24
-writ' :: String
-writ' = show (map dynTypeRep writ)
-writ'' :: String
-writ'' = show $ ((case writ of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
-writ''' :: String
-writ''' = show $ ((case w aV' 260 of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
-avArgs :: String
-avArgs = case anN of N {..} -> dInfo args
---writ' = show (length writ)
---writ' = show (dynTypeRep (head writ))
---writ' = show ((undy (head writ)) :: Int)
---dynTypeRep
--- writ' :: (Int, Int)
--- -- writ' = case writ of [dyx, dyy] -> (undy dyx, undy dyy)
--- writ' = case writ of [dy] -> undy dy
+aWrite :: String
+aWrite = show $ ((case w aV 260 of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
 
 huh :: String
-huh = show (r aV, r aV', writ', writ'', writ''')
+huh = show (r aV, aWrite)
 
 -- Some currying stuff
 
