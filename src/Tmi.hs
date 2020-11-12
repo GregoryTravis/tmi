@@ -9,7 +9,13 @@
 
 module Tmi
 ( V
-, huh
+, F(..)
+, F2(..)
+, hoist_2_1
+, konstV
+, undy -- Just for debugging in the absence of an evaluator
+, r
+, w
 ) where
 
 import Internal

@@ -15,6 +15,23 @@ import Hash
 import Tmi
 import Util
 
+-- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
+plusF :: Integral a => F2 a a a
+plusF = F2 { ffor2 = (+), frev2 = \_ _ x -> (x `div` 2, x - (x `div` 2)) }
+
+-- TODO If I annotate this, I get weird typeclass errors
+-- aV :: (Show a, Typeable a, Integral a) => V a
+aV = hoist_2_1 plusF (konstV 40) (konstV 60)
+
+aWrite :: String
+aWrite = show $ ((case w aV (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+
+--umm :: Show a => a
+umm = r aV
+
+huh :: String
+huh = show (r aV, aWrite)
+
 main = do
   msp huh
   msp "hi"

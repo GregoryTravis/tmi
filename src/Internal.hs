@@ -1,16 +1,19 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}
---{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Internal
-( V
-, aV
+( V(..)
+, F(..)
+, F2(..)
+, hoist_2_1
+, konstV
+, undy -- Just for debugging in the absence of an evaluator
 , r
-, huh  -- just for returning some debug stuff
+, w
 ) where
 
 import Data.Dynamic
@@ -144,23 +147,6 @@ w (V n@(N {..}) i) x =
 -- things that user code should have access to.
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
-
--- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
-plusF :: Integral a => F2 a a a
-plusF = F2 { ffor2 = (+), frev2 = \_ _ x -> (x `div` 2, x - (x `div` 2)) }
-
--- TODO If I annotate this, I get weird typeclass errors
--- aV :: (Show a, Typeable a, Integral a) => V a
-aV = hoist_2_1 plusF (konstV 40) (konstV 60)
-
-aWrite :: String
-aWrite = show $ ((case w aV (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
-
---umm :: Show a => a
-umm = r aV
-
-huh :: String
-huh = show (r aV, aWrite)
 
 -- Some currying stuff
 
