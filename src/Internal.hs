@@ -120,7 +120,6 @@ konstV x = V n 0
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
 data V a = V N Int
-  -- deriving Typeable
 
 -- Read a V by traversing the dag. Just enough to exercise all the plumbing.
 r :: Typeable a => V a -> a
@@ -135,26 +134,14 @@ w :: Typeable a => V a -> a -> D
 w (V n@(N {..}) i) x =
   let outputs :: [Dynamic]
       outputs = upd (runNForwards n) i (dy x)
-      origInputs :: [Dynamic]
-      --origInputs = for n_s args
-      origInputs = args
-   in rev n_s origInputs outputs
-   --in map (undy) outputs
+   in rev n_s args outputs
 
 -- Lifting the dynamic back into a static. This makes sure the types are right.
 -- If the lifters don't have any bugs, then all the Dynamic conversions will
 -- succeed, and outside code can't mess that up. This and konstV are the only
 -- things that user code should have access to.
 hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
-hoist2 f va vb =
-  let s :: S
-      s = lift_2_1 f
-      d :: D
-      d = [dy va, dy vb]
-      n :: N
-      n = applySD s d
-      v = V n 0
-   in v
+hoist2 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
 
 -- reverse of (+)
 split :: Int -> (Int, Int)
