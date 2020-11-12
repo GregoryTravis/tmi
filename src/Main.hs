@@ -20,6 +20,7 @@ plusF :: (Typeable a, Integral a) => V a -> V a -> V a
 plusF = hoist_2_1 $ F2 {..}
   where ffor2 = (+)
         frev2 _ _ x = (x `div` 2, x - (x `div` 2))
+        name2 = "plusF"
 
 -- TODO If I annotate this, I get weird typeclass errors
 -- aV :: (Show a, Typeable a, Integral a) => V a
@@ -30,6 +31,7 @@ incF = hoist_1_1 $ F {..}
   -- TODO: why can't these be (+1) and (subtract 1) -- it says it can't deduce Num (from Integral??)
   where ffor x = x + 1
         frev _ x = x - 1
+        name = "incF"
 
 anotherV = incF aV
 

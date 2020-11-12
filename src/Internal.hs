@@ -1,9 +1,11 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Internal
 ( V(..)
@@ -19,7 +21,24 @@ module Internal
 
 import Data.Dynamic
 
+import Hash
 import Util
+
+data Key = Key String
+  deriving (Show, Eq, Ord)
+
+class Keyable a where
+  toKey :: a -> Key
+
+instance Keyable String where
+  toKey = Key . id
+instance Keyable Int where
+  toKey = Key . show
+
+-- compositeKey :: Keyable a => [a] -> Key
+-- compositeKey keyables = Key $ hash $ concat $ map (\(Key s) -> s) $ map toKey keyables
+compositeKey :: [Key] -> Key
+compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 -- Helpers for Dynamic stuff
 dy :: Typeable a => a -> Dynamic
@@ -73,34 +92,51 @@ liftRev_2_1 rev [dyx, dyy] [dyz] = [dyx', dyy']
         dyy' = dy y'
 
 -- An F is a plain Haskell lens.
-data F0 a = F0 { ffor0 :: a, frev0 :: a -> () }
-data F a b = F { ffor :: a -> b, frev :: a -> b -> a }
-data F2 a b c = F2 { ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
+data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
+data F a b = F { name :: String, ffor :: a -> b, frev :: a -> b -> a }
+data F2 a b c = F2 { name2 :: String, ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
+
+instance Keyable (F0 a) where
+  toKey (F0 {..}) = Key name0
+instance Keyable (F a b) where
+  toKey (F {..}) = Key name
+instance Keyable (F2 a b c) where
+  toKey (F2 {..}) = Key name2
 
 -- An S is a lifted F.
 data S =
-  S { for :: D -> D
+  S { names :: String
+    , for :: D -> D
     , rev :: D -> D -> D }
 
 -- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
 lift_0_1 :: Typeable a => F0 a -> S
-lift_0_1 (F0 {..}) = S { for, rev }
+lift_0_1 (F0 {..}) = S {..}
   where for = liftFor_0_1 ffor0
         rev = liftRev_0_1 frev0
+        names = name0
 lift_1_1 :: (Typeable a, Typeable b) => F a b -> S
-lift_1_1 (F {..}) = S { for, rev }
+lift_1_1 (F {..}) = S {..}
   where for = liftFor_1_1 ffor
         rev = liftRev_1_1 frev
+        names = name
 lift_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> S
-lift_2_1 (F2 {..}) = S { for, rev }
+lift_2_1 (F2 {..}) = S {..}
   where for = liftFor_2_1 ffor2
         rev = liftRev_2_1 frev2
+        names = name2
+
+instance Keyable S where
+  toKey (S {..}) = Key names
 
 -- An N is an S applied to arguments.
 data N =
   N { n_s :: S
     , args :: D }
+
+-- instance Keyable N where
+--   toKey (N {..}) = compositeKey ((toKey $ names n_s) : map toKey args)
 
 -- Apply an S to args to make an N.
 applySD :: S -> D -> N
@@ -119,6 +155,9 @@ runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
 data V a = V N Int
+
+-- instance Keyable (V a) where
+--   toKey (V n i) = compositeKey [toKey n, toKey i]
 
 -- Read a V by traversing the dag. Just enough to exercise all the plumbing.
 r :: Typeable a => V a -> a
@@ -146,8 +185,9 @@ hoist_1_1 f va = V (applySD (lift_1_1 f) [dy va]) 0
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
 
-konstV :: Typeable a => a -> V a
-konstV x = hoist_0_1 $ F0 { ffor0 = x, frev0 = undefined }
+konstV :: (Show a, Typeable a) => a -> V a
+konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
+  where name0 = hash x
 
 -- Some currying stuff
 
