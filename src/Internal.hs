@@ -8,14 +8,14 @@
 
 module Internal
 ( V
-, huh
+, huh  -- just for returning some debug stuff
 ) where
 
 import Data.Dynamic
---import Data.Maybe (fromJust) 
 
 import Util
 
+-- Helpers for Dynamic stuff
 dy :: Typeable a => a -> Dynamic
 dy = toDyn
 undy :: Typeable a => Dynamic -> a
@@ -23,19 +23,34 @@ undy dyn = case fromDynamic dyn of Just x -> x
                                    Nothing -> error msg
   where msg = "Can't convert " ++ (show (dynTypeRep dyn)) ++ " to a"
 
-untype :: (Typeable a, Typeable b) => (a -> b) -> (Dynamic -> Dynamic)
-untype f = dy . f . undy
-untype2 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (Dynamic -> Dynamic -> Dynamic)
-untype2 f dyx dyy = dy $ f (undy dyx) (undy dyy)
-
---type DynFun = [Dynamic] -> [Dynamic]
 type D = [Dynamic]
 
+-- Dump the types of the contained things
 dInfo :: D -> String
 dInfo ds = show (map dynTypeRep ds)
 
+-- For lifting plain forward and reverse functions.  Functions are curried,
+-- tuples turned into lists, and inputs in particular are turned into Vs.
+--
+-- Forward functions are curried, and then the input tuple and the output
+-- singletons are turned into [Dynamic]s. (Output lists are typically length one
+-- but don't have to be.) Any forward function becomes (D -> D).
+--
+-- Reverse functions are the same, except it takes the (old) input tuple and
+-- new output tuple and returns the new input tuple, all in the form of
+-- [Dynamic]. Any reverse function becomes (D -> D -> D).
+--
+-- The inputs are expected to be Vs. So if the original function takes an a,
+-- the lifted function takes a (V a) and reads it with 'r'.
+--
+-- The reason to expect Vs (rather than reading them outside of this) is
+-- because we can't read them without knowing the types, and types are hidden
+-- by this lifting.
+--
+-- TODO: decrease the amount of code using Dynamic, ideally containing it
+-- within a single function. It's easy to create bugs that get past the
+-- typechecker.
 liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (D -> D)
---liftFor_1_1 f [dyx] = [untype f dyx]
 liftFor_1_1 f [dyva] = [dy (f (r (undy dyva)))]
 liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (D -> D -> D)
 liftRev_1_1 rev [dyoa] [dyb] = [dy (rev (r (undy dyoa)) (undy dyb))]
@@ -46,25 +61,100 @@ liftRev_2_1 rev [dyx, dyy] [dyz] = [dyx', dyy']
   where (x', y') = rev (r (undy dyx)) (r (undy dyy)) (undy dyz) 
         dyx' = dy x'
         dyy' = dy y'
---liftRev_2_1 r oins outs = error (show ("umm", dInfo oins, dInfo outs))
 
+-- An F is a plain Haskell lens.
+data F a b = F { ffor :: a -> b, frev :: a -> b -> a }
+data F2 a b c = F2 { ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
+
+-- An S is a lifted F.
+data S =
+  S { for :: D -> D
+    , rev :: D -> D -> D }
+
+-- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
 lift_1_1 :: (Typeable a, Typeable b) => F a b -> S
 lift_1_1 (F {..}) = S { for, rev }
   where for = liftFor_1_1 ffor
         rev = liftRev_1_1 frev
-
 lift_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S { for, rev }
   where for = liftFor_2_1 ffor2
         rev = liftRev_2_1 frev2
 
-data F a b = F { ffor :: a -> b, frev :: a -> b -> a }
-data F2 a b c = F2 { ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
+-- An N is an S applied to arguments.
+data N =
+  N { n_s :: S
+    , args :: D }
 
-data S =
-  S { for :: D -> D
-    , rev :: D -> D -> D }
+-- Apply an S to args to make an N.
+applySD :: S -> D -> N
+applySD s d = N { n_s = s, args = d }
+
+-- Compute outputs from inputs
+runNForwards :: N -> D
+runNForwards (N {..}) = for n_s args -- (dynMap r args)
+
+-- Compute inputs from outputs and old inputs
+runNBackwards :: N -> D -> D
+runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
+
+-- Bootstrapping the dag with some constant nodes.
+-- TODO: use a lifter here?
+konstS :: Typeable a => a -> S
+konstS x = S {..}
+  where for [] = [dy x]
+        rev _ _ = error "Constant: no reverse"
+
+konstN :: Typeable a => a -> N
+konstN x = N {..}
+  where n_s = konstS x
+        args = []
+
+konstV :: Typeable a => a -> V a
+konstV x = V n 0
+  where n = konstN x
+
+-- A V can produce a value. What it produces the value from -- function and
+-- arguments -- are hidden inside an S and a D, respectively, in turn held in
+-- an N. The Int selects which of the N's outputs is the producer of this V's
+-- value.
+data V a = V N Int
+  -- deriving Typeable
+
+-- Read a V by traversing the dag. Just enough to exercise all the plumbing.
+r :: Typeable a => V a -> a
+r (V n i) = undy $ (runNForwards n !! i)
+
+-- Write to a V. This is barely any kind of useful evaluator. For one thing, it
+-- doesn't consider whether any of the other outputs of the N are being written
+-- to. It just reads the old outputs, replaces one of them, and writes them all
+-- back. The result is a D containing the new inputs. Just enough to exercise
+-- all the plumbing.
+w :: Typeable a => V a -> a -> D
+w (V n@(N {..}) i) x =
+  let outputs :: [Dynamic]
+      outputs = upd (runNForwards n) i (dy x)
+      origInputs :: [Dynamic]
+      --origInputs = for n_s args
+      origInputs = args
+   in rev n_s (sfesp "origInputs" dInfo origInputs) (sfesp "origInputs" dInfo outputs)
+   --in map (undy) outputs
+
+-- Lifting the dynamic back into a static. This makes sure the types are right.
+-- If the lifters don't have any bugs, then all the Dynamic conversions will
+-- succeed, and outside code can't mess that up. This and konstV are the only
+-- things that user code should have access to.
+hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
+hoist2 f va vb =
+  let s :: S
+      s = lift_2_1 f
+      d :: D
+      d = [dy va, dy vb]
+      n :: N
+      n = applySD s d
+      v = V n 0
+   in v
 
 -- reverse of (+)
 split :: Int -> (Int, Int)
@@ -89,58 +179,6 @@ anS :: S
 --anS = S { for = liftedPlus, rev = liftedRevPlus }
 anS = lift_2_1 plusF
 
-data N =
-  N { n_s :: S
-    , args :: D }
-
--- Constant: like () -> a
--- TODO: use a lifter here?
-konstS :: Typeable a => a -> S
-konstS x = S {..}
-  where for [] = [dy x]
-        rev _ _ = error "Constant: no reverse"
-
-konstN :: Typeable a => a -> N
-konstN x = N {..}
-  where n_s = konstS x
-        args = []
-
-konstV :: Typeable a => a -> V a
-konstV x = V n 0
-  where n = konstN x
-
--- dynMap :: (Typeable a, Typeable b) => (forall a b. a -> b) -> D -> D
--- dynMap f = map (untype f)
-
-runNForwards :: N -> D
-runNForwards (N {..}) = for n_s args -- (dynMap r args)
-
-runNBackwards :: N -> D -> D
-runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
-
-data V a = V N Int
-  -- deriving Typeable
-
-r :: Typeable a => V a -> a
-r (V n i) = undy $ (runNForwards n !! i)
-
-applySD :: S -> D -> N
-applySD s d = N { n_s = s, args = d }
-
--- Now we want a typed wrapper created from the typed primitive.
--- This should be the only interface to this stuff, since it enforces type
--- safety around the dynamic stuff.
-hoist2 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
-hoist2 f va vb =
-  let s :: S
-      s = lift_2_1 f
-      d :: D
-      d = [dy va, dy vb]
-      n :: N
-      n = applySD s d
-      v = V n 0
-   in v
-
 anN :: N
 --anN = applySD anS [dy 4::Int), dy (6::Int)]
 anN = applySD anS [dy (konstV (4::Int)), dy (konstV (6::Int))]
@@ -152,16 +190,6 @@ aV' :: V Int
 aV' = hoist2 plusF (konstV (40::Int)) (konstV (60::Int))
 -- Nope, type error (good)
 -- aV'' = hoist2 plusF (konstV (40::Int)) (konstV ("aaa"::String))
-
-w :: Typeable a => V a -> a -> D
-w (V n@(N {..}) i) x =
-  let outputs :: [Dynamic]
-      outputs = upd (runNForwards n) i (dy x)
-      origInputs :: [Dynamic]
-      --origInputs = for n_s args
-      origInputs = args
-   in rev n_s (sfesp "origInputs" dInfo origInputs) (sfesp "origInputs" dInfo outputs)
-   --in map (undy) outputs
 
 writ :: D
 writ = w aV 24
