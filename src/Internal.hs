@@ -88,7 +88,6 @@ lift_0_1 :: Typeable a => F0 a -> S
 lift_0_1 (F0 {..}) = S { for, rev }
   where for = liftFor_0_1 ffor0
         rev = liftRev_0_1 frev0
-
 lift_1_1 :: (Typeable a, Typeable b) => F a b -> S
 lift_1_1 (F {..}) = S { for, rev }
   where for = liftFor_1_1 ffor
