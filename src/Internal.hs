@@ -40,30 +40,42 @@ instance Keyable Int where
 compositeKey :: [Key] -> Key
 compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
+type D = Dynamic
+data DV = DV Key Dynamic
+type Ds = [D]
+type DVs = [DV]
+
 -- Helpers for Dynamic stuff
-dy :: Typeable a => a -> Dynamic
+dy :: Typeable a => a -> D
 dy = toDyn
-undy :: Typeable a => Dynamic -> a
+undy :: Typeable a => D -> a
 undy dyn = case fromDynamic dyn of Just x -> x
                                    Nothing -> error msg
   where msg = "Can't convert " ++ (show (dynTypeRep dyn)) ++ " to a"
-
-type D = [Dynamic]
+dyv :: Typeable a => V a -> DV
+dyv va = DV (toKey va) (dy va)
+undyv :: Typeable a => DV -> a
+undyv (DV _ dyn) = undy dyn
 
 -- Dump the types of the contained things
-dInfo :: D -> String
+dInfo :: Ds -> String
 dInfo ds = show (map dynTypeRep ds)
+
+-- Dump the types of the contained things
+dvInfo :: DVs -> String
+dvInfo ds = show (map f ds)
+  where f (DV key dyn) = (key, dynTypeRep dyn)
 
 -- For lifting plain forward and reverse functions.  Functions are curried,
 -- tuples turned into lists, and inputs in particular are turned into Vs.
 --
 -- Forward functions are curried, and then the input tuple and the output
 -- singletons are turned into [Dynamic]s. (Output lists are typically length one
--- but don't have to be.) Any forward function becomes (D -> D).
+-- but don't have to be.) Any forward function becomes (Ds -> Ds).
 --
 -- Reverse functions are the same, except it takes the (old) input tuple and
 -- new output tuple and returns the new input tuple, all in the form of
--- [Dynamic]. Any reverse function becomes (D -> D -> D).
+-- [Dynamic]. Any reverse function becomes (Ds -> Ds -> Ds).
 --
 -- The inputs are expected to be Vs. So if the original function takes an a,
 -- the lifted function takes a (V a) and reads it with 'r'.
@@ -75,19 +87,21 @@ dInfo ds = show (map dynTypeRep ds)
 -- TODO: decrease the amount of code using Dynamic, ideally containing it
 -- within a single function. It's easy to create bugs that get past the
 -- typechecker.
-liftFor_0_1 :: Typeable a => a -> (D -> D)
+liftFor_0_1 :: Typeable a => a -> (DVs -> Ds)
 liftFor_0_1 x [] = [dy x]
-liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (D -> D)
-liftFor_1_1 f [dyva] = [dy (f (r (undy dyva)))]
-liftRev_0_1 :: (Typeable a) => (a -> ()) -> (D -> D -> D)
+liftRev_0_1 :: (Typeable a) => (a -> ()) -> (DVs -> Ds -> Ds)
 liftRev_0_1 _ = undefined
-liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (D -> D -> D)
-liftRev_1_1 rev [dyoa] [dyb] = [dy (rev (r (undy dyoa)) (undy dyb))]
-liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (D -> D)
-liftFor_2_1 f [dyx, dyy] = [dy (f (r (undy dyx)) (r (undy dyy)))]
-liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (D -> D -> D)
+
+liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (DVs -> Ds)
+liftFor_1_1 f [dyva] = [dy (f (r (undyv dyva)))]
+liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (DVs -> Ds -> Ds)
+liftRev_1_1 rev [dyoa] [dyb] = [dy (rev (r (undyv dyoa)) (undy dyb))]
+
+liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (DVs -> Ds)
+liftFor_2_1 f [dyx, dyy] = [dy (f (r (undyv dyx)) (r (undyv dyy)))]
+liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (DVs -> Ds -> Ds)
 liftRev_2_1 rev [dyx, dyy] [dyz] = [dyx', dyy']
-  where (x', y') = rev (r (undy dyx)) (r (undy dyy)) (undy dyz) 
+  where (x', y') = rev (r (undyv dyx)) (r (undyv dyy)) (undy dyz) 
         dyx' = dy x'
         dyy' = dy y'
 
@@ -106,8 +120,8 @@ instance Keyable (F2 a b c) where
 -- An S is a lifted F.
 data S =
   S { names :: String
-    , for :: D -> D
-    , rev :: D -> D -> D }
+    , for :: DVs -> Ds
+    , rev :: DVs -> Ds -> Ds }
 
 -- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
@@ -133,31 +147,33 @@ instance Keyable S where
 -- An N is an S applied to arguments.
 data N =
   N { n_s :: S
-    , args :: D }
+    , args :: DVs }
 
--- instance Keyable N where
---   toKey (N {..}) = compositeKey ((toKey $ names n_s) : map toKey args)
+instance Keyable N where
+   toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
+     where getKey (DV key _) = key
 
 -- Apply an S to args to make an N.
-applySD :: S -> D -> N
+applySD :: S -> DVs -> N
 applySD s d = N { n_s = s, args = d }
 
 -- Compute outputs from inputs
-runNForwards :: N -> D
+runNForwards :: N -> Ds
 runNForwards (N {..}) = for n_s args -- (dynMap r args)
 
 -- Compute inputs from outputs and old inputs
-runNBackwards :: N -> D -> D
-runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
+runNBackwards :: N -> Ds -> Ds
+--runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
+runNBackwards (N {..}) revArgs = rev n_s args revArgs
 
 -- A V can produce a value. What it produces the value from -- function and
--- arguments -- are hidden inside an S and a D, respectively, in turn held in
+-- arguments -- are hidden inside an S and a Ds, respectively, in turn held in
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
 data V a = V N Int
 
--- instance Keyable (V a) where
---   toKey (V n i) = compositeKey [toKey n, toKey i]
+instance Keyable (V a) where
+   toKey (V n i) = compositeKey [toKey n, toKey i]
 
 -- Read a V by traversing the dag. Just enough to exercise all the plumbing.
 r :: Typeable a => V a -> a
@@ -166,9 +182,9 @@ r (V n i) = undy $ (runNForwards n !! i)
 -- Write to a V. This is barely any kind of useful evaluator. For one thing, it
 -- doesn't consider whether any of the other outputs of the N are being written
 -- to. It just reads the old outputs, replaces one of them, and writes them all
--- back. The result is a D containing the new inputs. Just enough to exercise
+-- back. The result is a Ds containing the new inputs. Just enough to exercise
 -- all the plumbing.
-w :: Typeable a => V a -> a -> D
+w :: Typeable a => V a -> a -> Ds
 w (V n@(N {..}) i) x =
   let outputs :: [Dynamic]
       outputs = upd (runNForwards n) i (dy x)
@@ -181,9 +197,9 @@ w (V n@(N {..}) i) x =
 hoist_0_1 :: Typeable a => F0 a -> V a
 hoist_0_1 f = V (applySD (lift_0_1 f) []) 0
 hoist_1_1 :: (Typeable a, Typeable b) => F a b -> (V a -> V b)
-hoist_1_1 f va = V (applySD (lift_1_1 f) [dy va]) 0
+hoist_1_1 f va = V (applySD (lift_1_1 f) [dyv va]) 0
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
-hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dy va, dy vb]) 0
+hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dyv va, dyv vb]) 0
 
 konstV :: (Show a, Typeable a) => a -> V a
 konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }

@@ -1,7 +1,7 @@
 module Evaluator () where
 
--- TODO Import this -- need to modularize
-data Key
+import Internal
+import Util
 
 -- This is to be an add-only and add-once map
 data Gen
