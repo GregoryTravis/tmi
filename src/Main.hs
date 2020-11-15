@@ -11,6 +11,7 @@
 
 module Main where
 
+import Evaluator
 import Hash
 import Tmi
 import Util
@@ -24,7 +25,7 @@ plusF = hoist_2_1 $ F2 {..}
 
 -- TODO If I annotate this, I get weird typeclass errors
 -- aV :: (Show a, Typeable a, Integral a) => V a
-aV = plusF (konstV 40) (konstV 60)
+aV = plusF (konstV (40::Int)) (konstV 60)
 
 incF :: (Typeable a, Integral a) => V a -> V a
 incF = hoist_1_1 $ F {..}
@@ -35,12 +36,15 @@ incF = hoist_1_1 $ F {..}
 
 anotherV = incF aV
 
-aWrite :: String
-aWrite = show $ ((case w aV (260::Int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (Int, Int))
+-- awrite :: string
+-- awrite = show $ ((case writev av (260::int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (int, int))
 
-anotherWrite :: String
-anotherWrite = show $ ((case w anotherV (281::Int) of [dyx] -> undy dyx) :: Int)
+-- anotherwrite :: string
+-- anotherwrite = show $ ((case writev anotherv (281::int) of [dyx] -> undy dyx) :: int)
 
 main = do
-  msp (r aV, r anotherV, aWrite, anotherWrite)
+  let evaluator = Simple
+  aVValue <- readV evaluator aV
+  anotherVValue <- readV evaluator anotherV
+  msp (aVValue, anotherVValue)
   msp "hi"

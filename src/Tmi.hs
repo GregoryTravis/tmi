@@ -15,9 +15,8 @@ module Tmi
 , hoist_2_1
 , konstV
 , undy -- Just for debugging in the absence of an evaluator
-, r
-, w
 , Typeable
+, Evaluator(..)
 ) where
 
 import Data.Dynamic
