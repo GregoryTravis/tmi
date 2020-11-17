@@ -182,7 +182,7 @@ liftGeneric getter curryer packager f reader args =
 -- TODO consistent names, use Ds, Dvs everywhere
 liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Ds -> tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr -> Reader -> [DV] -> [D] -> IO [D]
 liftGenericRev getter outsGetter curryer packager r reader args newouts =
-  curryer r <$> getter reader args <*> (pure $ outsGetter newouts) >>= return . packager
+  packager <$> (curryer r <$> getter reader args <*> (pure $ outsGetter newouts))
 -- -- orig impl -- keep this around, I have no idea how the magic above works
 -- liftGenericRev getter outsGetter curryer packager r reader args newouts = do
 --   oldIns <- getter reader args
