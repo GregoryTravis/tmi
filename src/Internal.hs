@@ -97,6 +97,8 @@ dvInfo ds = show (map f ds)
 -- TODO: decrease the amount of code using Dynamic, ideally containing it
 -- within a single function. It's easy to create bugs that get past the
 -- typechecker.
+--
+-- TODO use liftGeneric* here?
 liftFor_0_1 :: Typeable a => a -> (Reader -> DVs -> IO Ds)
 liftFor_0_1 x _ [] = return [dy x]
 
@@ -104,54 +106,122 @@ liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> DVs -> Ds -> IO Ds)
 liftRev_0_1 _ = undefined
 
 liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (Reader -> DVs -> IO Ds)
-liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
-  let va = undyv dyva
-  a <- unReader reader va
-  return [dy (f a)]
+liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
+-- -- orig impl
+-- liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
+--   let va = undyv dyva
+--   a <- unReader reader va
+--   return [dy (f a)]
 
 liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
-  let ova = undyv dyova
-  oa <- unReader reader ova
-  return [dy (rev oa (undy dyb))]
+liftRev_1_1 = liftGenericRev unPackage1 unPackageOuts1 uncurryRev_1_1 package1
+-- -- orig impl
+-- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
+--   let ova = undyv dyova
+--   oa <- unReader reader ova
+--   return [dy (rev oa (undy dyb))]
+
+unPackage1 :: (Typeable a) => Reader -> DVs -> IO a
+unPackage1 reader [dyva] = do
+  a <- unReader reader (undyv dyva)
+  return a
+
+unPackage2 :: (Typeable a, Typeable b) => Reader -> DVs -> IO (a, b)
+unPackage2 reader [dyva, dyvb] = do
+  a <- unReader reader (undyv dyva)
+  b <- unReader reader (undyv dyvb)
+  return (a, b)
+
+unPackageOuts1 :: (Typeable a) => Ds -> a
+unPackageOuts1 [dya] = undy dya
+
+unPackageOuts2 :: (Typeable a, Typeable b) => Ds -> (a, b)
+unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
+
+uncurry_1_1 :: (a -> b) -> (a -> b)
+uncurry_1_1 = id
+
+uncurry_2_1 :: (a -> b -> c) -> ((a, b) -> c)
+uncurry_2_1 = uncurry
+
+uncurry_1_2 :: (a -> (b, c)) -> (a -> (b, c))
+uncurry_1_2 = id
+
+uncurryRev_1_1 :: (a -> b -> a) -> (a -> b -> a)
+uncurryRev_1_1 = id
+
+uncurryRev_2_1 :: (a -> b -> c -> (a, b)) -> ((a, b) -> c -> (a, b))
+uncurryRev_2_1 f (a, b) = f a b
+
+uncurryRev_1_2 :: (a -> (b, c) -> a) -> (a -> (b, c) -> a)
+uncurryRev_1_2 = id
+
+package1 :: Typeable a => a -> [D]
+package1 x = [dy x]
+
+package2 :: (Typeable a, Typeable b) => (a, b) -> [D]
+package2 (a, b) = [dy a, dy b]
+
+-- TODO getter -> unpackager etc
+liftGeneric :: (Reader -> DVs -> IO tupleArgs) -> (cf -> (tupleArgs -> outs)) -> (outs -> [D]) -> cf -> Reader -> [DV] -> IO [D]
+liftGeneric getter curryer packager f reader args =
+  getter reader args >>= return . curryer f >>= (return . packager)
+
+-- TODO consistent names, use Ds, Dvs everywhere
+-- TODO use more >>= etc
+liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Ds -> tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr -> Reader -> [DV] -> [D] -> IO [D]
+liftGenericRev getter outsGetter curryer packager r reader args newouts = do
+  oldIns <- getter reader args
+  let newOuts = outsGetter newouts
+      newIns = curryer r oldIns newOuts
+  return $ packager newIns
 
 liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
-liftFor_2_1 f reader [dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
-  let vx = undyv dyvx
-      vy = undyv dyvy
-  x <- unReader reader vx
-  y <- unReader reader vy
-  return [dy (f x y)]
-  -- Alternate implementation
-  -- (:[]) <$> dy <$> (f <$> dyread dyvx <*> dyread dyvy)
-  -- where dyread :: forall a. Typeable a => DV -> IO a
-  --       dyread = unReader reader . undyv
+liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
+-- -- orig impl
+-- liftFor_2_1 f reader args@[dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
+--   let vx = undyv dyvx
+--       vy = undyv dyvy
+--   x <- unReader reader vx
+--   y <- unReader reader vy
+--   return [dy (f x y)]
 
 liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
-  let ovx = undyv dyovx
-      ovy = undyv dyovy
-  ox <- unReader reader ovx
-  oy <- unReader reader ovy
-  let (x, y) = rev ox oy (undy dyz)
-  return [dy x, dy y]
+liftRev_2_1 = liftGenericRev unPackage2 unPackageOuts1 uncurryRev_2_1 package2
+-- -- works
+-- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
+--   oldins <- unPackage2 reader args
+--   let newins = uncurryRev_2_1 rev oldins (unPackageOuts1 newouts)
+--   return $ package2 newins
+-- -- orig impl
+-- liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
+--   let ovx = undyv dyovx
+--       ovy = undyv dyovy
+--   ox <- unReader reader ovx
+--   oy <- unReader reader ovy
+--   let (x, y) = rev ox oy (undy dyz)
+--   return [dy x, dy y]
 
 -- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
 liftFor_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
-liftFor_1_2 f reader [dyva] = do
-  let va = undyv dyva
-  a <- unReader reader va
-  let (b, c) = f a
-  return [dy b, dy c]
+liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
+-- -- orig impl
+-- liftFor_1_2 f reader [dyva] = do
+--   let va = undyv dyva
+--   a <- unReader reader va
+--   let (b, c) = f a
+--   return [dy b, dy c]
 
 liftRev_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c) -> a) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
-  let ova = undyv dyova
-      b = undy dyb
-      c = undy dyc
-  oa <- unReader reader ova
-  let a = rev oa (b, c)
-  return [dy a]
+liftRev_1_2 = liftGenericRev unPackage1 unPackageOuts2 uncurryRev_1_2 package1
+-- -- orig impl
+-- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
+--   let ova = undyv dyova
+--       b = undy dyb
+--       c = undy dyc
+--   oa <- unReader reader ova
+--   let a = rev oa (b, c)
+--   return [dy a]
 
 -- An F is a plain Haskell lens.
 data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
