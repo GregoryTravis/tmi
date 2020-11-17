@@ -187,6 +187,15 @@ liftGenericRev getter outsGetter curryer packager r reader args newouts = do
   let newOuts = outsGetter newouts
       newIns = curryer r oldIns newOuts
   return $ packager newIns
+  -- -- Couldn't quite get this working
+  -- let _umm2 = pure packager <$> (curryer r <$> getter reader args <*> (pure $ outsGetter newouts))
+  --     _um3 = pure packager <$> _umm2
+  --     -- Why on earth can I keep adding pure package here?
+  --     _um4 = pure packager <$> pure packager <$> _umm2
+  --     roo2 :: a -> a
+  --     roo2 = (\x ->_) _umm2
+  --     roo :: a -> a
+  --     roo = (\x ->_) _um3
 
 liftFor_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
 liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
