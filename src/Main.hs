@@ -17,6 +17,7 @@ import Tmi
 import Util
 
 -- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
+-- The 'F' suffix isn't right, these aren't Fs
 plusF :: (Typeable a, Integral a) => V a -> V a -> V a
 plusF = hoist_2_1 $ F2 {..}
   where ffor2 = (+)
@@ -36,6 +37,14 @@ incF = hoist_1_1 $ F {..}
 
 anotherV = incF aV
 
+splitF :: (Typeable a, Integral a) => V a -> (V a, V a)
+splitF = hoist_1_2 $ F_1_2 {..}
+  where ffor_1_2 x = (x', x'')
+          where x' = x `div` 2
+                x'' = x - x'
+        frev_1_2 _ (x, x') = x + x'
+        name_1_2 = "splitF"
+
 -- awrite :: string
 -- awrite = show $ ((case writev av (260::int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (int, int))
 
@@ -47,4 +56,8 @@ main = do
   aVValue <- readV evaluator aV
   anotherVValue <- readV evaluator anotherV
   msp (aVValue, anotherVValue)
+  let (leftV, rightV) = splitF anotherV
+  leftValue <- readV evaluator leftV
+  rightValue <- readV evaluator rightV
+  msp (leftValue, rightValue)
   msp "hi"

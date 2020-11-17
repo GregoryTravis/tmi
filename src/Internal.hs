@@ -12,6 +12,7 @@ module Internal
 ( V(..)
 , F(..)
 , F2(..)
+, F_1_2(..)
 , S(..)
 , N(..)
 , D
@@ -20,6 +21,7 @@ module Internal
 , DVs
 , hoist_1_1
 , hoist_2_1
+, hoist_1_2
 , konstV
 , undy -- Just for debugging in the absence of an evaluator
 , Evaluator(..)
@@ -130,10 +132,29 @@ liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
   let (x, y) = rev ox oy (undy dyz)
   return [dy x, dy y]
 
+-- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
+liftFor_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
+liftFor_1_2 f reader [dyva] = do
+  let va = undyv dyva
+  a <- unReader reader va
+  let (b, c) = f a
+  return [dy b, dy c]
+
+liftRev_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c) -> a) -> (Reader -> DVs -> Ds -> IO Ds)
+liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
+  let ova = undyv dyova
+      b = undy dyb
+      c = undy dyc
+  oa <- unReader reader ova
+  let a = rev oa (b, c)
+  return [dy a]
+
 -- An F is a plain Haskell lens.
 data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
 data F a b = F { name :: String, ffor :: a -> b, frev :: a -> b -> a }
 data F2 a b c = F2 { name2 :: String, ffor2 :: a -> b -> c, frev2 :: a -> b -> c -> (a, b) }
+-- TODO F2 -> F_2_2 etc
+data F_1_2 a b c = F_1_2 { name_1_2 :: String, ffor_1_2 :: a -> (b, c), frev_1_2 :: a -> (b, c) -> a }
 
 instance Keyable (F0 a) where
   toKey (F0 {..}) = Key name0
@@ -165,6 +186,11 @@ lift_2_1 (F2 {..}) = S {..}
   where for = liftFor_2_1 ffor2
         rev = liftRev_2_1 frev2
         names = name2
+lift_1_2 :: (Typeable a, Typeable b, Typeable c) => F_1_2 a b c -> S
+lift_1_2 (F_1_2 {..}) = S {..}
+  where for = liftFor_1_2 ffor_1_2
+        rev = liftRev_1_2 frev_1_2
+        names = name_1_2
 
 instance Keyable S where
   toKey (S {..}) = Key names
@@ -201,6 +227,11 @@ hoist_1_1 :: (Typeable a, Typeable b) => F a b -> (V a -> V b)
 hoist_1_1 f va = V (applySD (lift_1_1 f) [dyv va]) 0
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dyv va, dyv vb]) 0
+hoist_1_2 :: (Typeable a, Typeable b, Typeable c) => F_1_2 a b c -> (V a -> (V b, V c))
+hoist_1_2 f va = (vb, vc)
+  where n = applySD (lift_1_2 f) [dyv va]
+        vb = V n 0
+        vc = V n 1
 
 konstV :: (Show a, Typeable a) => a -> V a
 konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
