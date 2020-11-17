@@ -101,6 +101,8 @@ dvInfo ds = show (map f ds)
 -- TODO use liftGeneric* here?
 liftFor_0_1 :: Typeable a => a -> (Reader -> DVs -> IO Ds)
 liftFor_0_1 x _ [] = return [dy x]
+-- Doesn't work: a vs (() -> a)
+-- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
 
 liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> DVs -> Ds -> IO Ds)
 liftRev_0_1 _ = undefined
@@ -121,6 +123,10 @@ liftRev_1_1 = liftGenericRev unPackage1 unPackageOuts1 uncurryRev_1_1 package1
 --   oa <- unReader reader ova
 --   return [dy (rev oa (undy dyb))]
 
+-- Unused, see liftFor_0_1
+-- unPackage0 :: Reader -> DVs -> IO ()
+-- unPackage0 _ _ = return ()
+
 unPackage1 :: (Typeable a) => Reader -> DVs -> IO a
 unPackage1 reader [dyva] = do
   a <- unReader reader (undyv dyva)
@@ -137,6 +143,10 @@ unPackageOuts1 [dya] = undy dya
 
 unPackageOuts2 :: (Typeable a, Typeable b) => Ds -> (a, b)
 unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
+
+-- Unused, see liftFor_0_1
+-- uncurry_0_1 :: a -> a
+-- uncurry_0_1 = id
 
 uncurry_1_1 :: (a -> b) -> (a -> b)
 uncurry_1_1 = id
