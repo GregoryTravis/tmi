@@ -122,6 +122,10 @@ liftFor_2_1 f reader [dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy))
   x <- unReader reader vx
   y <- unReader reader vy
   return [dy (f x y)]
+  -- Alternate implementation
+  -- (:[]) <$> dy <$> (f <$> dyread dyvx <*> dyread dyvy)
+  -- where dyread :: forall a. Typeable a => DV -> IO a
+  --       dyread = unReader reader . undyv
 
 liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (Reader -> DVs -> Ds -> IO Ds)
 liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
