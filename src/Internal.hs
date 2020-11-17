@@ -175,7 +175,9 @@ package2 (a, b) = [dy a, dy b]
 -- TODO getter -> unpackager etc
 liftGeneric :: (Reader -> DVs -> IO tupleArgs) -> (cf -> (tupleArgs -> outs)) -> (outs -> [D]) -> cf -> Reader -> [DV] -> IO [D]
 liftGeneric getter curryer packager f reader args =
-  getter reader args >>= return . curryer f >>= (return . packager)
+  packager <$> curryer f <$> getter reader args
+  -- let _ = (curryer f <$> getter reader args)
+  --  in getter reader args >>= return . curryer f >>= (return . packager)
 
 -- TODO consistent names, use Ds, Dvs everywhere
 -- TODO use more >>= etc
