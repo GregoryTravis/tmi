@@ -27,6 +27,19 @@ instance Evaluator Simple where
     msp $ map dvKey listenees
     msp "hi applied"
 
+-- Starting from the listenees, return all Ns in reverse dependency order
+-- TODO! this is just a haphazard traversal, we're not combining multiple
+-- sequences at all
+-- TODO remove dups
+-- rToLNs :: Simple -> [N]
+-- -- These are not ordered
+-- rToLNs (Simple listenees) = concat $ map go (map vN listenees)
+--   -- TODO Should be [N] -> [N] but how to combine them?
+--   where go :: N -> [N]
+--         go n = n : getPrecedents N
+--         -- TODO these also are not ordered
+--         getPrecedents (N {..}) = concat $ map go $ map vN args
+
 -- Compute outputs from inputs
 runNForwards :: Reader -> N -> IO Ds
 runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)

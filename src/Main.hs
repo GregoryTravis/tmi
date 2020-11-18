@@ -65,4 +65,5 @@ main = do
   rightValue <- readV evaluator rightV
   msp (leftValue, rightValue)
   let write = Write (dyv leftV) (dy (100::Int))
+  applyWrites evaluator [write]
   msp "hi"
