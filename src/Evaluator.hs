@@ -8,7 +8,14 @@ module Evaluator
 import Internal
 import Util
 
-data Simple = Simple
+-- DVs: listenees
+data Simple = Simple DVs
+
+dvKey :: DV -> Key
+dvKey (DV key _) = key
+
+vN :: V a -> N
+vN (V n _) = n
 
 instance Evaluator Simple where
   -- readV :: Typeable a => e -> V a -> IO a
@@ -16,13 +23,9 @@ instance Evaluator Simple where
     dyns <- runNForwards (Reader $ readV evaluator) n
     return $ undy $ (dyns !! i)
 
-  -- writeV :: e -> [Write] -> e
-  writeV = undefined
-  -- w :: Typeable a => V a -> a -> Ds
-  -- w (V n@(N {..}) i) x =
-  --   let outputs :: [Dynamic]
-  --       outputs = upd (runNForwards n) i (dy x)
-  --    in rev n_s args outputs
+  applyWrites (Simple listenees) writes = do
+    msp $ map dvKey listenees
+    msp "hi applied"
 
 -- Compute outputs from inputs
 runNForwards :: Reader -> N -> IO Ds

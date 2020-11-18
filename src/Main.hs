@@ -51,13 +51,18 @@ splitF = hoist_1_2 $ F_1_2 {..}
 -- anotherwrite :: string
 -- anotherwrite = show $ ((case writev anotherv (281::int) of [dyx] -> undy dyx) :: int)
 
+-- Net
+--
+-- aV --> anotherV --> leftV, rightV
+
 main = do
-  let evaluator = Simple
+  let (leftV, rightV) = splitF anotherV
+  let evaluator = Simple [dyv leftV, dyv rightV]
   aVValue <- readV evaluator aV
   anotherVValue <- readV evaluator anotherV
   msp (aVValue, anotherVValue)
-  let (leftV, rightV) = splitF anotherV
   leftValue <- readV evaluator leftV
   rightValue <- readV evaluator rightV
   msp (leftValue, rightValue)
+  let write = Write (dyv leftV) (dy (100::Int))
   msp "hi"

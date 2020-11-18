@@ -9,21 +9,25 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Internal
-( V(..)
+( Key
+, V(..)
 , F(..)
 , F2(..)
 , F_1_2(..)
 , S(..)
 , N(..)
 , D
-, DV
+, DV(..)
 , Ds
 , DVs
 , hoist_1_1
 , hoist_2_1
 , hoist_1_2
 , konstV
+, dy
 , undy -- Just for debugging in the absence of an evaluator
+, dyv
+, Write(..)
 , Evaluator(..)
 , Reader(..)
 ) where
@@ -325,11 +329,11 @@ konstV :: (Show a, Typeable a) => a -> V a
 konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
   where name0 = hash x
 
-data Write = Write (DV, D)
+data Write = Write DV D
 
 class Evaluator e where
   readV :: Typeable a => e -> V a -> IO a
-  writeV :: e -> [Write] -> e
+  applyWrites :: e -> [Write] -> IO ()
 
 --newtype Id = Id { unId :: forall a. a -> a }
 newtype Reader = Reader { unReader :: forall a. Typeable a => V a -> IO a }

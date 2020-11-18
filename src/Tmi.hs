@@ -16,9 +16,12 @@ module Tmi
 , hoist_2_1
 , hoist_1_2
 , konstV
+, dy
 , undy -- Just for debugging in the absence of an evaluator
+, dyv
 , Typeable
 , Evaluator(..)
+, Write(..)
 ) where
 
 import Data.Dynamic
