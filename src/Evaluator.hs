@@ -11,34 +11,31 @@ import Util
 -- DVs: listenees
 data Simple = Simple DVs
 
-dvKey :: DV -> Key
-dvKey (DV key _) = key
-
-vN :: V a -> N
-vN (V n _) = n
-
 instance Evaluator Simple where
   -- readV :: Typeable a => e -> V a -> IO a
   readV evaluator (V n i) = do
     dyns <- runNForwards (Reader $ readV evaluator) n
     return $ undy $ (dyns !! i)
 
-  applyWrites (Simple listenees) writes = do
+  applyWrites evaluator@(Simple listenees) writes = do
     msp $ map dvKey listenees
+    msp $ rToLNs evaluator
     msp "hi applied"
 
 -- Starting from the listenees, return all Ns in reverse dependency order
 -- TODO! this is just a haphazard traversal, we're not combining multiple
 -- sequences at all
 -- TODO remove dups
--- rToLNs :: Simple -> [N]
--- -- These are not ordered
--- rToLNs (Simple listenees) = concat $ map go (map vN listenees)
---   -- TODO Should be [N] -> [N] but how to combine them?
---   where go :: N -> [N]
---         go n = n : getPrecedents N
---         -- TODO these also are not ordered
---         getPrecedents (N {..}) = concat $ map go $ map vN args
+rToLNs :: Simple -> [N]
+-- These are not ordered
+rToLNs (Simple listenees) = concat $ map go (map dyvN listenees)
+  -- TODO Should be [N] -> [N] but how to combine them?
+  where go :: N -> [N]
+        go n = n : getPrecedents n
+        -- TODO these also are not ordered
+        getPrecedents (N {..}) = concat $ map go $ map dyvN args
+        dyvN :: DV -> N
+        dyvN (DV _ n _) = n
 
 -- Compute outputs from inputs
 runNForwards :: Reader -> N -> IO Ds

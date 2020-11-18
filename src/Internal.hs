@@ -24,15 +24,18 @@ module Internal
 , hoist_2_1
 , hoist_1_2
 , konstV
+, vN
 , dy
 , undy -- Just for debugging in the absence of an evaluator
 , dyv
+, dvKey
 , Write(..)
 , Evaluator(..)
 , Reader(..)
 ) where
 
 import Data.Dynamic
+import Data.List (intercalate)
 
 import Hash
 import Util
@@ -55,7 +58,7 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 type D = Dynamic
 -- Dynamic (V a), plus key
-data DV = DV Key Dynamic
+data DV = DV Key N Dynamic
 type Ds = [D]
 type DVs = [DV]
 
@@ -67,9 +70,9 @@ undy dyn = case fromDynamic dyn of Just x -> x
                                    Nothing -> error msg
   where msg = "Can't convert " ++ (show (dynTypeRep dyn)) ++ " to a"
 dyv :: Typeable a => V a -> DV
-dyv va = DV (toKey va) (dy va)
+dyv va = DV (toKey va) (vN va) (dy va)
 undyv :: Typeable a => DV -> V a
-undyv (DV _ dyn) = undy dyn
+undyv (DV _ _ dyn) = undy dyn
 
 -- Dump the types of the contained things
 dInfo :: Ds -> String
@@ -78,7 +81,10 @@ dInfo ds = show (map dynTypeRep ds)
 -- Dump the types of the contained things
 dvInfo :: DVs -> String
 dvInfo ds = show (map f ds)
-  where f (DV key dyn) = (key, dynTypeRep dyn)
+  where f (DV key _ dyn) = (key, dynTypeRep dyn)
+
+dvKey :: DV -> Key
+dvKey (DV key _ _) = key
 
 -- For lifting plain forward and reverse functions.  Functions are curried,
 -- tuples turned into lists, and inputs in particular are turned into Vs.
@@ -292,9 +298,13 @@ data N =
   N { n_s :: S
     , args :: DVs }
 
+instance Show N where
+  show (N {..}) = "(N " ++ names n_s ++ " " ++ showArgs ++ ")"
+    where showArgs = intercalate " " (map show $ map dvKey args)
+
 instance Keyable N where
    toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
-     where getKey (DV key _) = key
+     where getKey (DV key _ _) = key
 
 -- Apply an S to args to make an N.
 applySD :: S -> DVs -> N
@@ -305,6 +315,9 @@ applySD s d = N { n_s = s, args = d }
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
 data V a = V N Int
+
+vN :: V a -> N
+vN (V n _) = n
 
 instance Keyable (V a) where
    toKey (V n i) = compositeKey [toKey n, toKey i]
