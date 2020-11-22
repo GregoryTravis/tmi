@@ -61,13 +61,22 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 type D = Dynamic
 -- Dynamic (V a), plus key
 data DV = DV Key N Dynamic
+  deriving Show
 type Ds = [D]
 type DVs = [DV]
 
 -- We ensure that keys are unique by using a hash and ensuring that all names
 -- for things (F, S) are unique.
+-- TODO use deriving via?
 instance Eq DV where
   dv == dv' = dvKey dv == dvKey dv'
+
+-- We ensure that keys are unique by using a hash and ensuring that all names
+-- for things (F, S) are unique.
+-- TODO use deriving via?
+instance Ord DV where
+  -- TODO use compareBy or something
+  compare dv dv' = compare (dvKey dv) (dvKey dv')
 
 -- Helpers for Dynamic stuff
 dy :: Typeable a => a -> D
@@ -326,6 +335,12 @@ instance Keyable N where
 -- DAG traversal stuff
 srcsOf :: N -> [N]
 srcsOf n = map dvN (args n)
+
+-- -- We can reconstruct the output DVs from the # of outputs.
+-- -- They are (V n i) for each output i
+-- outputsOf :: N -> DVs
+-- outputsOf n = map mk [0..numOutputs (n_s n)]
+--   where mk i = dyv $ V n i
 
 -- Apply an S to args to make an N.
 applySD :: S -> DVs -> N

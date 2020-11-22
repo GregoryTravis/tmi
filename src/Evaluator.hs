@@ -24,7 +24,42 @@ instance Evaluator Simple where
   applyWrites evaluator@(Simple listenees) writes = do
     let ns = rToLNs evaluator
     msp ns
+    --msp $ runAllNs evaluator writes
     msp "hi applied"
+
+newtype Cache = Cache (M.Map DV D)
+  deriving Show
+
+-- Insert a value. If the slot is empty, just add it. If it's
+-- full, then confirm the new value is the same as the old value and do
+-- nothing.
+insert :: Cache -> DV -> D -> Cache
+insert c@(Cache m) dv d =
+  case M.lookup dv m of
+    Just d' -> if areEq d d' then c else error $ show ("cache collision", d, d')
+    Nothing -> Cache $ M.insert dv d m
+
+empty :: Cache
+empty = Cache M.empty
+
+initFromWrites :: [Write] -> Cache
+initFromWrites = foldr addWrite empty
+  where addWrite (Write dv d) c = insert c dv d
+--foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+
+-- TODO need to switch to Dyno
+areEq :: D -> D -> Bool
+areEq _ _ = False
+--areEq = (==)
+
+runAllNs :: Simple -> [Write] -> Cache
+runAllNs simple writes =
+  let cache = initFromWrites writes
+      ns = rToLNs simple
+   in foldr runAnN cache ns
+
+runAnN :: N -> Cache -> Cache
+runAnN n cache = undefined
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
