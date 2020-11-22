@@ -330,7 +330,8 @@ instance Keyable S where
 -- An N is an S applied to arguments.
 data N =
   N { n_s :: S
-    , args :: DVs }
+    , args :: DVs
+    , results :: DVs }
   deriving Eq
 
 -- mkOutput :: Typeable a => N -> Int -> V a
@@ -361,8 +362,8 @@ srcsOf n = map dvN (args n)
 --   where mk i = dyv $ V n i
 
 -- Apply an S to args to make an N.
-applySD :: S -> DVs -> N
-applySD s d = N { n_s = s, args = d }
+applySD :: S -> DVs -> DVs -> N
+applySD s dvs outputDVs = N { n_s = s, args = dvs, results = outputDVs }
 
 -- A V can produce a value. What it produces the value from -- function and
 -- arguments -- are hidden inside an S and a Ds, respectively, in turn held in
@@ -380,15 +381,34 @@ instance Keyable (V a) where
 -- If the lifters don't have any bugs, then all the Dynamic conversions will
 -- succeed, and outside code can't mess that up. This and konstV are the only
 -- things that user code should have access to.
+--
+-- I had to tie the knot between the N and its outputs (the argument of applySD
+-- is a list of dynamicized copies of the returned nodes; the returned nodes
+-- point to the N returned by applySD). I couldn't find any other place where
+-- it would let me call dyv. It works here because we're return the Vs, so we
+-- know the type of (V n i), so dyv will take it. I would rather it be done
+-- otherwise but this is the only way I could make it work.
 hoist_0_1 :: Typeable a => F0 a -> V a
-hoist_0_1 f = V (applySD (lift_0_1 f) []) 0
+hoist_0_1 f =
+  let n = applySD (lift_0_1 f) [] [dyv v]
+      v = V n 0
+   in v
+
 hoist_1_1 :: (Typeable a, Typeable b) => F a b -> (V a -> V b)
-hoist_1_1 f va = V (applySD (lift_1_1 f) [dyv va]) 0
+hoist_1_1 f va =
+  let n = (applySD (lift_1_1 f) [dyv va] [dyv v])
+      v = V n 0
+   in v
+
 hoist_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
-hoist_2_1 f va vb = V (applySD (lift_2_1 f) [dyv va, dyv vb]) 0
+hoist_2_1 f va vb =
+  let n = applySD (lift_2_1 f) [dyv va, dyv vb] [dyv v]
+      v = V n 0
+   in v
+
 hoist_1_2 :: (Typeable a, Typeable b, Typeable c) => F_1_2 a b c -> (V a -> (V b, V c))
 hoist_1_2 f va = (vb, vc)
-  where n = applySD (lift_1_2 f) [dyv va]
+  where n = applySD (lift_1_2 f) [dyv va] [dyv vb, dyv vc]
         vb = V n 0
         vc = V n 1
 
