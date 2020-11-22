@@ -4,6 +4,7 @@ module Evaluator
 ( Simple(..)
 ) where
 
+import Control.Monad (foldM)
 import Data.List (nub, partition)
 import qualified Data.Map as M
 
@@ -27,6 +28,25 @@ instance Evaluator Simple where
     --msp $ runAllNs evaluator writes
     msp "hi applied"
 
+runAllNs :: Simple -> [Write] -> IO Cache
+runAllNs simple writes =
+  let cache = initFromWrites writes
+      ns = rToLNs simple
+   in foldM (runAnN simple) cache ns
+
+runAnN :: Simple -> Cache -> N -> IO Cache
+runAnN = undefined
+-- runAnN simple cache (N {..}) = do
+--   let r = rev n_s
+--       reader = Reader $ readV simple
+--   revInputs <- mapM 
+--   return $ r args 
+
+--newtype Reader = Reader { unReader :: forall a. Typeable a => V a -> IO a }
+--foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+-- foldM :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
+-- rev :: Reader -> DVs -> Ds -> IO Ds }
+
 newtype Cache = Cache (M.Map DV D)
   deriving Show
 
@@ -39,27 +59,23 @@ insert c@(Cache m) dv d =
     Just d' -> if areEq d d' then c else error $ show ("cache collision", d, d')
     Nothing -> Cache $ M.insert dv d m
 
+get :: Cache -> DV -> D
+get (Cache m) dv =
+  case M.lookup dv m of
+    Just d -> d
+    Nothing -> error $ show ("cache get failure", dv)
+
 empty :: Cache
 empty = Cache M.empty
 
 initFromWrites :: [Write] -> Cache
 initFromWrites = foldr addWrite empty
   where addWrite (Write dv d) c = insert c dv d
---foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 
 -- TODO need to switch to Dyno
 areEq :: D -> D -> Bool
 areEq _ _ = False
 --areEq = (==)
-
-runAllNs :: Simple -> [Write] -> Cache
-runAllNs simple writes =
-  let cache = initFromWrites writes
-      ns = rToLNs simple
-   in foldr runAnN cache ns
-
-runAnN :: N -> Cache -> Cache
-runAnN n cache = undefined
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
