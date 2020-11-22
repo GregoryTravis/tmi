@@ -284,6 +284,7 @@ instance Keyable (F2 a b c) where
 -- TODO rename 'names', it sounds plural but it really is just the name of an S
 data S =
   S { names :: String
+    --, outputsBuilder :: N -> DVs
     , for :: Reader -> DVs -> IO Ds
     , rev :: Reader -> DVs -> Ds -> IO Ds }
 
@@ -299,11 +300,19 @@ lift_0_1 (F0 {..}) = S {..}
   where for = liftFor_0_1 ffor0
         rev = liftRev_0_1 frev0
         names = name0
+        --outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
+        --outputsBuilder n = [dyv $ mkOutput n 0]
+        --outputsBuilder n = [dyv $ ((V n 0) :: Typeable a => V a)]
 lift_1_1 :: (Typeable a, Typeable b) => F a b -> S
 lift_1_1 (F {..}) = S {..}
   where for = liftFor_1_1 ffor
         rev = liftRev_1_1 frev
         names = name
+        -- outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
+
+-- argh :: Typeable a => V a -> N -> Int -> DV
+-- argh _ n i = dyv $ V n i
+
 lift_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
   where for = liftFor_2_1 ffor2
@@ -323,6 +332,15 @@ data N =
   N { n_s :: S
     , args :: DVs }
   deriving Eq
+
+-- mkOutput :: Typeable a => N -> Int -> V a
+-- mkOutput n i = V n i
+-- mkOutputDVAndV :: Typeable a => N -> Int -> (DV, V a)
+-- mkOutputDVAndV n i =
+--   let v = mkOutput n i
+--    in (dyv v, v)
+-- -- mkOutputDV :: Typeable a => N -> Int -> DV
+-- -- mkOutputDV n i = fst $ mkOutputDVAndV n i
 
 instance Show N where
   show (N {..}) = "(N " ++ names n_s ++ " " ++ showArgs ++ ")"
