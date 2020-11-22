@@ -29,6 +29,8 @@ module Internal
 , undy -- Just for debugging in the absence of an evaluator
 , dyv
 , dvKey
+, dvN
+, srcsOf
 , Write(..)
 , Evaluator(..)
 , Reader(..)
@@ -62,6 +64,11 @@ data DV = DV Key N Dynamic
 type Ds = [D]
 type DVs = [DV]
 
+-- We ensure that keys are unique by using a hash and ensuring that all names
+-- for things (F, S) are unique.
+instance Eq DV where
+  dv == dv' = dvKey dv == dvKey dv'
+
 -- Helpers for Dynamic stuff
 dy :: Typeable a => a -> D
 dy = toDyn
@@ -85,6 +92,9 @@ dvInfo ds = show (map f ds)
 
 dvKey :: DV -> Key
 dvKey (DV key _ _) = key
+
+dvN :: DV -> N
+dvN (DV _ n _) = n
 
 -- For lifting plain forward and reverse functions.  Functions are curried,
 -- tuples turned into lists, and inputs in particular are turned into Vs.
@@ -262,10 +272,16 @@ instance Keyable (F2 a b c) where
   toKey (F2 {..}) = Key name2
 
 -- An S is a lifted F.
+-- TODO rename 'names', it sounds plural but it really is just the name of an S
 data S =
   S { names :: String
     , for :: Reader -> DVs -> IO Ds
     , rev :: Reader -> DVs -> Ds -> IO Ds }
+
+-- This is correct only because we ensure (by hand) that every S has a unique
+-- name.
+instance Eq S where
+  s == s' = names s == names s'
 
 -- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
@@ -297,6 +313,7 @@ instance Keyable S where
 data N =
   N { n_s :: S
     , args :: DVs }
+  deriving Eq
 
 instance Show N where
   show (N {..}) = "(N " ++ names n_s ++ " " ++ showArgs ++ ")"
@@ -305,6 +322,10 @@ instance Show N where
 instance Keyable N where
    toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
      where getKey (DV key _ _) = key
+
+-- DAG traversal stuff
+srcsOf :: N -> [N]
+srcsOf n = map dvN (args n)
 
 -- Apply an S to args to make an N.
 applySD :: S -> DVs -> N

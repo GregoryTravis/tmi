@@ -4,6 +4,9 @@ module Evaluator
 ( Simple(..)
 ) where
 
+import Data.List (nub, partition)
+import qualified Data.Map as M
+
 --import Dyno
 import Internal
 import Util
@@ -17,25 +20,48 @@ instance Evaluator Simple where
     dyns <- runNForwards (Reader $ readV evaluator) n
     return $ undy $ (dyns !! i)
 
+--applyWrites :: e -> [Write] -> IO ()
   applyWrites evaluator@(Simple listenees) writes = do
-    msp $ map dvKey listenees
-    msp $ rToLNs evaluator
+    let ns = rToLNs evaluator
+    msp ns
     msp "hi applied"
 
--- Starting from the listenees, return all Ns in reverse dependency order
--- TODO! this is just a haphazard traversal, we're not combining multiple
--- sequences at all
--- TODO remove dups
+-- Initialize a cache with (DV, D) writes.
+-- Repeat until all Ns are added to the output list:
+--   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
+-- "Reaching" a DV means that it is the reverse output of an N that has been added to the list.
 rToLNs :: Simple -> [N]
--- These are not ordered
-rToLNs (Simple listenees) = concat $ map go (map dyvN listenees)
-  -- TODO Should be [N] -> [N] but how to combine them?
-  where go :: N -> [N]
-        go n = n : getPrecedents n
-        -- TODO these also are not ordered
-        getPrecedents (N {..}) = concat $ map go $ map dyvN args
-        dyvN :: DV -> N
-        dyvN (DV _ n _) = n
+rToLNs evaluator =
+  let allNs = getAllNs evaluator
+   in transfer allNs readyToRun
+
+-- Traverse and return all Ns, but not in dependency order.
+getAllNs :: Simple -> [N]
+getAllNs (Simple dvs) = nub $ concat $ map (cascade srcsOf) ns
+  where ns = map dvN dvs
+
+-- Transfer values from source list to destination list.
+-- At each iteration, find those that are ready to transfer and transfer them.
+-- readyToTransfer :: untransferred -> alreadyTransferred -> anElement -> shouldTransfer
+-- NB: alElement should be one of the elements of untransferred, but we don't check that
+transfer :: Show a => [a] -> ([a] -> [a] -> a -> Bool) -> [a]
+transfer ins readyToTransfer = go ins []
+  where go [] alreadyTransferred = alreadyTransferred
+        go untransferred alreadyTransferred =
+          let (someMoreToTransfer, stillUntransferred) = partition (readyToTransfer untransferred alreadyTransferred) untransferred
+           in go stillUntransferred (someMoreToTransfer ++ alreadyTransferred)
+
+readyToRun :: [N] -> [N] -> N -> Bool
+readyToRun _ alreadyTransferred n = all (`elem` alreadyTransferred) (revInputs n)
+  where revInputs :: N -> [N]
+        revInputs n = map dvN (args n)
+
+-- readyToRun :: [N] -> [N] -> [N]
+-- readyToRun untransferred alreadyTransferred = filter ready untransferred
+--   where ready :: N -> Bool
+--         ready n = all (`elem` alreadyTransferred) (revInputs n)
+--         revInputs :: N -> [N]
+--         revInputs n = map dvN (args n)
 
 -- Compute outputs from inputs
 runNForwards :: Reader -> N -> IO Ds
