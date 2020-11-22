@@ -26,7 +26,6 @@ instance Evaluator Simple where
     msp ns
     msp "hi applied"
 
--- Initialize a cache with (DV, D) writes.
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
 -- "Reaching" a DV means that it is the reverse output of an N that has been added to the list.
