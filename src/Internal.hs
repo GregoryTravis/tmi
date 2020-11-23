@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Internal
 ( Key
@@ -48,6 +49,9 @@ import Hash
 import Util
 
 type Nice a = (Eq a, Typeable a)
+-- This works too
+-- class (Eq a, Typeable a) => Nice a
+-- instance (Eq a, Typeable a) => Nice a
 
 data Key = Key String
   deriving (Show, Eq, Ord)
