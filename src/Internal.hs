@@ -167,9 +167,12 @@ liftFor_0_1 x _ [] = return [dy x]
 
 -- TODO this just prints out what was written.
 liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
-liftRev_0_1 _ _ _ [] [dyNewOut] = do
-  msp ("liftRev_0_1 rev", dyNewOut)
-  return []
+liftRev_0_1 = undefined
+-- This version was to allow writing to konst as if a konst was the world, in
+-- an early test, but I think konst as a uni 0->1 is more consistent
+-- liftRev_0_1 _ _ _ [] [dyNewOut] = do
+--   msp ("liftRev_0_1 rev", dyNewOut)
+--   return []
 
 liftFor_1_1 :: (Nice a, Nice b) => (a -> b) -> (Reader -> DVs -> IO Ds)
 liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
