@@ -55,11 +55,6 @@ makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
                          Nothing -> unReader va
           where debug = ("makeReaderWithCache va", toKey va, typeOf va)
 
---newtype Reader = Reader { unReader :: forall a. Typeable a => V a -> IO a }
---foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
--- foldM :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
--- rev :: Reader -> Reader -> DVs -> DVs -> IO Ds }
-
 newtype Cache = Cache (M.Map DV D)
   deriving Show
 
