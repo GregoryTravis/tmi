@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -46,6 +47,8 @@ import Dyno
 import Hash
 import Util
 
+type Nice a = (Eq a, Typeable a)
+
 data Key = Key String
   deriving (Show, Eq, Ord)
 
@@ -87,9 +90,9 @@ blah f x = eesp ("blah", debug) $ f x
   where debug = (typeOf x, typeOf $ f x)
 
 -- Helpers for Dynamic stuff
-dy :: (Eq a, Typeable a) => a -> D
+dy :: (Nice a) => a -> D
 dy = mkDyno
-undy :: (Eq a, Typeable a) => D -> a
+undy :: Nice a => D -> a
 undy dyn =
   let a' :: a
       a' = undefined
@@ -142,7 +145,7 @@ dvN (DV _ n _) = n
 -- typechecker.
 --
 -- TODO use liftGeneric* here?
-liftFor_0_1 :: (Eq a, Typeable a) => a -> (Reader -> DVs -> IO Ds)
+liftFor_0_1 :: Nice a => a -> (Reader -> DVs -> IO Ds)
 liftFor_0_1 x _ [] = return [dy x]
 -- Doesn't work: a vs (() -> a)
 -- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
@@ -153,7 +156,7 @@ liftRev_0_1 _ _ _ [] [dyNewOut] = do
   msp ("liftRev_0_1 rev", dyNewOut)
   return []
 
-liftFor_1_1 :: (Eq a, Eq b, Typeable a, Typeable b) => (a -> b) -> (Reader -> DVs -> IO Ds)
+liftFor_1_1 :: (Nice a, Nice b) => (a -> b) -> (Reader -> DVs -> IO Ds)
 liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
 -- -- orig impl
 -- liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
@@ -161,7 +164,7 @@ liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
 --   a <- unReader reader va
 --   return [dy (f a)]
 
-liftRev_1_1 :: (Eq a, Eq b, Typeable a, Typeable b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_1_1 :: (Nice a, Nice b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
 liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
 -- -- orig impl
 -- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
@@ -173,21 +176,21 @@ liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
 -- unPackage0 :: Reader -> DVs -> IO ()
 -- unPackage0 _ _ = return ()
 
-unPackage1 :: (Eq a, Typeable a) => Reader -> DVs -> IO a
+unPackage1 :: Nice a => Reader -> DVs -> IO a
 unPackage1 reader [dyva] = do
   a <- unReader reader (undyv dyva)
   return a
 
-unPackage2 :: (Eq a, Eq b, Typeable a, Typeable b) => Reader -> DVs -> IO (a, b)
+unPackage2 :: (Nice a, Nice b) => Reader -> DVs -> IO (a, b)
 unPackage2 reader [dyva, dyvb] = do
   a <- unReader reader (undyv dyva)
   b <- unReader reader (undyv dyvb)
   return (a, b)
 
-unPackageOuts1 :: (Eq a, Typeable a) => Ds -> a
+unPackageOuts1 :: Nice a => Ds -> a
 unPackageOuts1 [dya] = undy dya
 
-unPackageOuts2 :: (Eq a, Eq b, Typeable a, Typeable b) => Ds -> (a, b)
+unPackageOuts2 :: (Nice a, Nice b) => Ds -> (a, b)
 unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
 
 -- Unused, see liftFor_0_1
@@ -212,10 +215,10 @@ uncurryRev_2_1 f (a, b) = f a b
 uncurryRev_1_2 :: (a -> (b, c) -> a) -> (a -> (b, c) -> a)
 uncurryRev_1_2 = id
 
-package1 :: (Eq a, Typeable a) => a -> [D]
+package1 :: Nice a => a -> [D]
 package1 x = [dy x]
 
-package2 :: (Eq a, Eq b, Typeable a, Typeable b) => (a, b) -> [D]
+package2 :: (Nice a, Nice b) => (a, b) -> [D]
 package2 (a, b) = [dy a, dy b]
 
 -- TODO getter -> unpackager etc
@@ -237,7 +240,7 @@ liftGenericRev getter outsGetter curryer packager r reader readerWithCache args 
 --       newIns = curryer r oldIns newOuts
 --   return $ packager newIns
 
-liftFor_2_1 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
+liftFor_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
 liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
 -- -- orig impl
 -- liftFor_2_1 f reader args@[dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
@@ -247,7 +250,7 @@ liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
 --   y <- unReader reader vy
 --   return [dy (f x y)]
 
-liftRev_2_1 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
 liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
 -- -- works
 -- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
@@ -264,7 +267,7 @@ liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
 --   return [dy x, dy y]
 
 -- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
-liftFor_1_2 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
+liftFor_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
 liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
 -- -- orig impl
 -- liftFor_1_2 f reader [dyva] = do
@@ -273,7 +276,7 @@ liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
 --   let (b, c) = f a
 --   return [dy b, dy c]
 
-liftRev_1_2 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
 liftRev_1_2 = liftGenericRev unPackage1 unPackage2 uncurryRev_1_2 package1
 -- -- orig impl
 -- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
@@ -313,7 +316,7 @@ instance Eq S where
 
 -- Lifters for Fs, composed from the forward/reverse lifters above.
 -- TODO these two lifts are nearly the same
-lift_0_1 :: (Eq a, Typeable a) => F0 a -> S
+lift_0_1 :: Nice a => F0 a -> S
 lift_0_1 (F0 {..}) = S {..}
   where for = liftFor_0_1 ffor0
         rev = liftRev_0_1 frev0
@@ -321,18 +324,18 @@ lift_0_1 (F0 {..}) = S {..}
         --outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
         --outputsBuilder n = [dyv $ mkOutput n 0]
         --outputsBuilder n = [dyv $ ((V n 0) :: Typeable a => V a)]
-lift_1_1 :: (Eq a, Eq b, Typeable a, Typeable b) => F a b -> S
+lift_1_1 :: (Nice a, Nice b) => F a b -> S
 lift_1_1 (F {..}) = S {..}
   where for = liftFor_1_1 ffor
         rev = liftRev_1_1 frev
         names = name
         -- outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
-lift_2_1 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => F2 a b c -> S
+lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
   where for = liftFor_2_1 ffor2
         rev = liftRev_2_1 frev2
         names = name2
-lift_1_2 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => F_1_2 a b c -> S
+lift_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> S
 lift_1_2 (F_1_2 {..}) = S {..}
   where for = liftFor_1_2 ffor_1_2
         rev = liftRev_1_2 frev_1_2
@@ -408,42 +411,42 @@ instance Eq (V a) where
 -- it would let me call dyv. It works here because we're return the Vs, so we
 -- know the type of (V n i), so dyv will take it. I would rather it be done
 -- otherwise but this is the only way I could make it work.
-hoist_0_1 :: (Eq a, Typeable a) => F0 a -> V a
+hoist_0_1 :: Nice a => F0 a -> V a
 hoist_0_1 f =
   let n = applySD (lift_0_1 f) [] [dyv v]
       v = V n 0
    in v
 
-hoist_1_1 :: (Eq a, Eq b, Typeable a, Typeable b) => F a b -> (V a -> V b)
+hoist_1_1 :: (Nice a, Nice b) => F a b -> (V a -> V b)
 hoist_1_1 f va =
   let n = (applySD (lift_1_1 f) [dyv va] [dyv v])
       v = V n 0
    in v
 
-hoist_2_1 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => F2 a b c -> (V a -> V b -> V c)
+hoist_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb =
   let n = applySD (lift_2_1 f) [dyv va, dyv vb] [dyv v]
       v = V n 0
    in v
 
-hoist_1_2 :: (Eq a, Eq b, Eq c, Typeable a, Typeable b, Typeable c) => F_1_2 a b c -> (V a -> (V b, V c))
+hoist_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> (V a -> (V b, V c))
 hoist_1_2 f va = (vb, vc)
   where n = applySD (lift_1_2 f) [dyv va] [dyv vb, dyv vc]
         vb = V n 0
         vc = V n 1
 
-konstV :: (Eq a, Show a, Typeable a) => a -> V a
+konstV :: (Show a, Nice a) => a -> V a
 konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
   where name0 = hash x
 
 data Write = Write DV D
 
 class Evaluator e where
-  readV :: (Eq a, Typeable a) => e -> V a -> IO a
+  readV :: Nice a => e -> V a -> IO a
   applyWrites :: e -> [Write] -> IO ()
 
 --newtype Id = Id { unId :: forall a. a -> a }
-newtype Reader = Reader { unReader :: forall a. (Eq a, Typeable a) => V a -> IO a }
+newtype Reader = Reader { unReader :: forall a. Nice a => V a -> IO a }
 
 -- -- Some currying stuff
 
