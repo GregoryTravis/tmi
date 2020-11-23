@@ -15,6 +15,7 @@ module Internal
 ( Key
 , Keyable(..)
 , V(..)
+, mkRoot
 , F(..)
 , F2(..)
 , F_1_2(..)
@@ -34,6 +35,7 @@ module Internal
 , dyv
 , dvKey
 , dvN
+, dvsN
 , srcsOf
 , Write(..)
 , Evaluator(..)
@@ -42,6 +44,7 @@ module Internal
 
 --import Data.Dynamic
 import Data.List (intercalate)
+import Data.Maybe (catMaybes)
 import Data.Typeable
 
 import Dyno
@@ -71,7 +74,7 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 type D = Dyno
 -- Dynamic (V a), plus key
-data DV = DV Key N Dyno
+data DV = DV Key N Dyno | VRoot D
   deriving Show
 type Ds = [D]
 type DVs = [DV]
@@ -101,15 +104,18 @@ undy dyn =
   let a' :: a
       a' = undefined
       --a'Type = typeOf a'
-  in {-eesp huh $-} case getit dyn of
-       Just x -> x
-       Nothing -> error msg
-  where msg = "Can't convert " ++ (show (getTypeRep dyn)) ++ " to a"
+      result = case getit dyn of
+                 Just x -> x
+                 Nothing -> error $ msg result
+   in eesp ("want", (typeOf result)) result
+  where msg desired = "Can't convert " ++ (show (getTypeRep dyn)) ++ " to a " ++ (show (typeOf desired))
         huh = blah (+10) (100::Int)
 dyv :: (Typeable a) => V a -> DV
-dyv va = DV (toKey va) (vN va) (dy va)
+dyv va@(V n i) = DV (toKey va) n (dy va)
+dyv va@(Root d) = VRoot d
 undyv :: Typeable a => DV -> V a
 undyv (DV _ _ dyn) = undy dyn
+undyv (VRoot d) = Root d
 
 -- Dump the types of the contained things
 dInfo :: Ds -> String
@@ -122,9 +128,14 @@ dvInfo ds = show (map f ds)
 
 dvKey :: DV -> Key
 dvKey (DV key _ _) = key
+dvKey (VRoot _) = rootKey
 
-dvN :: DV -> N
-dvN (DV _ n _) = n
+dvN :: DV -> Maybe N
+dvN (DV _ n _) = Just n
+dvN (VRoot _) = Nothing
+
+dvsN :: DVs -> [N]
+dvsN dvs = catMaybes $ map dvN dvs
 
 -- For lifting plain forward and reverse functions.  Functions are curried,
 -- tuples turned into lists, and inputs in particular are turned into Vs.
@@ -371,10 +382,11 @@ instance Show N where
 instance Keyable N where
    toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
      where getKey (DV key _ _) = key
+           getKey (VRoot _) = rootKey
 
 -- DAG traversal stuff
 srcsOf :: N -> [N]
-srcsOf n = map dvN (args n)
+srcsOf n = dvsN (args n)
 
 -- -- We can reconstruct the output DVs from the # of outputs.
 -- -- They are (V n i) for each output i
@@ -390,13 +402,19 @@ applySD s dvs outputDVs = N { n_s = s, args = dvs, results = outputDVs }
 -- arguments -- are hidden inside an S and a Ds, respectively, in turn held in
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
-data V a = V N Int
+data V a = V N Int | Root D
+mkRoot :: Nice a => a -> V a
+mkRoot = Root . dy
 
 vN :: V a -> N
 vN (V n _) = n
 
 instance Keyable (V a) where
    toKey (V n i) = compositeKey [toKey n, toKey i]
+   toKey (Root _) = rootKey
+
+rootKey :: Key
+rootKey = Key ""
 
 instance Show (V a) where
   show v = show $ toKey v

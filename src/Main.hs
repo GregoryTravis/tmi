@@ -27,7 +27,7 @@ anIntF = hoist_1_1 $ F {..}
 
 world :: W
 world = W { anInt = 100 }
-aW = konstV world
+aW = mkRoot world
 
 -- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
 -- The 'F' suffix isn't right, these aren't Fs
@@ -72,7 +72,7 @@ splitF = hoist_1_2 $ F_1_2 {..}
 main = do
   msp ("aW", aW)
   msp ("aV", aV)
-  msp ("aW N", vN aW)
+  --msp ("aW N", vN aW)
   let (leftV, rightV) = splitF anotherV
   let evaluator = Simple [dyv leftV, dyv rightV]
   aVValue <- readV evaluator aV

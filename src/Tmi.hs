@@ -9,6 +9,7 @@
 
 module Tmi
 ( V
+, mkRoot
 , F(..)
 , F2(..)
 , F_1_2(..)

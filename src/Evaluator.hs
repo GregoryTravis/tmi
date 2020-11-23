@@ -17,9 +17,11 @@ import Util
 data Simple = Simple DVs
 
 instance Evaluator Simple where
+--readV :: Nice a => e -> V a -> IO a
   readV evaluator (V n i) = do
     dyns <- runNForwards (Reader $ readV evaluator) n
     return $ undy $ (dyns !! i)
+  readV evaluator (Root d) = return $ undy d
 
 --applyWrites :: e -> [Write] -> IO ()
   applyWrites evaluator@(Simple listenees) writes = do
@@ -100,7 +102,7 @@ rToLNs evaluator =
 -- Traverse and return all Ns, but not in dependency order.
 getAllNs :: Simple -> [N]
 getAllNs (Simple dvs) = nub $ concat $ map (cascade srcsOf) ns
-  where ns = map dvN dvs
+  where ns = dvsN dvs
 
 -- Transfer values from source list to destination list.
 -- At each iteration, find those that are ready to transfer and transfer them.
@@ -116,7 +118,7 @@ transfer ins readyToTransfer = go ins []
 readyToRun :: [N] -> [N] -> N -> Bool
 readyToRun _ alreadyTransferred n = all (`elem` alreadyTransferred) (revInputs n)
   where revInputs :: N -> [N]
-        revInputs n = map dvN (args n)
+        revInputs n = dvsN (args n)
 
 -- readyToRun :: [N] -> [N] -> [N]
 -- readyToRun untransferred alreadyTransferred = filter ready untransferred
