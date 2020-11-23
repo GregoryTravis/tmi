@@ -69,7 +69,7 @@ newtype Cache = Cache (M.Map DV D)
 insert :: Cache -> DV -> D -> Cache
 insert c@(Cache m) dv d =
   case M.lookup dv m of
-    Just d' -> if areEq d d' then c else error $ show ("cache collision", d, d')
+    Just d' -> if d == d' then c else error $ show ("cache collision", d, d')
     Nothing -> Cache $ M.insert dv d m
 
 -- has :: Cache -> DV -> Bool
@@ -93,11 +93,6 @@ initFromWrites writes = addWrites writes empty
 addWrites :: [Write] -> Cache -> Cache
 addWrites writes cache = foldr addWrite cache writes
   where addWrite (Write dv d) c = insert c dv d
-
--- TODO need to switch to Dyno
-areEq :: D -> D -> Bool
-areEq _ _ = False
---areEq = (==)
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.

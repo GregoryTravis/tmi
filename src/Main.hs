@@ -85,4 +85,8 @@ main = do
   applyWrites evaluator [write]
   let write' = Write (dyv rightV) (dy (101::Int))
   applyWrites evaluator [write']
+  -- Should fail, because of conflict -- yes it does
+  -- let w0 = Write (dyv leftV) (dy (100::Int))
+  --     w1 = Write (dyv leftV) (dy (200::Int))
+  --  in applyWrites evaluator [w0, w1]
   msp "hi"
