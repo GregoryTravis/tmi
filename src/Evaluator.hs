@@ -1,7 +1,14 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE
+  ExistentialQuantification
+, MultiParamTypeClasses
+, FlexibleInstances
+, RankNTypes
+, RecordWildCards #-}
 
 module Evaluator
 ( Simple(..)
+, Dum
+, mkListener
 ) where
 
 import Control.Monad (foldM)
@@ -12,6 +19,17 @@ import Data.Typeable
 --import Dyno
 import Internal
 import Util
+
+data Dum w = Dum [w] [Listener]
+
+instance History Dum w where
+  mkHistory w = Dum [w] []
+  addListener = undefined
+  --addListener (Dum ws listeners) listener -
+  write = undefined
+
+mkListener :: V a -> (a -> IO ()) -> Listener
+mkListener v action = Listener {..}
 
 -- DVs: listenees
 data Simple = Simple DVs

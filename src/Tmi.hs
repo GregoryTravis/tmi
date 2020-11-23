@@ -25,6 +25,8 @@ module Tmi
 , dyv
 , Typeable
 , Evaluator(..)
+, History
+, Listener
 , Write(..)
 ) where
 

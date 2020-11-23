@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -40,6 +41,8 @@ module Internal
 , srcsOf
 , Write(..)
 , Evaluator(..)
+, History(..)
+, Listener(..)
 , Reader(..)
 ) where
 
@@ -473,6 +476,15 @@ class Evaluator e where
 
 --newtype Id = Id { unId :: forall a. a -> a }
 newtype Reader = Reader { unReader :: forall a. Nice a => V a -> IO a }
+
+class History h w where
+  mkHistory :: w -> h w
+  addListener :: h w -> Listener -> h w
+  write :: h w -> [Write] -> h w
+
+data Listener = forall a. Listener
+  { v :: V a
+  , action :: a -> IO () }
 
 -- -- Some currying stuff
 
