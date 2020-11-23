@@ -12,6 +12,8 @@ module Tmi
 , F(..)
 , F2(..)
 , F_1_2(..)
+, N(..) -- Just for debugging in the absence of an evaluator
+, vN -- Just for debugging in the absence of an evaluator
 , hoist_1_1
 , hoist_2_1
 , hoist_1_2

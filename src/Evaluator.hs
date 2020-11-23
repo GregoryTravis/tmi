@@ -7,6 +7,7 @@ module Evaluator
 import Control.Monad (foldM)
 import Data.List (nub, partition)
 import qualified Data.Map as M
+import Data.Typeable
 
 --import Dyno
 import Internal
@@ -25,7 +26,8 @@ instance Evaluator Simple where
   applyWrites evaluator@(Simple listenees) writes = do
     let ns = rToLNs evaluator
     msp ns
-    --msp $ runAllNs evaluator writes
+    cache <- runAllNs evaluator writes
+    msp cache
     msp "hi applied"
 
 runAllNs :: Simple -> [Write] -> IO Cache
@@ -35,17 +37,29 @@ runAllNs simple writes =
    in foldM (runAnN simple) cache ns
 
 runAnN :: Simple -> Cache -> N -> IO Cache
-runAnN = undefined
--- runAnN simple cache (N {..}) = do
---   let r = rev n_s
---       reader = Reader $ readV simple
---   revInputs <- mapM 
---   return $ r args 
+--runAnN = undefined
+runAnN simple cache n@(N {..}) = do
+  msp ("runAnN", n)
+  let r = rev n_s
+      reader = Reader $ readV simple
+      readerWithCache = makeReaderWithCache cache reader
+  newInputs <- r reader readerWithCache args results
+  -- TODO confusing the categories
+  let writes = [Write dv d | (dv, d) <- zip args newInputs]
+  return $ addWrites writes cache
+
+makeReaderWithCache :: Cache -> Reader -> Reader
+makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
+  where unReader' va  = do
+          eesp debug $ case getMaybe cache (dyv va) of
+                         Just d -> return $ undy d
+                         Nothing -> unReader va
+          where debug = ("makeReaderWithCache va", toKey va, typeOf va)
 
 --newtype Reader = Reader { unReader :: forall a. Typeable a => V a -> IO a }
 --foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 -- foldM :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
--- rev :: Reader -> DVs -> Ds -> IO Ds }
+-- rev :: Reader -> Reader -> DVs -> DVs -> IO Ds }
 
 newtype Cache = Cache (M.Map DV D)
   deriving Show
@@ -59,6 +73,12 @@ insert c@(Cache m) dv d =
     Just d' -> if areEq d d' then c else error $ show ("cache collision", d, d')
     Nothing -> Cache $ M.insert dv d m
 
+-- has :: Cache -> DV -> Bool
+-- has (Cache m) dv = M.member dv m
+
+getMaybe :: Cache -> DV -> Maybe D
+getMaybe (Cache m) dv = M.lookup dv m
+
 get :: Cache -> DV -> D
 get (Cache m) dv =
   case M.lookup dv m of
@@ -69,7 +89,10 @@ empty :: Cache
 empty = Cache M.empty
 
 initFromWrites :: [Write] -> Cache
-initFromWrites = foldr addWrite empty
+initFromWrites writes = addWrites writes empty
+
+addWrites :: [Write] -> Cache -> Cache
+addWrites writes cache = foldr addWrite cache writes
   where addWrite (Write dv d) c = insert c dv d
 
 -- TODO need to switch to Dyno

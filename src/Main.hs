@@ -16,6 +16,19 @@ import Hash
 import Tmi
 import Util
 
+data W = W { anInt :: Int }
+  deriving Show
+
+anIntF :: V W -> V Int
+anIntF = hoist_1_1 $ F {..}
+  where ffor = anInt
+        frev w i = w { anInt = i }
+        name = "anIntF"
+
+world :: W
+world = W { anInt = 100 }
+aW = konstV world
+
 -- 'plus' lens: adds forwards; backwards, splits value into two roughly equal halves
 -- The 'F' suffix isn't right, these aren't Fs
 plusF :: (Typeable a, Integral a) => V a -> V a -> V a
@@ -26,7 +39,8 @@ plusF = hoist_2_1 $ F2 {..}
 
 -- TODO If I annotate this, I get weird typeclass errors
 -- aV :: (Show a, Typeable a, Integral a) => V a
-aV = plusF (konstV (40::Int)) (konstV 60)
+--aV = plusF (konstV (40::Int)) (konstV 60)
+aV = anIntF aW
 
 incF :: (Typeable a, Integral a) => V a -> V a
 incF = hoist_1_1 $ F {..}
@@ -56,6 +70,9 @@ splitF = hoist_1_2 $ F_1_2 {..}
 -- aV --> anotherV --> leftV, rightV
 
 main = do
+  msp ("aW", aW)
+  msp ("aV", aV)
+  msp ("aW N", vN aW)
   let (leftV, rightV) = splitF anotherV
   let evaluator = Simple [dyv leftV, dyv rightV]
   aVValue <- readV evaluator aV
@@ -66,4 +83,6 @@ main = do
   msp (leftValue, rightValue)
   let write = Write (dyv leftV) (dy (100::Int))
   applyWrites evaluator [write]
+  let write' = Write (dyv rightV) (dy (101::Int))
+  applyWrites evaluator [write']
   msp "hi"

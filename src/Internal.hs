@@ -4,12 +4,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Internal
 ( Key
+, Keyable(..)
 , V(..)
 , F(..)
 , F2(..)
@@ -38,6 +40,7 @@ module Internal
 
 import Data.Dynamic
 import Data.List (intercalate)
+import Data.Typeable
 
 import Hash
 import Util
@@ -78,13 +81,23 @@ instance Ord DV where
   -- TODO use compareBy or something
   compare dv dv' = compare (dvKey dv) (dvKey dv')
 
+blah :: (Typeable a, Typeable b) => (a -> b) -> a -> b
+blah f x = eesp ("blah", debug) $ f x
+  where debug = (typeOf x, typeOf $ f x)
+
 -- Helpers for Dynamic stuff
 dy :: Typeable a => a -> D
 dy = toDyn
 undy :: Typeable a => D -> a
-undy dyn = case fromDynamic dyn of Just x -> x
-                                   Nothing -> error msg
+undy dyn =
+  let a' :: a
+      a' = undefined
+      --a'Type = typeOf a'
+  in {-eesp huh $-} case fromDynamic dyn of
+       Just x -> x
+       Nothing -> error msg
   where msg = "Can't convert " ++ (show (dynTypeRep dyn)) ++ " to a"
+        huh = blah (+10) (100::Int)
 dyv :: Typeable a => V a -> DV
 dyv va = DV (toKey va) (vN va) (dy va)
 undyv :: Typeable a => DV -> V a
@@ -133,8 +146,11 @@ liftFor_0_1 x _ [] = return [dy x]
 -- Doesn't work: a vs (() -> a)
 -- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
 
-liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_0_1 _ = undefined
+-- TODO this just prints out what was written.
+liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_0_1 _ _ _ [] [dyNewOut] = do
+  msp ("liftRev_0_1 rev", dyNewOut)
+  return []
 
 liftFor_1_1 :: (Typeable a, Typeable b) => (a -> b) -> (Reader -> DVs -> IO Ds)
 liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
@@ -144,8 +160,8 @@ liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
 --   a <- unReader reader va
 --   return [dy (f a)]
 
-liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_1_1 = liftGenericRev unPackage1 unPackageOuts1 uncurryRev_1_1 package1
+liftRev_1_1 :: (Typeable a, Typeable b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
 -- -- orig impl
 -- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
 --   let ova = undyv dyova
@@ -209,9 +225,10 @@ liftGeneric getter curryer packager f reader args =
   --  in getter reader args >>= return . curryer f >>= (return . packager)
 
 -- TODO consistent names, use Ds, Dvs everywhere
-liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Ds -> tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr -> Reader -> [DV] -> [D] -> IO [D]
-liftGenericRev getter outsGetter curryer packager r reader args newouts =
-  packager <$> (curryer r <$> getter reader args <*> (pure $ outsGetter newouts))
+liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Reader -> DVs -> IO tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr ->
+                  Reader -> Reader -> [DV] -> [DV] -> IO [D]
+liftGenericRev getter outsGetter curryer packager r reader readerWithCache args newouts =
+  packager <$> (curryer r <$> getter reader args <*> (outsGetter readerWithCache newouts))
 -- -- orig impl -- keep this around, I have no idea how the magic above works
 -- liftGenericRev getter outsGetter curryer packager r reader args newouts = do
 --   oldIns <- getter reader args
@@ -229,8 +246,8 @@ liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
 --   y <- unReader reader vy
 --   return [dy (f x y)]
 
-liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_2_1 = liftGenericRev unPackage2 unPackageOuts1 uncurryRev_2_1 package2
+liftRev_2_1 :: (Typeable a, Typeable b, Typeable c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
 -- -- works
 -- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
 --   oldins <- unPackage2 reader args
@@ -255,8 +272,8 @@ liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
 --   let (b, c) = f a
 --   return [dy b, dy c]
 
-liftRev_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c) -> a) -> (Reader -> DVs -> Ds -> IO Ds)
-liftRev_1_2 = liftGenericRev unPackage1 unPackageOuts2 uncurryRev_1_2 package1
+liftRev_1_2 :: (Typeable a, Typeable b, Typeable c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+liftRev_1_2 = liftGenericRev unPackage1 unPackage2 uncurryRev_1_2 package1
 -- -- orig impl
 -- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
 --   let ova = undyv dyova
@@ -286,7 +303,7 @@ data S =
   S { names :: String
     --, outputsBuilder :: N -> DVs
     , for :: Reader -> DVs -> IO Ds
-    , rev :: Reader -> DVs -> Ds -> IO Ds }
+    , rev :: Reader -> Reader -> DVs -> DVs -> IO Ds }
 
 -- This is correct only because we ensure (by hand) that every S has a unique
 -- name.
@@ -309,10 +326,6 @@ lift_1_1 (F {..}) = S {..}
         rev = liftRev_1_1 frev
         names = name
         -- outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
-
--- argh :: Typeable a => V a -> N -> Int -> DV
--- argh _ n i = dyv $ V n i
-
 lift_2_1 :: (Typeable a, Typeable b, Typeable c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
   where for = liftFor_2_1 ffor2
@@ -376,6 +389,9 @@ vN (V n _) = n
 
 instance Keyable (V a) where
    toKey (V n i) = compositeKey [toKey n, toKey i]
+
+instance Show (V a) where
+  show v = show $ toKey v
 
 -- Lifting the dynamic back into a static. This makes sure the types are right.
 -- If the lifters don't have any bugs, then all the Dynamic conversions will
