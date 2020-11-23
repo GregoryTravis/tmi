@@ -17,7 +17,6 @@ import Util
 data Simple = Simple DVs
 
 instance Evaluator Simple where
-  -- readV :: Typeable a => e -> V a -> IO a
   readV evaluator (V n i) = do
     dyns <- runNForwards (Reader $ readV evaluator) n
     return $ undy $ (dyns !! i)

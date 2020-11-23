@@ -17,7 +17,7 @@ import Tmi
 import Util
 
 data W = W { anInt :: Int }
-  deriving Show
+  deriving (Eq, Show)
 
 anIntF :: V W -> V Int
 anIntF = hoist_1_1 $ F {..}
