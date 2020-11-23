@@ -14,6 +14,7 @@
 module Internal
 ( Key
 , Keyable(..)
+, Nice
 , V(..)
 , mkRoot
 , F(..)
@@ -51,7 +52,7 @@ import Dyno
 import Hash
 import Util
 
-type Nice a = (Eq a, Typeable a)
+type Nice a = (Show a, Eq a, Typeable a)
 -- This works too
 -- class (Eq a, Typeable a) => Nice a
 -- instance (Eq a, Typeable a) => Nice a

@@ -9,6 +9,7 @@
 
 module Tmi
 ( V
+, Nice
 , mkRoot
 , F(..)
 , F2(..)
