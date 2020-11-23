@@ -20,13 +20,15 @@ import Data.Typeable
 -- TODO grab the typerep so we can print out two types if they are different
 -- types, rather than just saying they're not equal. Not in Eq but a separate
 -- thing.
-data Dyno = Dyno { getit :: forall a. (Eq a, Typeable a) => Maybe a
+data Dyno = Dyno { getit :: forall a. (Show a, Eq a, Typeable a) => Maybe a
+                 , shown :: String
                  , getTypeRep :: TypeRep
                  , compareTo :: Dyno -> Bool }
 
 -- In case you ever want to make this Ord, you can also compare TypeReps
-mkDyno :: forall a. (Eq a, Typeable a) => a -> Dyno
+mkDyno :: forall a. (Show a, Eq a, Typeable a) => a -> Dyno
 mkDyno x = Dyno { getit = cast x
+                , shown = show x
                 , getTypeRep = typeOf x
                 , compareTo }
   where compareTo (Dyno { getit = getit' }) =
@@ -38,9 +40,9 @@ instance Eq Dyno where
   a == b = compareTo a b
 
 instance Show Dyno where
-  show (Dyno {..}) = "<<Dyno " ++ show getTypeRep ++ ">>"
+  show (Dyno {..}) = "<<Dyno " ++ show getTypeRep ++ " " ++ shown ++ ">>"
 
-getit' :: (Eq a, Typeable a) => Dyno -> a
+getit' :: (Show a, Eq a, Typeable a) => Dyno -> a
 getit' dyno = case getit dyno of Just x -> x
                                  Nothing -> error "getit'"
 
