@@ -77,7 +77,7 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 type D = Dyno
 -- Dynamic (V a), plus key
-data DV = DV Key N Dyno | VRoot D
+data DV = DV Key N Dyno | VRoot
   deriving Show
 type Ds = [D]
 type DVs = [DV]
@@ -115,10 +115,10 @@ undy dyn =
         huh = blah (+10) (100::Int)
 dyv :: (Typeable a) => V a -> DV
 dyv va@(V n i) = DV (toKey va) n (dy va)
-dyv va@(Root d) = VRoot d
+dyv Root = VRoot
 undyv :: Typeable a => DV -> V a
 undyv (DV _ _ dyn) = undy dyn
-undyv (VRoot d) = Root d
+undyv VRoot = Root
 
 -- Dump the types of the contained things
 dInfo :: Ds -> String
@@ -131,11 +131,11 @@ dvInfo ds = show (map f ds)
 
 dvKey :: DV -> Key
 dvKey (DV key _ _) = key
-dvKey (VRoot _) = rootKey
+dvKey VRoot = rootKey
 
 dvN :: DV -> Maybe N
 dvN (DV _ n _) = Just n
-dvN (VRoot _) = Nothing
+dvN VRoot = Nothing
 
 dvsN :: DVs -> [N]
 dvsN dvs = catMaybes $ map dvN dvs
@@ -388,7 +388,7 @@ instance Show N where
 instance Keyable N where
    toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
      where getKey (DV key _ _) = key
-           getKey (VRoot _) = rootKey
+           getKey VRoot = rootKey
 
 -- DAG traversal stuff
 srcsOf :: N -> [N]
@@ -408,16 +408,16 @@ applySD s dvs outputDVs = N { n_s = s, args = dvs, results = outputDVs }
 -- arguments -- are hidden inside an S and a Ds, respectively, in turn held in
 -- an N. The Int selects which of the N's outputs is the producer of this V's
 -- value.
-data V a = V N Int | Root D
+data V a = V N Int | Root
 mkRoot :: Nice a => a -> V a
-mkRoot = Root . dy
+mkRoot _ = Root
 
 vN :: V a -> N
 vN (V n _) = n
 
 instance Keyable (V a) where
    toKey (V n i) = compositeKey [toKey n, toKey i]
-   toKey (Root _) = rootKey
+   toKey Root = rootKey
 
 rootKey :: Key
 rootKey = Key ""

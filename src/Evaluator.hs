@@ -37,7 +37,7 @@ instance History Dum w where
     -- msp ns
     -- rToLNs and reader
     cache <- runAllNs dum writes
-    let rootDV = VRoot $ dy $ mkRoot $ (1::Int)
+    let rootDV = VRoot
     let newW :: w
         newW = undy $ get cache rootDV
     -- msp cache
@@ -85,7 +85,7 @@ readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
 readV dum (V n i) = do
   dyns <- runNForwards (Reader $ readV dum) n
   return $ undy $ (dyns !! i)
-readV (Dum ws _) (Root d) = return $ undy $ dy $ head ws
+readV (Dum ws _) Root = return $ undy $ dy $ head ws
 
 makeReaderWithCache :: Cache -> Reader -> Reader
 makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
