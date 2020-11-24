@@ -70,6 +70,9 @@ main = do
   let latest = case h'' of Dum ws _ -> head ws
   msp world
   msp latest
+  h''' <- write h'' [Write (dyv rightV) (dy (201::Int))]
+  let latest = case h''' of Dum ws _ -> head ws
+  msp latest
 
   -- Should fail, because of conflict -- yes it does
   -- let w0 = Write (dyv leftV) (dy (100::Int))
