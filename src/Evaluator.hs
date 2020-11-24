@@ -33,10 +33,10 @@ instance History Dum w where
 --write :: h w -> [Write] -> IO (h w)
   write dum@(Dum ws listeners) writes = do
     let dvs = map getDv listeners
-    -- let ns = rToLNs' dvs
+    -- let ns = rToLNs dvs
     -- msp ns
     -- rToLNs and reader
-    cache <- runAllNs' dum writes
+    cache <- runAllNs dum writes
     let rootDV = VRoot $ dy $ mkRoot $ (1::Int)
     let newW :: w
         newW = undy $ get cache rootDV
@@ -54,7 +54,7 @@ runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
           runReader reader
           msp "Ran listener"
         reader' :: forall a. Nice a => V a -> IO a 
-        reader' = readV' dum
+        reader' = readV dum
         reader :: Reader
         reader = Reader { unReader = reader' }
 --readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
@@ -62,14 +62,14 @@ runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
 -- "Reaching" a DV means that it is the reverse output of an N that has been added to the list.
-rToLNs' :: DVs -> [N]
-rToLNs' dvs =
-  let allNs = getAllNs' dvs
+rToLNs :: DVs -> [N]
+rToLNs dvs =
+  let allNs = getAllNs dvs
    in transfer allNs readyToRun
 
 -- Traverse and return all Ns, but not in dependency order.
-getAllNs' :: DVs -> [N]
-getAllNs' dvs = nub $ concat $ map (cascade srcsOf) ns
+getAllNs :: DVs -> [N]
+getAllNs dvs = nub $ concat $ map (cascade srcsOf) ns
   where ns = dvsN dvs
 
 mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
@@ -81,11 +81,11 @@ mkListener v action = Listener {..}
           action a
         runReader = runReader'
 
-readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
-readV' dum (V n i) = do
-  dyns <- runNForwards (Reader $ readV' dum) n
+readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
+readV dum (V n i) = do
+  dyns <- runNForwards (Reader $ readV dum) n
   return $ undy $ (dyns !! i)
-readV' (Dum ws _) (Root d) = return $ undy $ dy $ head ws
+readV (Dum ws _) (Root d) = return $ undy $ dy $ head ws
 
 makeReaderWithCache :: Cache -> Reader -> Reader
 makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
@@ -95,18 +95,18 @@ makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
                          Nothing -> unReader va
           where debug = ("makeReaderWithCache va", toKey va, typeOf va)
 
-runAllNs' :: Nice w => Dum w -> [Write] -> IO Cache
-runAllNs' dum@(Dum _ listeners) writes =
+runAllNs :: Nice w => Dum w -> [Write] -> IO Cache
+runAllNs dum@(Dum _ listeners) writes =
   let cache = initFromWrites writes
       dvs = map getDv listeners 
-      ns = rToLNs' dvs
-   in foldM (runAnN' dum) cache ns
+      ns = rToLNs dvs
+   in foldM (runAnN dum) cache ns
 
-runAnN' :: Nice w => Dum w -> Cache -> N -> IO Cache
-runAnN' dum cache n@(N {..}) = do
+runAnN :: Nice w => Dum w -> Cache -> N -> IO Cache
+runAnN dum cache n@(N {..}) = do
   msp ("runAnN", n)
   let r = rev n_s
-      reader = Reader $ readV' dum
+      reader = Reader $ readV dum
       readerWithCache = makeReaderWithCache cache reader
   newInputs <- r reader readerWithCache args results
   -- TODO confusing the categories
