@@ -132,8 +132,11 @@ feesp s a = a
 
 evalString s = seq (length s) s
 
+sp :: Show a => a -> String
 sp x = unpack $ toStrict $ pShowNoColor $ x
 --sp x = show x
+
+msp :: Show a => a -> IO ()
 msp x = putStrLn $ evalString $ sp x
 
 tsp x = putStrLn $ (sp x) ++ " :: " ++ (sp (typeOf x))
