@@ -110,7 +110,7 @@ undy dyn =
       result = case getit dyn of
                  Just x -> x
                  Nothing -> error $ msg result
-   in eesp ("want", (typeOf result)) result
+   in result
   where msg desired = "Can't convert " ++ (show (getTypeRep dyn)) ++ " to a " ++ (show (typeOf desired))
         huh = blah (+10) (100::Int)
 dyv :: (Typeable a) => V a -> DV

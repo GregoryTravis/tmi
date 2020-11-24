@@ -49,7 +49,10 @@ instance History Dum w where
 runListeners :: Nice w => Dum w -> IO ()
 runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
   where runIt :: Listener -> IO ()
-        runIt (Listener {..}) = runReader reader
+        runIt (Listener {..}) = do
+          msp "Running listener..."
+          runReader reader
+          msp "Ran listener"
         reader' :: forall a. Nice a => V a -> IO a 
         reader' = readV' dum
         reader :: Reader
