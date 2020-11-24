@@ -24,12 +24,34 @@ data Dum w = Dum [w] [Listener]
 
 instance History Dum w where
   mkHistory w = Dum [w] []
-  addListener = undefined
+  addListener (Dum ws listeners) listener = Dum ws (listener : listeners)
   --addListener (Dum ws listeners) listener -
-  write = undefined
+--write :: h w -> [Write] -> IO (h w)
+  write dum@(Dum ws listeners) writes = do
+    let dvs = map getDv listeners
+    let ns = rToLNs' dvs
+    msp ns
+    -- cache <- runAllNs evaluator writes
+    -- msp cache
+    msp "hi applied"
+    return dum
 
-mkListener :: V a -> (a -> IO ()) -> Listener
+-- Repeat until all Ns are added to the output list:
+--   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
+-- "Reaching" a DV means that it is the reverse output of an N that has been added to the list.
+rToLNs' :: DVs -> [N]
+rToLNs' dvs =
+  let allNs = getAllNs' dvs
+   in transfer allNs readyToRun
+
+-- Traverse and return all Ns, but not in dependency order.
+getAllNs' :: DVs -> [N]
+getAllNs' dvs = nub $ concat $ map (cascade srcsOf) ns
+  where ns = dvsN dvs
+
+mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
 mkListener v action = Listener {..}
+  where getDv = dyv v
 
 -- DVs: listenees
 data Simple = Simple DVs
