@@ -315,13 +315,23 @@ data F2 a b c = F2 { name2 :: String, ffor2 :: a -> b -> c, frev2 :: a -> b -> c
 -- TODO F2 -> F_2_2 etc
 data F_1_2 a b c = F_1_2 { name_1_2 :: String, ffor_1_2 :: a -> (b, c), frev_1_2 :: a -> (b, c) -> a }
 
-wrap_for_2_1 :: (a -> b -> c -> c) -> (a -> b -> c) -> (a -> b -> c)
-wrap_for_2_1 wrapper f a b = let c = f a b in wrapper a b c
--- TODO 
-wrap_rev_2_1 :: (a -> b -> c -> (a, b) -> (a, b)) -> (a -> b -> c -> (a, b)) -> (a -> b -> c -> (a, b))
-wrap_rev_2_1 wrapper r a b c = let (a', b') = r a b c in wrapper a b c (a', b')
+wrap1 :: (a -> b -> b) -> (a -> b) -> (a -> b)
+wrap1 wrapper f a = let b = f a in wrapper a b
+wrap2 :: (a -> b -> c -> c) -> (a -> b -> c) -> (a -> b -> c)
+wrap2 wrapper f a b = let c = f a b in wrapper a b c
+wrap3 :: (a -> b -> c -> d -> d) -> (a -> b -> c -> d) -> (a -> b -> c -> d)
+wrap3 wrapper r a b c = let d = r a b c in wrapper a b c d
 
--- TODO should be renamed wrap_2_1 when F2 becomes F_2_1
+wrap_for_1_1 = wrap1
+wrap_rev_1_1 = wrap2
+wrap_for_2_1 = wrap2
+wrap_rev_2_1 = wrap3
+
+-- TODO should be renamed wrap_2_1 when F2 becomes F_2_1, etc
+noisy1 :: (Nice a, Nice b) => F a b -> F a b
+noisy1 (F {..}) = F name ffor' frev'
+  where ffor' = wrap_for_1_1 (\a b -> eesp (name, "for", a, "->", b) b) ffor
+        frev' = wrap_rev_1_1 (\a b a' -> eesp (name, "rev", a, b, "->", a') a') frev
 noisy2 :: (Nice a, Nice b, Nice c) => F2 a b c -> F2 a b c
 noisy2 (F2 {..}) = F2 name2 ffor2' frev2'
   where ffor2' = wrap_for_2_1 (\a b c -> eesp (name2, "for", a, b, "->", c) c) ffor2
@@ -459,7 +469,7 @@ hoist_0_1 f =
 
 hoist_1_1 :: (Nice a, Nice b) => F a b -> (V a -> V b)
 hoist_1_1 f va =
-  let n = (applySD (lift_1_1 f) [dyv va] [dyv v])
+  let n = (applySD (lift_1_1 (noisy1 f)) [dyv va] [dyv v])
       v = V n 0
    in v
 
