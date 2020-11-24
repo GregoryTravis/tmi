@@ -19,7 +19,6 @@ import Data.List (nub, partition)
 import qualified Data.Map as M
 import Data.Typeable
 
---import Dyno
 import Internal
 import Util
 
@@ -29,18 +28,12 @@ data Dum w = Dum [w] [Listener]
 instance History Dum w where
   mkHistory w = Dum [w] []
   addListener (Dum ws listeners) listener = Dum ws (listener : listeners)
-  --addListener (Dum ws listeners) listener -
---write :: h w -> [Write] -> IO (h w)
   write dum@(Dum ws listeners) writes = do
     let dvs = map getDv listeners
-    -- let ns = rToLNs dvs
-    -- msp ns
-    -- rToLNs and reader
     cache <- runAllNs dum writes
     let rootDV = VRoot
     let newW :: w
         newW = undy $ get cache rootDV
-    -- msp cache
     msp "hi applied"
     let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
     runListeners newDum
@@ -57,7 +50,6 @@ runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
         reader' = readV dum
         reader :: Reader
         reader = Reader { unReader = reader' }
---readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
@@ -163,38 +155,6 @@ readyToRun _ alreadyTransferred n = all (`elem` alreadyTransferred) (revInputs n
   where revInputs :: N -> [N]
         revInputs n = dvsN (args n)
 
--- readyToRun :: [N] -> [N] -> [N]
--- readyToRun untransferred alreadyTransferred = filter ready untransferred
---   where ready :: N -> Bool
---         ready n = all (`elem` alreadyTransferred) (revInputs n)
---         revInputs :: N -> [N]
---         revInputs n = map dvN (args n)
-
 -- Compute outputs from inputs
 runNForwards :: Reader -> N -> IO Ds
 runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)
-
----- Compute inputs from outputs and old inputs
---runNBackwards :: N -> Ds -> Ds
-----runNBackwards (N {..}) revArgs = rev n_s (for n_s args) revArgs
---runNBackwards (N {..}) revArgs = rev n_s args revArgs
-
-
-{-
--- This is to be an add-only and add-once map
-data Gen
-
--- This should be in reverse chronological order, because the most common
--- operation is appending and looking up the most recent one.
--- Opaque type
-data History w = History [Gen]
-
-data Write = forall a. Write D a
-read :: Int -> Key -> a
-readHistory -> Key -> [a]
-mkHistory :: w -> [D] -> History w
--- IO needed here?
-update :: History w -> [Write] -> IO (History w)
--- Combine with update? So we can't forget?
-runListeners :: History w -> IO ()
--}

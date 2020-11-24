@@ -39,7 +39,6 @@ plusF = hoist_2_1 $ F2 {..}
 
 -- TODO If I annotate this, I get weird typeclass errors
 -- aV :: (Show a, Typeable a, Integral a) => V a
---aV = plusF (konstV (40::Int)) (konstV 60)
 aV = anIntF aW
 
 incF :: (Nice a, Integral a) => V a -> V a
@@ -58,16 +57,6 @@ splitF = hoist_1_2 $ F_1_2 {..}
                 x'' = x - x'
         frev_1_2 _ (x, x') = x + x'
         name_1_2 = "splitF"
-
--- awrite :: string
--- awrite = show $ ((case writev av (260::int) of [dyx, dyy] -> (undy dyx, undy dyy)) :: (int, int))
-
--- anotherwrite :: string
--- anotherwrite = show $ ((case writev anotherv (281::int) of [dyx] -> undy dyx) :: int)
-
--- Net
---
--- aV --> anotherV --> leftV, rightV
 
 main = do
   msp ("aW", aW)
