@@ -12,6 +12,7 @@ module Evaluator
 , write
 , mkListener
 , addListener
+, readV
 ) where
 
 import Control.Monad (foldM)
@@ -36,6 +37,12 @@ instance History Dum w where
     let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
     runListeners newDum
     return newDum
+--readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
+  readV dum (V n i) = do
+    dyns <- runNForwards (Reader $ readV dum) n
+    return $ undy $ (dyns !! i)
+  readV (Dum ws _) Root = return $ undy $ dy $ head ws
+
 
 runListeners :: Nice w => Dum w -> IO ()
 runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
@@ -66,12 +73,6 @@ mkListener v action = Listener {..}
         runReader reader = do
           a <- unReader reader v
           action a
-
-readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
-readV dum (V n i) = do
-  dyns <- runNForwards (Reader $ readV dum) n
-  return $ undy $ (dyns !! i)
-readV (Dum ws _) Root = return $ undy $ dy $ head ws
 
 makeReaderWithCache :: Cache -> Reader -> Reader
 makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }

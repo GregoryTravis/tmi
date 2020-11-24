@@ -60,6 +60,8 @@ splitF = hoist_1_2 $ F_1_2 {..}
 
 (leftV, rightV) = splitF anotherV
 
+andPlusV = plusF leftV rightV
+
 main = do
   let write'' = Write (dyv leftV) (dy (200::Int))
   let write' = Write (dyv rightV) (dy (101::Int))
@@ -78,5 +80,8 @@ main = do
   -- let w0 = Write (dyv leftV) (dy (100::Int))
   --     w1 = Write (dyv leftV) (dy (200::Int))
   -- h''' <- write h' [w0, w1]
+
+  andPlus <- readV h''' andPlusV
+  msp ("andPlus", andPlus)
 
   msp "hi"

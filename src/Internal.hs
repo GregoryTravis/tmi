@@ -315,6 +315,18 @@ data F2 a b c = F2 { name2 :: String, ffor2 :: a -> b -> c, frev2 :: a -> b -> c
 -- TODO F2 -> F_2_2 etc
 data F_1_2 a b c = F_1_2 { name_1_2 :: String, ffor_1_2 :: a -> (b, c), frev_1_2 :: a -> (b, c) -> a }
 
+wrap_for_2_1 :: (a -> b -> c -> c) -> (a -> b -> c) -> (a -> b -> c)
+wrap_for_2_1 wrapper f a b = let c = f a b in wrapper a b c
+-- TODO 
+wrap_rev_2_1 :: (a -> b -> c -> (a, b) -> (a, b)) -> (a -> b -> c -> (a, b)) -> (a -> b -> c -> (a, b))
+wrap_rev_2_1 wrapper r a b c = let (a', b') = r a b c in wrapper a b c (a', b')
+
+-- TODO should be renamed wrap_2_1 when F2 becomes F_2_1
+noisy2 :: (Nice a, Nice b, Nice c) => F2 a b c -> F2 a b c
+noisy2 (F2 {..}) = F2 name2 ffor2' frev2'
+  where ffor2' = wrap_for_2_1 (\a b c -> eesp (name2, "for", a, b, "->", c) c) ffor2
+        frev2' = wrap_rev_2_1 (\a b c (a', b') -> eesp (name2, "rev", a, b, c, "->", (a', b')) (a', b')) frev2
+
 instance Keyable (F0 a) where
   toKey (F0 {..}) = Key name0
 instance Keyable (F a b) where
@@ -453,7 +465,7 @@ hoist_1_1 f va =
 
 hoist_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> (V a -> V b -> V c)
 hoist_2_1 f va vb =
-  let n = applySD (lift_2_1 f) [dyv va, dyv vb] [dyv v]
+  let n = applySD (lift_2_1 (noisy2 f)) [dyv va, dyv vb] [dyv v]
       v = V n 0
    in v
 
@@ -476,6 +488,8 @@ class History h w where
   mkHistory :: w -> h w
   addListener :: h w -> Listener -> h w
   write :: Nice w => h w -> [Write] -> IO (h w)
+  -- TODO debug onlyl
+  readV :: (Nice w, Nice a) => h w -> V a -> IO a
 
 data Listener = forall a. Nice a => Listener
   { v :: V a
