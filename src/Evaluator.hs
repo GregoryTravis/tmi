@@ -62,11 +62,10 @@ getAllNs dvs = nub $ concat $ map (cascade srcsOf) ns
 mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
 mkListener v action = Listener {..}
   where getDv = dyv v
-        runReader' :: Reader -> IO ()
-        runReader' reader = do
+        runReader :: Reader -> IO ()
+        runReader reader = do
           a <- unReader reader v
           action a
-        runReader = runReader'
 
 readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
 readV dum (V n i) = do
@@ -77,21 +76,24 @@ readV (Dum ws _) Root = return $ undy $ dy $ head ws
 makeReaderWithCache :: Cache -> Reader -> Reader
 makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
   where unReader' va  = do
-          eesp debug $ case getMaybe cache (dyv va) of
-                         Just d -> return $ undy d
-                         Nothing -> unReader va
-          where debug = ("makeReaderWithCache va", toKey va, typeOf va)
+          case getMaybe cache (dyv va) of
+            Just d -> return $ undy d
+            Nothing -> unReader va
 
 runAllNs :: Nice w => Dum w -> [Write] -> IO Cache
 runAllNs dum@(Dum _ listeners) writes =
   let cache = initFromWrites writes
       dvs = map getDv listeners 
       ns = rToLNs dvs
-   in foldM (runAnN dum) cache ns
+   in foldM (runNBackwards dum) cache ns
 
-runAnN :: Nice w => Dum w -> Cache -> N -> IO Cache
-runAnN dum cache n@(N {..}) = do
-  msp ("runAnN", n)
+-- Compute outputs from inputs
+runNForwards :: Reader -> N -> IO Ds
+runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)
+
+runNBackwards :: Nice w => Dum w -> Cache -> N -> IO Cache
+runNBackwards dum cache n@(N {..}) = do
+  msp ("runNBackwards", n)
   let r = rev n_s
       reader = Reader $ readV dum
       readerWithCache = makeReaderWithCache cache reader
@@ -138,7 +140,3 @@ readyToRun :: [N] -> [N] -> N -> Bool
 readyToRun _ alreadyTransferred n = all (`elem` alreadyTransferred) (revInputs n)
   where revInputs :: N -> [N]
         revInputs n = dvsN (args n)
-
--- Compute outputs from inputs
-runNForwards :: Reader -> N -> IO Ds
-runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)
