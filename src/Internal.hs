@@ -326,6 +326,8 @@ wrap_for_1_1 = wrap1
 wrap_rev_1_1 = wrap2
 wrap_for_2_1 = wrap2
 wrap_rev_2_1 = wrap3
+wrap_for_1_2 = wrap1
+wrap_rev_1_2 = wrap2
 
 -- TODO should be renamed wrap_2_1 when F2 becomes F_2_1, etc
 noisy1 :: (Nice a, Nice b) => F a b -> F a b
@@ -336,6 +338,9 @@ noisy2 :: (Nice a, Nice b, Nice c) => F2 a b c -> F2 a b c
 noisy2 (F2 {..}) = F2 name2 ffor2' frev2'
   where ffor2' = wrap_for_2_1 (\a b c -> eesp (name2, "for", a, b, "->", c) c) ffor2
         frev2' = wrap_rev_2_1 (\a b c (a', b') -> eesp (name2, "rev", a, b, c, "->", (a', b')) (a', b')) frev2
+noisy_1_2 (F_1_2 {..}) = F_1_2 name_1_2 ffor_1_2' frev_1_2'
+  where ffor_1_2' = wrap_for_1_2 (\a bc -> eesp (name_1_2, "for", a, "->", bc) bc) ffor_1_2
+        frev_1_2' = wrap_rev_1_2 (\a bc bc' -> eesp (name_1_2, "rev", a, bc, "->", bc') bc') frev_1_2
 
 instance Keyable (F0 a) where
   toKey (F0 {..}) = Key name0
@@ -481,7 +486,7 @@ hoist_2_1 f va vb =
 
 hoist_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> (V a -> (V b, V c))
 hoist_1_2 f va = (vb, vc)
-  where n = applySD (lift_1_2 f) [dyv va] [dyv vb, dyv vc]
+  where n = applySD (lift_1_2 (noisy_1_2 f)) [dyv va] [dyv vb, dyv vc]
         vb = V n 0
         vc = V n 1
 
