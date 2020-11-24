@@ -1,0 +1,3 @@
+stack ghci --ghci-options="-fdefer-typed-holes -fwarn-typed-holes"
+# This should give us stack traces, but it fails with dll error
+# stack ghci --ghci-options="-fdefer-typed-holes -fwarn-typed-holes -fexternal-interpreter -prof"
