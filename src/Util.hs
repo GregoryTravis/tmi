@@ -57,11 +57,12 @@ module Util
 , prefixes
 , cascade
 , upd
+, transfer
 ) where
 
 import Control.Exception
 import Data.Containers.ListUtils (nubOrd)
-import Data.List (group, groupBy, maximumBy, minimumBy, sort, isSuffixOf)
+import Data.List (group, groupBy, maximumBy, minimumBy, sort, isSuffixOf, partition)
 import qualified Data.Map.Strict as M
 import Data.Text (unpack)
 import Data.Text.Lazy (toStrict)
@@ -352,3 +353,14 @@ upd :: [a] -> Int -> a -> [a]
 upd as i a
   | i < 0 || i >= length as = error ("upd out of range: " ++ (show i) ++ " vs " ++ (show (length as)))
   | otherwise = (take i as) ++ [a] ++ (drop (i+1) as)
+
+-- Transfer values from source list to destination list.
+-- At each iteration, find those that are ready to transfer and transfer them.
+-- readyToTransfer :: untransferred -> alreadyTransferred -> anElement -> shouldTransfer
+-- NB: alElement should be one of the elements of untransferred, but we don't check that
+transfer :: Show a => [a] -> ([a] -> [a] -> a -> Bool) -> [a]
+transfer ins readyToTransfer = go ins []
+  where go [] alreadyTransferred = alreadyTransferred
+        go untransferred alreadyTransferred =
+          let (someMoreToTransfer, stillUntransferred) = partition (readyToTransfer untransferred alreadyTransferred) untransferred
+           in go stillUntransferred (someMoreToTransfer ++ alreadyTransferred)

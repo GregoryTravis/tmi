@@ -15,7 +15,7 @@ module Evaluator
 ) where
 
 import Control.Monad (foldM)
-import Data.List (nub, partition)
+import Data.List (nub)
 import qualified Data.Map as M
 import Data.Typeable
 
@@ -31,10 +31,8 @@ instance History Dum w where
   write dum@(Dum ws listeners) writes = do
     let dvs = map getDv listeners
     cache <- runAllNs dum writes
-    let rootDV = VRoot
     let newW :: w
-        newW = undy $ get cache rootDV
-    msp "hi applied"
+        newW = undy $ get cache VRoot
     let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
     runListeners newDum
     return newDum
@@ -46,10 +44,7 @@ runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
           msp "Running listener..."
           runReader reader
           msp "Ran listener"
-        reader' :: forall a. Nice a => V a -> IO a 
-        reader' = readV dum
-        reader :: Reader
-        reader = Reader { unReader = reader' }
+        reader = Reader { unReader = readV dum }
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
@@ -138,17 +133,6 @@ initFromWrites writes = addWrites writes empty
 addWrites :: [Write] -> Cache -> Cache
 addWrites writes cache = foldr addWrite cache writes
   where addWrite (Write dv d) c = insert c dv d
-
--- Transfer values from source list to destination list.
--- At each iteration, find those that are ready to transfer and transfer them.
--- readyToTransfer :: untransferred -> alreadyTransferred -> anElement -> shouldTransfer
--- NB: alElement should be one of the elements of untransferred, but we don't check that
-transfer :: Show a => [a] -> ([a] -> [a] -> a -> Bool) -> [a]
-transfer ins readyToTransfer = go ins []
-  where go [] alreadyTransferred = alreadyTransferred
-        go untransferred alreadyTransferred =
-          let (someMoreToTransfer, stillUntransferred) = partition (readyToTransfer untransferred alreadyTransferred) untransferred
-           in go stillUntransferred (someMoreToTransfer ++ alreadyTransferred)
 
 readyToRun :: [N] -> [N] -> N -> Bool
 readyToRun _ alreadyTransferred n = all (`elem` alreadyTransferred) (revInputs n)
