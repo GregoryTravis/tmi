@@ -40,7 +40,6 @@ module Internal
 , dvsN
 , srcsOf
 , Write(..)
-, Evaluator(..)
 , History(..)
 , Listener(..)
 , Reader(..)
@@ -469,10 +468,6 @@ konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
   where name0 = hash x
 
 data Write = Write DV D
-
-class Evaluator e where
-  readV :: Nice a => e -> V a -> IO a
-  applyWrites :: e -> [Write] -> IO ()
 
 --newtype Id = Id { unId :: forall a. a -> a }
 newtype Reader = Reader { unReader :: forall a. Nice a => V a -> IO a }

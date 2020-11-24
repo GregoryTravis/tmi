@@ -24,7 +24,6 @@ module Tmi
 , undy -- Just for debugging in the absence of an evaluator
 , dyv
 , Typeable
-, Evaluator(..)
 , History
 , Listener
 , mkHistory

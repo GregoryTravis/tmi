@@ -7,8 +7,7 @@
 , ScopedTypeVariables #-}
 
 module Evaluator
-( Simple(..)
-, Dum(..)
+( Dum(..)
 , mkHistory
 , write
 , mkListener
@@ -79,29 +78,19 @@ mkListener v action = Listener {..}
           action a
         runReader = runReader'
 
--- DVs: listenees
-data Simple = Simple DVs
-
-instance Evaluator Simple where
---readV :: Nice a => e -> V a -> IO a
-  readV evaluator (V n i) = do
-    dyns <- runNForwards (Reader $ readV evaluator) n
-    return $ undy $ (dyns !! i)
-  readV evaluator (Root d) = return $ undy d
-
---applyWrites :: e -> [Write] -> IO ()
-  applyWrites evaluator@(Simple listenees) writes = do
-    let ns = rToLNs evaluator
-    msp ns
-    cache <- runAllNs evaluator writes
-    msp cache
-    msp "hi applied"
-
 readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
 readV' dum (V n i) = do
   dyns <- runNForwards (Reader $ readV' dum) n
   return $ undy $ (dyns !! i)
 readV' (Dum ws _) (Root d) = return $ undy $ dy $ head ws
+
+makeReaderWithCache :: Cache -> Reader -> Reader
+makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
+  where unReader' va  = do
+          eesp debug $ case getMaybe cache (dyv va) of
+                         Just d -> return $ undy d
+                         Nothing -> unReader va
+          where debug = ("makeReaderWithCache va", toKey va, typeOf va)
 
 runAllNs' :: Nice w => Dum w -> [Write] -> IO Cache
 runAllNs' dum@(Dum _ listeners) writes =
@@ -120,32 +109,6 @@ runAnN' dum cache n@(N {..}) = do
   -- TODO confusing the categories
   let writes = [Write dv d | (dv, d) <- zip args newInputs]
   return $ addWrites writes cache
-
-runAllNs :: Simple -> [Write] -> IO Cache
-runAllNs simple writes =
-  let cache = initFromWrites writes
-      ns = rToLNs simple
-   in foldM (runAnN simple) cache ns
-
-runAnN :: Simple -> Cache -> N -> IO Cache
---runAnN = undefined
-runAnN simple cache n@(N {..}) = do
-  msp ("runAnN", n)
-  let r = rev n_s
-      reader = Reader $ readV simple
-      readerWithCache = makeReaderWithCache cache reader
-  newInputs <- r reader readerWithCache args results
-  -- TODO confusing the categories
-  let writes = [Write dv d | (dv, d) <- zip args newInputs]
-  return $ addWrites writes cache
-
-makeReaderWithCache :: Cache -> Reader -> Reader
-makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
-  where unReader' va  = do
-          eesp debug $ case getMaybe cache (dyv va) of
-                         Just d -> return $ undy d
-                         Nothing -> unReader va
-          where debug = ("makeReaderWithCache va", toKey va, typeOf va)
 
 newtype Cache = Cache (M.Map DV D)
   deriving Show
@@ -180,19 +143,6 @@ initFromWrites writes = addWrites writes empty
 addWrites :: [Write] -> Cache -> Cache
 addWrites writes cache = foldr addWrite cache writes
   where addWrite (Write dv d) c = insert c dv d
-
--- Repeat until all Ns are added to the output list:
---   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
--- "Reaching" a DV means that it is the reverse output of an N that has been added to the list.
-rToLNs :: Simple -> [N]
-rToLNs evaluator =
-  let allNs = getAllNs evaluator
-   in transfer allNs readyToRun
-
--- Traverse and return all Ns, but not in dependency order.
-getAllNs :: Simple -> [N]
-getAllNs (Simple dvs) = nub $ concat $ map (cascade srcsOf) ns
-  where ns = dvsN dvs
 
 -- Transfer values from source list to destination list.
 -- At each iteration, find those that are ready to transfer and transfer them.
