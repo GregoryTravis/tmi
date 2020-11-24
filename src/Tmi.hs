@@ -27,6 +27,9 @@ module Tmi
 , Evaluator(..)
 , History
 , Listener
+, mkHistory
+, addListener
+, write
 , Write(..)
 ) where
 

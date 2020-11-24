@@ -3,12 +3,16 @@
 , MultiParamTypeClasses
 , FlexibleInstances
 , RankNTypes
-, RecordWildCards #-}
+, RecordWildCards
+, ScopedTypeVariables #-}
 
 module Evaluator
 ( Simple(..)
-, Dum
+, Dum(..)
+, mkHistory
+, write
 , mkListener
+, addListener
 ) where
 
 import Control.Monad (foldM)
@@ -20,6 +24,7 @@ import Data.Typeable
 import Internal
 import Util
 
+-- ws are in reverse chronological order
 data Dum w = Dum [w] [Listener]
 
 instance History Dum w where
@@ -29,12 +34,28 @@ instance History Dum w where
 --write :: h w -> [Write] -> IO (h w)
   write dum@(Dum ws listeners) writes = do
     let dvs = map getDv listeners
-    let ns = rToLNs' dvs
-    msp ns
-    -- cache <- runAllNs evaluator writes
+    -- let ns = rToLNs' dvs
+    -- msp ns
+    -- rToLNs and reader
+    cache <- runAllNs' dum writes
+    let rootDV = VRoot $ dy $ mkRoot $ (1::Int)
+    let newW :: w
+        newW = undy $ get cache rootDV
     -- msp cache
     msp "hi applied"
-    return dum
+    let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
+    runListeners newDum
+    return newDum
+
+runListeners :: Nice w => Dum w -> IO ()
+runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
+  where runIt :: Listener -> IO ()
+        runIt (Listener {..}) = runReader reader
+        reader' :: forall a. Nice a => V a -> IO a 
+        reader' = readV' dum
+        reader :: Reader
+        reader = Reader { unReader = reader' }
+--readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
@@ -52,6 +73,11 @@ getAllNs' dvs = nub $ concat $ map (cascade srcsOf) ns
 mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
 mkListener v action = Listener {..}
   where getDv = dyv v
+        runReader' :: Reader -> IO ()
+        runReader' reader = do
+          a <- unReader reader v
+          action a
+        runReader = runReader'
 
 -- DVs: listenees
 data Simple = Simple DVs
@@ -70,6 +96,30 @@ instance Evaluator Simple where
     cache <- runAllNs evaluator writes
     msp cache
     msp "hi applied"
+
+readV' :: (Nice w, Nice a) => Dum w -> V a -> IO a
+readV' dum (V n i) = do
+  dyns <- runNForwards (Reader $ readV' dum) n
+  return $ undy $ (dyns !! i)
+readV' (Dum ws _) (Root d) = return $ undy $ dy $ head ws
+
+runAllNs' :: Nice w => Dum w -> [Write] -> IO Cache
+runAllNs' dum@(Dum _ listeners) writes =
+  let cache = initFromWrites writes
+      dvs = map getDv listeners 
+      ns = rToLNs' dvs
+   in foldM (runAnN' dum) cache ns
+
+runAnN' :: Nice w => Dum w -> Cache -> N -> IO Cache
+runAnN' dum cache n@(N {..}) = do
+  msp ("runAnN", n)
+  let r = rev n_s
+      reader = Reader $ readV' dum
+      readerWithCache = makeReaderWithCache cache reader
+  newInputs <- r reader readerWithCache args results
+  -- TODO confusing the categories
+  let writes = [Write dv d | (dv, d) <- zip args newInputs]
+  return $ addWrites writes cache
 
 runAllNs :: Simple -> [Write] -> IO Cache
 runAllNs simple writes =

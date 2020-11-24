@@ -81,12 +81,19 @@ main = do
   leftValue <- readV evaluator leftV
   rightValue <- readV evaluator rightV
   msp (leftValue, rightValue)
-  let write = Write (dyv leftV) (dy (100::Int))
-  applyWrites evaluator [write]
+  let write'' = Write (dyv leftV) (dy (200::Int))
+  applyWrites evaluator [write'']
   let write' = Write (dyv rightV) (dy (101::Int))
   applyWrites evaluator [write']
   -- Should fail, because of conflict -- yes it does
   -- let w0 = Write (dyv leftV) (dy (100::Int))
   --     w1 = Write (dyv leftV) (dy (200::Int))
   --  in applyWrites evaluator [w0, w1]
+
+  let h = mkHistory world :: Dum W
+      h' = addListener (addListener h (mkListener leftV msp)) (mkListener rightV msp)
+  h'' <- write h' [write'']
+  let latest = case h'' of Dum ws _ -> head ws
+  msp world
+  msp latest
   msp "hi"

@@ -480,11 +480,12 @@ newtype Reader = Reader { unReader :: forall a. Nice a => V a -> IO a }
 class History h w where
   mkHistory :: w -> h w
   addListener :: h w -> Listener -> h w
-  write :: h w -> [Write] -> IO (h w)
+  write :: Nice w => h w -> [Write] -> IO (h w)
 
-data Listener = forall a. Listener
+data Listener = forall a. Nice a => Listener
   { v :: V a
   , action :: a -> IO ()
+  , runReader :: Reader -> IO ()
   , getDv :: DV }
 
 -- -- Some currying stuff
