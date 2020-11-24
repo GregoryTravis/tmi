@@ -58,11 +58,9 @@ splitF = hoist_1_2 $ F_1_2 {..}
         frev_1_2 _ (x, x') = x + x'
         name_1_2 = "splitF"
 
+(leftV, rightV) = splitF anotherV
+
 main = do
-  msp ("aW", aW)
-  msp ("aV", aV)
-  --msp ("aW N", vN aW)
-  let (leftV, rightV) = splitF anotherV
   let write'' = Write (dyv leftV) (dy (200::Int))
   let write' = Write (dyv rightV) (dy (101::Int))
 

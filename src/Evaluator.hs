@@ -93,7 +93,6 @@ runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)
 
 runNBackwards :: Nice w => Dum w -> Cache -> N -> IO Cache
 runNBackwards dum cache n@(N {..}) = do
-  msp ("runNBackwards", n)
   let r = rev n_s
       reader = Reader $ readV dum
       readerWithCache = makeReaderWithCache cache reader
