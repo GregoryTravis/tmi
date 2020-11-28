@@ -217,10 +217,7 @@ lift_0_1 (F0 {..}) = S {..}
   where for [] = [dy $ ffor0]
         rev = undefined
         names = name0
---data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
-        --outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
-        --outputsBuilder n = [dyv $ mkOutput n 0]
-        --outputsBuilder n = [dyv $ ((V n 0) :: Typeable a => V a)]
+
 lift_1_1 :: (Nice a, Nice b) => F a b -> S
 lift_1_1 (F {..}) = S {..}
   where for [din0] = [dy out0]
@@ -228,12 +225,7 @@ lift_1_1 (F {..}) = S {..}
         rev [doin0] [dnout0] = [dy nin0]
           where nin0 = frev (undy doin0) (undy dnout0)
         names = name
-        -- outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
--- lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
--- lift_2_1 (F2 {..}) = S {..}
---   where for = liftFor_2_1 ffor2
---         rev = liftRev_2_1 frev2
---         names = name2
+
 lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
   where for [din0, din1] = [dy out0]
@@ -241,6 +233,7 @@ lift_2_1 (F2 {..}) = S {..}
         rev [doin0, doin1] [dnout0] = [dy nin0, dy nin1]
           where (nin0, nin1) = frev2 (undy doin0) (undy doin1) (undy dnout0)
         names = name2
+
 lift_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> S
 lift_1_2 (F_1_2 {..}) = S {..}
   where for [din0] = [dy out0, dy out1]
