@@ -32,15 +32,17 @@ instance History Dum w where
   write dum@(Dum ws listeners) writes = do
     let dvs = map getDv listeners
     cache <- runAllNs dum writes
+    -- TODO this undefined here is wrong wrong wrong
     let newW :: w
-        newW = undy $ get cache VRoot
+        newW = undy $ get cache DRoot
     let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
     runListeners newDum
     return newDum
 --readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
   readV dum (V n i) = do
-    dyns <- runNForwards (Reader $ readV dum) n
+    dyns <- runNForwards dum (Reader $ readV dum) n
     return $ undy $ (dyns !! i)
+  -- TODO use some kind of cast here
   readV (Dum ws _) Root = return $ undy $ dy $ head ws
 
 
@@ -74,12 +76,12 @@ mkListener v action = Listener {..}
           a <- unReader reader v
           action a
 
-makeReaderWithCache :: Cache -> Reader -> Reader
-makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
-  where unReader' va  = do
-          case getMaybe cache (dyv va) of
-            Just d -> return $ undy d
-            Nothing -> unReader va
+-- makeReaderWithCache :: Cache -> Reader -> Reader
+-- makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }
+--   where unReader' va  = do
+--           case getMaybe cache (dyv va) of
+--             Just d -> return $ undy d
+--             Nothing -> unReader va
 
 runAllNs :: Nice w => Dum w -> [Write] -> IO Cache
 runAllNs dum@(Dum _ listeners) writes =
@@ -88,16 +90,31 @@ runAllNs dum@(Dum _ listeners) writes =
       ns = rToLNs dvs
    in foldM (runNBackwards dum) cache ns
 
+readDV :: (Nice w) => Dum w -> Reader -> DV -> IO D
+readDV dum reader (DV _ _ dReader) = dReader reader
+-- TODO!! this is ignoring the cache
+readDV (Dum ws _) reader DRoot = return $ dy $ head ws
+
+readDVWithCache :: (Nice w) => Cache -> Dum w -> Reader -> DV -> IO D
+readDVWithCache cache dum reader dv = do
+  case getMaybe cache dv of
+    Just d -> return d
+    Nothing -> readDV dum reader dv
+
 -- Compute outputs from inputs
-runNForwards :: Reader -> N -> IO Ds
-runNForwards reader (N {..}) = for n_s reader args -- (dynMap r args)
+runNForwards :: Nice w => Dum w -> Reader -> N -> IO Ds
+runNForwards dum reader (N {..}) = do
+  argVals <- mapM (readDV dum reader) args
+  return $ for n_s argVals
 
 runNBackwards :: Nice w => Dum w -> Cache -> N -> IO Cache
 runNBackwards dum cache n@(N {..}) = do
   let r = rev n_s
       reader = Reader $ readV dum
-      readerWithCache = makeReaderWithCache cache reader
-  newInputs <- r reader readerWithCache args results
+      --readerWithCache = makeReaderWithCache cache reader
+  argsVals <- mapM (readDV dum reader) args :: IO Ds
+  resultsVals <- mapM (readDVWithCache cache dum reader) results :: IO Ds
+  let newInputs = rev n_s argsVals resultsVals
   -- TODO confusing the categories
   let writes = [Write dv d | (dv, d) <- zip args newInputs]
   return $ addWrites writes cache

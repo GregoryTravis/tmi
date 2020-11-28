@@ -77,10 +77,12 @@ compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 type D = Dyno
 -- Dynamic (V a), plus key
-data DV = DV Key N Dyno | VRoot
-  deriving Show
+data DV = forall a. DV Key N (Reader -> IO D) | DRoot
 type Ds = [D]
 type DVs = [DV]
+
+instance Show DV where
+  show (DV key n _) = "(DV " ++ show key ++ " " ++ show n ++ ")"
 
 -- We ensure that keys are unique by using a hash and ensuring that all names
 -- for things (F, S) are unique.
@@ -113,12 +115,19 @@ undy dyn =
    in result
   where msg desired = "Can't convert " ++ (show (getTypeRep dyn)) ++ " to a " ++ (show (typeOf desired))
         huh = blah (+10) (100::Int)
-dyv :: (Typeable a) => V a -> DV
-dyv va@(V n i) = DV (toKey va) n (dy va)
-dyv Root = VRoot
-undyv :: Typeable a => DV -> V a
-undyv (DV _ _ dyn) = undy dyn
-undyv VRoot = Root
+dyv :: Nice a => V a -> DV
+dyv v@(V n i) = DV key n dReader
+  where key = toKey v
+        dReader reader = do
+          a <- unReader reader v
+          return $ dy a
+dyv Root = DRoot
+--   where dReader reader = do
+--           a <- unReader reader (Root :: forall a. Show a => V a)
+--           return $ dy a
+-- undyv :: Typeable a => DV -> V a
+-- undyv (DV _ _ dyn) = undy dyn
+-- undyv DRoot = Root
 
 -- Dump the types of the contained things
 dInfo :: Ds -> String
@@ -127,15 +136,15 @@ dInfo ds = show (map getTypeRep ds)
 -- Dump the types of the contained things
 dvInfo :: DVs -> String
 dvInfo ds = show (map f ds)
-  where f (DV key _ dyn) = (key, getTypeRep dyn)
+  where f (DV key _ dyn) = key -- (key, getTypeRep dyn)
 
 dvKey :: DV -> Key
 dvKey (DV key _ _) = key
-dvKey VRoot = rootKey
+dvKey DRoot = rootKey
 
 dvN :: DV -> Maybe N
 dvN (DV _ n _) = Just n
-dvN VRoot = Nothing
+dvN DRoot = Nothing
 
 dvsN :: DVs -> [N]
 dvsN dvs = catMaybes $ map dvN dvs
@@ -163,150 +172,150 @@ dvsN dvs = catMaybes $ map dvN dvs
 -- typechecker.
 --
 -- TODO use liftGeneric* here?
-liftFor_0_1 :: Nice a => a -> (Reader -> DVs -> IO Ds)
-liftFor_0_1 x _ [] = return [dy x]
--- Doesn't work: a vs (() -> a)
--- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
+-- liftFor_0_1 :: Nice a => a -> (Reader -> DVs -> IO Ds)
+-- liftFor_0_1 x _ [] = return [dy x]
+-- -- Doesn't work: a vs (() -> a)
+-- -- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
 
--- TODO this just prints out what was written.
-liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
-liftRev_0_1 = undefined
--- This version was to allow writing to konst as if a konst was the world, in
--- an early test, but I think konst as a uni 0->1 is more consistent
--- liftRev_0_1 _ _ _ [] [dyNewOut] = do
---   msp ("liftRev_0_1 rev", dyNewOut)
---   return []
+-- -- TODO this just prints out what was written.
+-- liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+-- liftRev_0_1 = undefined
+-- -- This version was to allow writing to konst as if a konst was the world, in
+-- -- an early test, but I think konst as a uni 0->1 is more consistent
+-- -- liftRev_0_1 _ _ _ [] [dyNewOut] = do
+-- --   msp ("liftRev_0_1 rev", dyNewOut)
+-- --   return []
 
-liftFor_1_1 :: (Nice a, Nice b) => (a -> b) -> (Reader -> DVs -> IO Ds)
-liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
--- -- orig impl
--- liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
---   let va = undyv dyva
---   a <- unReader reader va
---   return [dy (f a)]
+-- liftFor_1_1 :: (Nice a, Nice b) => (a -> b) -> (Reader -> DVs -> IO Ds)
+-- liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
+-- -- -- orig impl
+-- -- liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
+-- --   let va = undyv dyva
+-- --   a <- unReader reader va
+-- --   return [dy (f a)]
 
-liftRev_1_1 :: (Nice a, Nice b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
-liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
--- -- orig impl
--- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
---   let ova = undyv dyova
---   oa <- unReader reader ova
---   return [dy (rev oa (undy dyb))]
+-- liftRev_1_1 :: (Nice a, Nice b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+-- liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
+-- -- -- orig impl
+-- -- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
+-- --   let ova = undyv dyova
+-- --   oa <- unReader reader ova
+-- --   return [dy (rev oa (undy dyb))]
 
 -- Unused, see liftFor_0_1
 -- unPackage0 :: Reader -> DVs -> IO ()
 -- unPackage0 _ _ = return ()
 
-unPackage1 :: Nice a => Reader -> DVs -> IO a
-unPackage1 reader [dyva] = do
-  a <- unReader reader (undyv dyva)
-  return a
+-- unPackage1 :: Nice a => Reader -> DVs -> IO a
+-- unPackage1 reader [dyva] = do
+--   a <- unReader reader (undyv dyva)
+--   return a
 
-unPackage2 :: (Nice a, Nice b) => Reader -> DVs -> IO (a, b)
-unPackage2 reader [dyva, dyvb] = do
-  a <- unReader reader (undyv dyva)
-  b <- unReader reader (undyv dyvb)
-  return (a, b)
+-- unPackage2 :: (Nice a, Nice b) => Reader -> DVs -> IO (a, b)
+-- unPackage2 reader [dyva, dyvb] = do
+--   a <- unReader reader (undyv dyva)
+--   b <- unReader reader (undyv dyvb)
+--   return (a, b)
 
-unPackageOuts1 :: Nice a => Ds -> a
-unPackageOuts1 [dya] = undy dya
+-- unPackageOuts1 :: Nice a => Ds -> a
+-- unPackageOuts1 [dya] = undy dya
 
-unPackageOuts2 :: (Nice a, Nice b) => Ds -> (a, b)
-unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
+-- unPackageOuts2 :: (Nice a, Nice b) => Ds -> (a, b)
+-- unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
 
--- Unused, see liftFor_0_1
--- uncurry_0_1 :: a -> a
--- uncurry_0_1 = id
+-- -- Unused, see liftFor_0_1
+-- -- uncurry_0_1 :: a -> a
+-- -- uncurry_0_1 = id
 
-uncurry_1_1 :: (a -> b) -> (a -> b)
-uncurry_1_1 = id
+-- uncurry_1_1 :: (a -> b) -> (a -> b)
+-- uncurry_1_1 = id
 
-uncurry_2_1 :: (a -> b -> c) -> ((a, b) -> c)
-uncurry_2_1 = uncurry
+-- uncurry_2_1 :: (a -> b -> c) -> ((a, b) -> c)
+-- uncurry_2_1 = uncurry
 
-uncurry_1_2 :: (a -> (b, c)) -> (a -> (b, c))
-uncurry_1_2 = id
+-- uncurry_1_2 :: (a -> (b, c)) -> (a -> (b, c))
+-- uncurry_1_2 = id
 
-uncurryRev_1_1 :: (a -> b -> a) -> (a -> b -> a)
-uncurryRev_1_1 = id
+-- uncurryRev_1_1 :: (a -> b -> a) -> (a -> b -> a)
+-- uncurryRev_1_1 = id
 
-uncurryRev_2_1 :: (a -> b -> c -> (a, b)) -> ((a, b) -> c -> (a, b))
-uncurryRev_2_1 f (a, b) = f a b
+-- uncurryRev_2_1 :: (a -> b -> c -> (a, b)) -> ((a, b) -> c -> (a, b))
+-- uncurryRev_2_1 f (a, b) = f a b
 
-uncurryRev_1_2 :: (a -> (b, c) -> a) -> (a -> (b, c) -> a)
-uncurryRev_1_2 = id
+-- uncurryRev_1_2 :: (a -> (b, c) -> a) -> (a -> (b, c) -> a)
+-- uncurryRev_1_2 = id
 
-package1 :: Nice a => a -> [D]
-package1 x = [dy x]
+-- package1 :: Nice a => a -> [D]
+-- package1 x = [dy x]
 
-package2 :: (Nice a, Nice b) => (a, b) -> [D]
-package2 (a, b) = [dy a, dy b]
+-- package2 :: (Nice a, Nice b) => (a, b) -> [D]
+-- package2 (a, b) = [dy a, dy b]
 
--- TODO getter -> unpackager etc
-liftGeneric :: (Reader -> DVs -> IO tupleArgs) -> (cf -> (tupleArgs -> outs)) -> (outs -> [D]) -> cf -> Reader -> [DV] -> IO [D]
-liftGeneric getter curryer packager f reader args =
-  packager <$> curryer f <$> getter reader args
-  -- let _ = (curryer f <$> getter reader args)
-  --  in getter reader args >>= return . curryer f >>= (return . packager)
+-- -- TODO getter -> unpackager etc
+-- liftGeneric :: (Reader -> DVs -> IO tupleArgs) -> (cf -> (tupleArgs -> outs)) -> (outs -> [D]) -> cf -> Reader -> [DV] -> IO [D]
+-- liftGeneric getter curryer packager f reader args =
+--   packager <$> curryer f <$> getter reader args
+--   -- let _ = (curryer f <$> getter reader args)
+--   --  in getter reader args >>= return . curryer f >>= (return . packager)
 
--- TODO consistent names, use Ds, Dvs everywhere
-liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Reader -> DVs -> IO tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr ->
-                  Reader -> Reader -> [DV] -> [DV] -> IO [D]
-liftGenericRev getter outsGetter curryer packager r reader readerWithCache args newouts =
-  packager <$> (curryer r <$> getter reader args <*> (outsGetter readerWithCache newouts))
--- -- orig impl -- keep this around, I have no idea how the magic above works
--- liftGenericRev getter outsGetter curryer packager r reader args newouts = do
---   oldIns <- getter reader args
---   let newOuts = outsGetter newouts
---       newIns = curryer r oldIns newOuts
---   return $ packager newIns
+-- -- TODO consistent names, use Ds, Dvs everywhere
+-- liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Reader -> DVs -> IO tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr ->
+--                   Reader -> Reader -> [DV] -> [DV] -> IO [D]
+-- liftGenericRev getter outsGetter curryer packager r reader readerWithCache args newouts =
+--   packager <$> (curryer r <$> getter reader args <*> (outsGetter readerWithCache newouts))
+-- -- -- orig impl -- keep this around, I have no idea how the magic above works
+-- -- liftGenericRev getter outsGetter curryer packager r reader args newouts = do
+-- --   oldIns <- getter reader args
+-- --   let newOuts = outsGetter newouts
+-- --       newIns = curryer r oldIns newOuts
+-- --   return $ packager newIns
 
-liftFor_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
-liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
--- -- orig impl
--- liftFor_2_1 f reader args@[dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
---   let vx = undyv dyvx
---       vy = undyv dyvy
---   x <- unReader reader vx
---   y <- unReader reader vy
---   return [dy (f x y)]
+-- liftFor_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
+-- liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
+-- -- -- orig impl
+-- -- liftFor_2_1 f reader args@[dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
+-- --   let vx = undyv dyvx
+-- --       vy = undyv dyvy
+-- --   x <- unReader reader vx
+-- --   y <- unReader reader vy
+-- --   return [dy (f x y)]
 
-liftRev_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
-liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
--- -- works
--- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
---   oldins <- unPackage2 reader args
---   let newins = uncurryRev_2_1 rev oldins (unPackageOuts1 newouts)
---   return $ package2 newins
--- -- orig impl
--- liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
---   let ovx = undyv dyovx
---       ovy = undyv dyovy
---   ox <- unReader reader ovx
---   oy <- unReader reader ovy
---   let (x, y) = rev ox oy (undy dyz)
---   return [dy x, dy y]
+-- liftRev_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+-- liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
+-- -- -- works
+-- -- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
+-- --   oldins <- unPackage2 reader args
+-- --   let newins = uncurryRev_2_1 rev oldins (unPackageOuts1 newouts)
+-- --   return $ package2 newins
+-- -- -- orig impl
+-- -- liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
+-- --   let ovx = undyv dyovx
+-- --       ovy = undyv dyovy
+-- --   ox <- unReader reader ovx
+-- --   oy <- unReader reader ovy
+-- --   let (x, y) = rev ox oy (undy dyz)
+-- --   return [dy x, dy y]
 
--- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
-liftFor_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
-liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
--- -- orig impl
--- liftFor_1_2 f reader [dyva] = do
---   let va = undyv dyva
---   a <- unReader reader va
---   let (b, c) = f a
---   return [dy b, dy c]
+-- -- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
+-- liftFor_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
+-- liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
+-- -- -- orig impl
+-- -- liftFor_1_2 f reader [dyva] = do
+-- --   let va = undyv dyva
+-- --   a <- unReader reader va
+-- --   let (b, c) = f a
+-- --   return [dy b, dy c]
 
-liftRev_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
-liftRev_1_2 = liftGenericRev unPackage1 unPackage2 uncurryRev_1_2 package1
--- -- orig impl
--- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
---   let ova = undyv dyova
---       b = undy dyb
---       c = undy dyc
---   oa <- unReader reader ova
---   let a = rev oa (b, c)
---   return [dy a]
+-- liftRev_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
+-- liftRev_1_2 = liftGenericRev unPackage1 unPackage2 uncurryRev_1_2 package1
+-- -- -- orig impl
+-- -- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
+-- --   let ova = undyv dyova
+-- --       b = undy dyb
+-- --       c = undy dyc
+-- --   oa <- unReader reader ova
+-- --   let a = rev oa (b, c)
+-- --   return [dy a]
 
 -- An F is a plain Haskell lens.
 data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
@@ -353,9 +362,8 @@ instance Keyable (F2 a b c) where
 -- TODO rename 'names', it sounds plural but it really is just the name of an S
 data S =
   S { names :: String
-    --, outputsBuilder :: N -> DVs
-    , for :: Reader -> DVs -> IO Ds
-    , rev :: Reader -> Reader -> DVs -> DVs -> IO Ds }
+    , for :: Ds -> Ds
+    , rev :: Ds -> Ds -> Ds }
 
 -- This is correct only because we ensure (by hand) that every S has a unique
 -- name.
@@ -366,27 +374,39 @@ instance Eq S where
 -- TODO these two lifts are nearly the same
 lift_0_1 :: Nice a => F0 a -> S
 lift_0_1 (F0 {..}) = S {..}
-  where for = liftFor_0_1 ffor0
-        rev = liftRev_0_1 frev0
+  where for [] = [dy $ ffor0]
+        rev = undefined
         names = name0
+--data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
         --outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
         --outputsBuilder n = [dyv $ mkOutput n 0]
         --outputsBuilder n = [dyv $ ((V n 0) :: Typeable a => V a)]
 lift_1_1 :: (Nice a, Nice b) => F a b -> S
 lift_1_1 (F {..}) = S {..}
-  where for = liftFor_1_1 ffor
-        rev = liftRev_1_1 frev
+  where for [din0] = [dy out0]
+          where out0 = ffor (undy din0)
+        rev [doin0] [dnout0] = [dy nin0]
+          where nin0 = frev (undy doin0) (undy dnout0)
         names = name
         -- outputsBuilder n = let (dv, v) = mkOutputDVAndV n 0 in undefined
+-- lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
+-- lift_2_1 (F2 {..}) = S {..}
+--   where for = liftFor_2_1 ffor2
+--         rev = liftRev_2_1 frev2
+--         names = name2
 lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
-  where for = liftFor_2_1 ffor2
-        rev = liftRev_2_1 frev2
+  where for [din0, din1] = [dy out0]
+          where out0 = ffor2 (undy din0) (undy din1)
+        rev [doin0, doin1] [dnout0] = [dy nin0, dy nin1]
+          where (nin0, nin1) = frev2 (undy doin0) (undy doin1) (undy dnout0)
         names = name2
 lift_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> S
 lift_1_2 (F_1_2 {..}) = S {..}
-  where for = liftFor_1_2 ffor_1_2
-        rev = liftRev_1_2 frev_1_2
+  where for [din0] = [dy out0, dy out1]
+          where (out0, out1) = ffor_1_2 (undy din0)
+        rev [doin0] [dnout0, dnout1] = [dnin0]
+          where dnin0 = dy $ frev_1_2 (undy doin0) (undy dnout0, undy dnout1)
         names = name_1_2
 
 instance Keyable S where
@@ -415,7 +435,7 @@ instance Show N where
 instance Keyable N where
    toKey (N {..}) = compositeKey ((toKey $ names n_s) : map getKey args)
      where getKey (DV key _ _) = key
-           getKey VRoot = rootKey
+           getKey DRoot = rootKey
 
 -- DAG traversal stuff
 srcsOf :: N -> [N]
@@ -504,7 +524,7 @@ class History h w where
   addListener :: h w -> Listener -> h w
   write :: Nice w => h w -> [Write] -> IO (h w)
   -- TODO debug onlyl
-  readV :: (Nice w, Nice a) => h w -> V a -> IO a
+  readV :: (Show a, Nice w, Nice a) => h w -> V a -> IO a
 
 data Listener = forall a. Nice a => Listener
   { v :: V a
