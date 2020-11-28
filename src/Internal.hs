@@ -149,174 +149,6 @@ dvN DRoot = Nothing
 dvsN :: DVs -> [N]
 dvsN dvs = catMaybes $ map dvN dvs
 
--- For lifting plain forward and reverse functions.  Functions are curried,
--- tuples turned into lists, and inputs in particular are turned into Vs.
---
--- Forward functions are curried, and then the input tuple and the output
--- singletons are turned into [Dynamic]s. (Output lists are typically length one
--- but don't have to be.) Any forward function becomes (Ds -> Ds).
---
--- Reverse functions are the same, except it takes the (old) input tuple and
--- new output tuple and returns the new input tuple, all in the form of
--- [Dynamic]. Any reverse function becomes (Ds -> Ds -> Ds).
---
--- The inputs are expected to be Vs. So if the original function takes an a,
--- the lifted function takes a (V a) and reads it with 'r'.
---
--- The reason to expect Vs (rather than reading them outside of this) is
--- because we can't read them without knowing the types, and types are hidden
--- by this lifting.
---
--- TODO: decrease the amount of code using Dynamic, ideally containing it
--- within a single function. It's easy to create bugs that get past the
--- typechecker.
---
--- TODO use liftGeneric* here?
--- liftFor_0_1 :: Nice a => a -> (Reader -> DVs -> IO Ds)
--- liftFor_0_1 x _ [] = return [dy x]
--- -- Doesn't work: a vs (() -> a)
--- -- liftFor_0_1 = liftGeneric unPackage0 uncurry_0_1 package1
-
--- -- TODO this just prints out what was written.
--- liftRev_0_1 :: (Typeable a) => (a -> ()) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
--- liftRev_0_1 = undefined
--- -- This version was to allow writing to konst as if a konst was the world, in
--- -- an early test, but I think konst as a uni 0->1 is more consistent
--- -- liftRev_0_1 _ _ _ [] [dyNewOut] = do
--- --   msp ("liftRev_0_1 rev", dyNewOut)
--- --   return []
-
--- liftFor_1_1 :: (Nice a, Nice b) => (a -> b) -> (Reader -> DVs -> IO Ds)
--- liftFor_1_1 = liftGeneric unPackage1 uncurry_1_1 package1
--- -- -- orig impl
--- -- liftFor_1_1 f reader [dyva] = do -- [dy (f (r (undyv dyva)))]
--- --   let va = undyv dyva
--- --   a <- unReader reader va
--- --   return [dy (f a)]
-
--- liftRev_1_1 :: (Nice a, Nice b) => (a -> b -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
--- liftRev_1_1 = liftGenericRev unPackage1 unPackage1 uncurryRev_1_1 package1
--- -- -- orig impl
--- -- liftRev_1_1 rev reader [dyova] [dyb] = do -- [dy (rev (r (undyv dyoa)) (undy dyb))]
--- --   let ova = undyv dyova
--- --   oa <- unReader reader ova
--- --   return [dy (rev oa (undy dyb))]
-
--- Unused, see liftFor_0_1
--- unPackage0 :: Reader -> DVs -> IO ()
--- unPackage0 _ _ = return ()
-
--- unPackage1 :: Nice a => Reader -> DVs -> IO a
--- unPackage1 reader [dyva] = do
---   a <- unReader reader (undyv dyva)
---   return a
-
--- unPackage2 :: (Nice a, Nice b) => Reader -> DVs -> IO (a, b)
--- unPackage2 reader [dyva, dyvb] = do
---   a <- unReader reader (undyv dyva)
---   b <- unReader reader (undyv dyvb)
---   return (a, b)
-
--- unPackageOuts1 :: Nice a => Ds -> a
--- unPackageOuts1 [dya] = undy dya
-
--- unPackageOuts2 :: (Nice a, Nice b) => Ds -> (a, b)
--- unPackageOuts2 [dya, dyb] = (undy dya, undy dyb)
-
--- -- Unused, see liftFor_0_1
--- -- uncurry_0_1 :: a -> a
--- -- uncurry_0_1 = id
-
--- uncurry_1_1 :: (a -> b) -> (a -> b)
--- uncurry_1_1 = id
-
--- uncurry_2_1 :: (a -> b -> c) -> ((a, b) -> c)
--- uncurry_2_1 = uncurry
-
--- uncurry_1_2 :: (a -> (b, c)) -> (a -> (b, c))
--- uncurry_1_2 = id
-
--- uncurryRev_1_1 :: (a -> b -> a) -> (a -> b -> a)
--- uncurryRev_1_1 = id
-
--- uncurryRev_2_1 :: (a -> b -> c -> (a, b)) -> ((a, b) -> c -> (a, b))
--- uncurryRev_2_1 f (a, b) = f a b
-
--- uncurryRev_1_2 :: (a -> (b, c) -> a) -> (a -> (b, c) -> a)
--- uncurryRev_1_2 = id
-
--- package1 :: Nice a => a -> [D]
--- package1 x = [dy x]
-
--- package2 :: (Nice a, Nice b) => (a, b) -> [D]
--- package2 (a, b) = [dy a, dy b]
-
--- -- TODO getter -> unpackager etc
--- liftGeneric :: (Reader -> DVs -> IO tupleArgs) -> (cf -> (tupleArgs -> outs)) -> (outs -> [D]) -> cf -> Reader -> [DV] -> IO [D]
--- liftGeneric getter curryer packager f reader args =
---   packager <$> curryer f <$> getter reader args
---   -- let _ = (curryer f <$> getter reader args)
---   --  in getter reader args >>= return . curryer f >>= (return . packager)
-
--- -- TODO consistent names, use Ds, Dvs everywhere
--- liftGenericRev :: (Reader -> DVs -> IO tupleArgs) -> (Reader -> DVs -> IO tupleNewOuts) -> (cr -> (tupleArgs -> tupleNewOuts -> newIns)) -> (newIns -> [D]) -> cr ->
---                   Reader -> Reader -> [DV] -> [DV] -> IO [D]
--- liftGenericRev getter outsGetter curryer packager r reader readerWithCache args newouts =
---   packager <$> (curryer r <$> getter reader args <*> (outsGetter readerWithCache newouts))
--- -- -- orig impl -- keep this around, I have no idea how the magic above works
--- -- liftGenericRev getter outsGetter curryer packager r reader args newouts = do
--- --   oldIns <- getter reader args
--- --   let newOuts = outsGetter newouts
--- --       newIns = curryer r oldIns newOuts
--- --   return $ packager newIns
-
--- liftFor_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c) -> (Reader -> DVs -> IO Ds)
--- liftFor_2_1 = liftGeneric unPackage2 uncurry_2_1 package1
--- -- -- orig impl
--- -- liftFor_2_1 f reader args@[dyvx, dyvy] = do -- [dy (f (r (undyv dyx)) (r (undyv dyy)))]
--- --   let vx = undyv dyvx
--- --       vy = undyv dyvy
--- --   x <- unReader reader vx
--- --   y <- unReader reader vy
--- --   return [dy (f x y)]
-
--- liftRev_2_1 :: (Nice a, Nice b, Nice c) => (a -> b -> c -> (a, b)) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
--- liftRev_2_1 = liftGenericRev unPackage2 unPackage1 uncurryRev_2_1 package2
--- -- -- works
--- -- liftRev_2_1 rev reader args newouts = do -- [dyx', dyy']
--- --   oldins <- unPackage2 reader args
--- --   let newins = uncurryRev_2_1 rev oldins (unPackageOuts1 newouts)
--- --   return $ package2 newins
--- -- -- orig impl
--- -- liftRev_2_1 rev reader [dyovx, dyovy] [dyz] = do -- [dyx', dyy']
--- --   let ovx = undyv dyovx
--- --       ovy = undyv dyovy
--- --   ox <- unReader reader ovx
--- --   oy <- unReader reader ovy
--- --   let (x, y) = rev ox oy (undy dyz)
--- --   return [dy x, dy y]
-
--- -- TODO this seems like maybe an inconsistent form for inputs & outsputs generally.
--- liftFor_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c)) -> (Reader -> DVs -> IO Ds)
--- liftFor_1_2 = liftGeneric unPackage1 uncurry_1_2 package2
--- -- -- orig impl
--- -- liftFor_1_2 f reader [dyva] = do
--- --   let va = undyv dyva
--- --   a <- unReader reader va
--- --   let (b, c) = f a
--- --   return [dy b, dy c]
-
--- liftRev_1_2 :: (Nice a, Nice b, Nice c) => (a -> (b, c) -> a) -> (Reader -> Reader -> DVs -> DVs -> IO Ds)
--- liftRev_1_2 = liftGenericRev unPackage1 unPackage2 uncurryRev_1_2 package1
--- -- -- orig impl
--- -- liftRev_1_2 rev reader [dyova] [dyb, dyc] = do
--- --   let ova = undyv dyova
--- --       b = undy dyb
--- --       c = undy dyc
--- --   oa <- unReader reader ova
--- --   let a = rev oa (b, c)
--- --   return [dy a]
-
 -- An F is a plain Haskell lens.
 data F0 a = F0 { name0 :: String, ffor0 :: a, frev0 :: a -> () }
 data F a b = F { name :: String, ffor :: a -> b, frev :: a -> b -> a }
@@ -370,8 +202,16 @@ data S =
 instance Eq S where
   s == s' = names s == names s'
 
--- Lifters for Fs, composed from the forward/reverse lifters above.
--- TODO these two lifts are nearly the same
+-- For lifting plain forward and reverse functions.  Functions are curried,
+-- tuples turned into lists, and inputs in particular are turned into Vs.
+--
+-- Forward functions are curried, and then the input tuple and the output
+-- singletons are turned into [Dynamic]s. (Output lists are typically length one
+-- but don't have to be.) Any forward function becomes (Ds -> Ds).
+--
+-- Reverse functions are the same, except it takes the (old) input tuple and
+-- new output tuple and returns the new input tuple, all in the form of
+-- [Dynamic]. Any reverse function becomes (Ds -> Ds -> Ds).
 lift_0_1 :: Nice a => F0 a -> S
 lift_0_1 (F0 {..}) = S {..}
   where for [] = [dy $ ffor0]
