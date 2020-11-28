@@ -220,27 +220,34 @@ lift_0_1 (F0 {..}) = S {..}
 
 lift_1_1 :: (Nice a, Nice b) => F a b -> S
 lift_1_1 (F {..}) = S {..}
-  where for [din0] = [dy out0]
-          where out0 = ffor (undy din0)
+  where for = dys1 . ffor . undys1
         rev [doin0] [dnout0] = [dy nin0]
           where nin0 = frev (undy doin0) (undy dnout0)
         names = name
 
 lift_2_1 :: (Nice a, Nice b, Nice c) => F2 a b c -> S
 lift_2_1 (F2 {..}) = S {..}
-  where for [din0, din1] = [dy out0]
-          where out0 = ffor2 (undy din0) (undy din1)
+  where for = dys1 . uncurry ffor2 . undys2
         rev [doin0, doin1] [dnout0] = [dy nin0, dy nin1]
           where (nin0, nin1) = frev2 (undy doin0) (undy doin1) (undy dnout0)
         names = name2
 
 lift_1_2 :: (Nice a, Nice b, Nice c) => F_1_2 a b c -> S
 lift_1_2 (F_1_2 {..}) = S {..}
-  where for [din0] = [dy out0, dy out1]
-          where (out0, out1) = ffor_1_2 (undy din0)
-        rev [doin0] [dnout0, dnout1] = [dnin0]
-          where dnin0 = dy $ frev_1_2 (undy doin0) (undy dnout0, undy dnout1)
+  --where for dins = dys2 $ ffor_1_2 (undys1 dins)
+  where for = dys2 . ffor_1_2 . undys1
+        rev doins dnouts = dys1 $ frev_1_2 (undys1 doins) (undys2 dnouts)
         names = name_1_2
+
+-- Convenicenes for converting between typed and untyped value bundles
+dys1 :: (Nice a) => a -> [D]
+dys1 a = [dy a]
+undys1 :: (Nice a) => [D] -> a
+undys1 [da] = undy da
+dys2 :: (Nice a, Nice b) => (a, b) -> [D]
+dys2 (a, b) = [dy a, dy b]
+undys2 :: (Nice a, Nice b) => [D] -> (a, b)
+undys2 [da, db] = (undy da, undy db)
 
 instance Keyable S where
   toKey (S {..}) = Key names
