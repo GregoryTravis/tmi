@@ -10,7 +10,6 @@ module Evaluator
 ( Dum(..)
 , mkHistory
 , write
-, mkListener
 , addListener
 , readV
 ) where
@@ -67,14 +66,6 @@ rToLNs dvs =
 getAllNs :: DVs -> [N]
 getAllNs dvs = nub $ concat $ map (cascade srcsOf) ns
   where ns = dvsN dvs
-
-mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
-mkListener v action = Listener {..}
-  where getDv = dyv v
-        runReader :: Reader -> IO ()
-        runReader reader = do
-          a <- unReader reader v
-          action a
 
 -- makeReaderWithCache :: Cache -> Reader -> Reader
 -- makeReaderWithCache cache (Reader {..}) = Reader { unReader = unReader' }

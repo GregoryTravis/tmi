@@ -28,8 +28,13 @@ module Tmi
 , Listener
 , mkHistory
 , addListener
+, mkListener
 , write
 , Write(..)
+, TMI
+, listen
+, (<--)
+, tmiRun
 ) where
 
 import Data.Dynamic
