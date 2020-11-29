@@ -119,7 +119,7 @@ newtype Cache = Cache (M.Map DV D)
 insert :: Cache -> DV -> D -> Cache
 insert c@(Cache m) dv d =
   case M.lookup dv m of
-    Just d' -> if d == d' then c else error $ show ("cache collision", d, d')
+    Just d' -> if d == d' then c else error $ show ("cache collision", dv, "new", d, "cache", d')
     Nothing -> Cache $ M.insert dv d m
 
 -- has :: Cache -> DV -> Bool

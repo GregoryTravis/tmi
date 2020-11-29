@@ -12,6 +12,8 @@
 
 module Main where
 
+import Control.Monad.State hiding (lift)
+
 import Evaluator
 import Hash
 import Tmi
@@ -61,38 +63,27 @@ splitF = hoist_1_2 $ F_1_2 {..}
 
 (leftV, rightV) = splitF anotherV
 
+-- aW -anIntF-> aV -incF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
+--                                            \ rightV /
+
+
 andPlusV = plusF leftV rightV
 
 main = do
+  msp ("leftV", leftV)
+  msp ("rightV", rightV)
   tmiRun @W @Dum world $ do
     listen leftV $ \i -> do
       msp ("leftV", i)
     listen rightV $ \i -> do
       msp ("rightV", i)
-    -- listen andPlusV $ \x -> do
-    --   msp ("andPlusV", x)
-    leftV <-- (200::Int)
-    rightV <-- (201::Int)
-
-  --let write'' = Write (dyv leftV) (dy (200::Int))
-  ----let write' = Write (dyv rightV) (dy (101::Int))
-
-  --let h = mkHistory world :: Dum W
-  --    h' = addListener (addListener h (mkListener leftV msp)) (mkListener rightV msp)
-  --h'' <- write h' [write'']
-  --let latest = case h'' of Dum ws _ -> head ws
-  --msp world
-  --msp latest
-  --h''' <- write h'' [Write (dyv rightV) (dy (201::Int))]
-  --let latest = case h''' of Dum ws _ -> head ws
-  --msp latest
-
-  ---- Should fail, because of conflict -- yes it does
-  ---- let w0 = Write (dyv leftV) (dy (100::Int))
-  ----     w1 = Write (dyv leftV) (dy (200::Int))
-  ---- h''' <- write h' [w0, w1]
-
-  --andPlus <- readV h''' andPlusV
-  --msp ("andPlus", andPlus)
+    listen andPlusV $ \x -> do
+      msp ("andPlusV", x)
+    x <- rd andPlusV
+    liftIO $ msp ("andPlusV", x)
+    andPlusV <-- 202
+    -- TODO getting a cache collision
+    --leftV <-- 200
+    --rightV <-- 201
 
   msp "hi"

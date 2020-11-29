@@ -48,6 +48,7 @@ module Internal
 , listen
 , (<--)
 , tmiRun
+, rd
 ) where
 
 import Control.Monad.State hiding (lift)
@@ -409,7 +410,12 @@ tmiRun :: (Nice w, History h w) => w -> TMI h w a -> IO (a, h w)
 tmiRun w action = do
   let history = mkHistory w
   runStateT action history
---runStateT :: s -> m (a, s)	
+
+rd :: (Nice a, Nice w, History h w) => V a -> TMI h w a
+rd v = do
+  history <- get
+  a <- liftIO $ readV history v
+  return a
 
 {-
   -- let w0 = Write (dyv leftV) (dy (100::Int))

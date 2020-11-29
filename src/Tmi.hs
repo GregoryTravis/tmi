@@ -35,6 +35,7 @@ module Tmi
 , listen
 , (<--)
 , tmiRun
+, rd
 ) where
 
 import Data.Dynamic
