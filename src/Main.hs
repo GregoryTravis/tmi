@@ -51,7 +51,13 @@ incF = hoist_1_1 $ F {..}
         frev _ x = x - 1
         name = "incF"
 
-anotherV = incF aV
+idF :: (Nice a, Integral a) => V a -> V a
+idF = hoist_1_1 $ F {..}
+  where ffor = id
+        frev _ x = x
+        name = "idF"
+
+anotherV = idF (incF aV)
 
 splitF :: (Nice a, Integral a) => V a -> (V a, V a)
 splitF = hoist_1_2 $ F_1_2 {..}
@@ -63,27 +69,48 @@ splitF = hoist_1_2 $ F_1_2 {..}
 
 (leftV, rightV) = splitF anotherV
 
--- aW -anIntF-> aV -incF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
---                                            \ rightV /
-
-
 andPlusV = plusF leftV rightV
 
 main = do
-  msp ("leftV", leftV)
-  msp ("rightV", rightV)
+  -- msp ("leftV", leftV)
+  -- msp ("rightV", rightV)
   tmiRun @W @Dum world $ do
+    listen aW $ \i -> do
+      msp ("aW", i)
+    listen aV $ \i -> do
+      msp ("aV", i)
+    listen anotherV $ \i -> do
+      msp ("anotherV", i)
     listen leftV $ \i -> do
       msp ("leftV", i)
     listen rightV $ \i -> do
       msp ("rightV", i)
     listen andPlusV $ \x -> do
       msp ("andPlusV", x)
-    x <- rd andPlusV
-    liftIO $ msp ("andPlusV", x)
-    andPlusV <-- 202
-    -- TODO getting a cache collision
-    --leftV <-- 200
-    --rightV <-- 201
+    -- dump
+
+    -- start
+    --                                                         50
+    -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
+    -- w            100                 101                 \ rightV /          101
+    --                                                         51
+
+    leftV <-- 200
+    --                                                         200/125
+    -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
+    -- w            250                 251                 \ rightV /          251
+    --                                                         51/126
+
+    rightV <-- 201
+    --                                                         125
+    -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
+    -- w            325                 326                 \ rightV /          326
+    --                                                         201
+
+    andPlusV <-- 203
+    --                                                         101
+    -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
+    -- w            202                 203                 \ rightV /          203
+    --                                                         102
 
   msp "hi"

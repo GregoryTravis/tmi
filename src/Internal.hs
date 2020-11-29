@@ -49,6 +49,7 @@ module Internal
 , (<--)
 , tmiRun
 , rd
+, dump
 ) where
 
 import Control.Monad.State hiding (lift)
@@ -371,6 +372,7 @@ class History h w where
   write :: Nice w => h w -> [Write] -> IO (h w)
   -- TODO debug onlyl
   readV :: (Show a, Nice w, Nice a) => h w -> V a -> IO a
+  runListeners :: Nice w => h w -> IO ()
 
 data Listener = forall a. Nice a => Listener
   { v :: V a
@@ -405,6 +407,11 @@ listen v action = do
   let listener = mkListener v action
       history' = addListener history listener
   put history'
+
+dump :: TMI h w ()
+dump = do
+  history <- get
+  liftIO $ runListeners history
 
 tmiRun :: (Nice w, History h w) => w -> TMI h w a -> IO (a, h w)
 tmiRun w action = do

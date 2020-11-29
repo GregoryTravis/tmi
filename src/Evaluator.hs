@@ -27,9 +27,11 @@ data Dum w = Dum [w] [Listener]
 
 instance History Dum w where
   mkHistory w = Dum [w] []
+
   addListener (Dum ws listeners) listener = Dum ws (listener : listeners)
+
   write dum@(Dum ws listeners) writes = do
-    let dvs = map getDv listeners
+    --let dvs = map getDv listeners
     cache <- runAllNs dum writes
     -- TODO this undefined here is wrong wrong wrong
     let newW :: w
@@ -37,22 +39,23 @@ instance History Dum w where
     let newDum = case dum of Dum ws listeners -> Dum (newW:ws) listeners
     runListeners newDum
     return newDum
+
 --readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
   readV dum (V n i) = do
     dyns <- runNForwards dum (Reader $ readV dum) n
     return $ undy $ (dyns !! i)
+
   -- TODO use some kind of cast here
   readV (Dum ws _) Root = return $ undy $ dy $ head ws
 
-
-runListeners :: Nice w => Dum w -> IO ()
-runListeners dum@(Dum ws listeners) = mapM_ runIt listeners
-  where runIt :: Listener -> IO ()
-        runIt (Listener {..}) = do
-          msp "Running listener..."
-          runReader reader
-          msp "Ran listener"
-        reader = Reader { unReader = readV dum }
+  -- runListeners :: Nice w => Dum w -> IO ()
+  runListeners dum@(Dum ws listeners) = mapM_ runIt (reverse listeners)
+    where runIt :: Listener -> IO ()
+          runIt (Listener {..}) = do
+            msp "Running listener..."
+            runReader reader
+            msp "Ran listener"
+          reader = Reader { unReader = readV dum }
 
 -- Repeat until all Ns are added to the output list:
 --   Find any N that is not in the list, but its inputs DVs have been reached, and all them to the lilst.
@@ -77,7 +80,9 @@ getAllNs dvs = nub $ concat $ map (cascade srcsOf) ns
 runAllNs :: Nice w => Dum w -> [Write] -> IO Cache
 runAllNs dum@(Dum _ listeners) writes =
   let cache = initFromWrites writes
-      dvs = map getDv listeners 
+      --dvs = map getDv listeners 
+      dvs = map wdv writes
+        where wdv (Write dv _) = dv
       ns = rToLNs dvs
    in foldM (runNBackwards dum) cache ns
 
