@@ -88,7 +88,6 @@ runAllNs dum@(Dum _ listeners) writes =
 
 readDV :: (Nice w) => Dum w -> Reader -> DV -> IO D
 readDV dum reader (DV _ _ dReader) = dReader reader
--- TODO!! this is ignoring the cache
 readDV (Dum ws _) reader DRoot = return $ dy $ head ws
 
 readDVWithCache :: (Nice w) => Cache -> Dum w -> Reader -> DV -> IO D
