@@ -164,6 +164,8 @@ data F2 a b c = F2 { name2 :: String, ffor2 :: a -> b -> c, frev2 :: a -> b -> c
 -- TODO F2 -> F_2_2 etc
 data F_1_2 a b c = F_1_2 { name_1_2 :: String, ffor_1_2 :: a -> (b, c), frev_1_2 :: a -> (b, c) -> a }
 
+-- A wrapper takes the input and output, does something with those, and returns the output.
+-- TODO shouldn't have to take care to return the output
 wrap1 :: (a -> b -> b) -> (a -> b) -> (a -> b)
 wrap1 wrapper f a = let b = f a in wrapper a b
 wrap2 :: (a -> b -> c -> c) -> (a -> b -> c) -> (a -> b -> c)
