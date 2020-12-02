@@ -95,19 +95,19 @@ main = do
     -- w            100                 101                 \ rightV /          101
     --                                                         51
 
-    leftV <-- 200
+    leftV <--. 200
     --                                                         200/125
     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
     -- w            250                 251                 \ rightV /          251
     --                                                         51/126
 
-    rightV <-- 201
+    rightV <--. 201
     --                                                         125
     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
     -- w            325                 326                 \ rightV /          326
     --                                                         201
 
-    andPlusV <-- 203
+    andPlusV <--. 203
     --                                                         101
     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
     -- w            202                 203                 \ rightV /          203

@@ -47,6 +47,7 @@ module Internal
 , TMI
 , listen
 , (<--)
+, (<--.)
 , tmiRun
 , rd
 , dump
@@ -391,11 +392,16 @@ mkListener v action = Listener {..}
 -- Monad!
 type TMI h w a = (Nice w, History h w) => StateT (h w) IO a
 
+infix 4 <--.
+(<--.) :: Nice a => V a -> a -> TMI h w ()
+vlvalue <--. rvalue = vlvalue <-- konstV rvalue
+
 infix 4 <--
-(<--) :: Nice a => V a -> a -> TMI h w ()
-v <-- x = do
+(<--) :: Nice a => V a -> V a -> TMI h w ()
+vlvalue <-- vrvalue = do
   history <- get
-  let wr = Write (dyv v) (dy x)
+  rvalue <- rd vrvalue
+  let wr = Write (dyv vlvalue) (dy rvalue)
   history' <- liftIO $ write history [wr]
   put history'
   return ()

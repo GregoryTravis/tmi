@@ -34,6 +34,7 @@ module Tmi
 , TMI
 , listen
 , (<--)
+, (<--.)
 , tmiRun
 , rd
 , dump
