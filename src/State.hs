@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module State
 ( listen
@@ -26,7 +27,14 @@ vlvalue <-- vrvalue = do
   put history'
   return ()
 
---mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
+mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
+mkListener v action = Listener {..}
+  where getDv = dyv v
+        runReader :: Reader -> IO ()
+        runReader reader = do
+          a <- unReader reader v
+          action a
+
 listen :: Nice a => V a -> (a -> IO ()) -> TMI h w ()
 listen v action = do
   history <- get

@@ -38,7 +38,6 @@ module Internal
 , Write(..)
 , History(..)
 , Listener(..)
-, mkListener
 , Reader(..)
 , TMI
 ) where
@@ -357,14 +356,6 @@ data Listener = forall a. Nice a => Listener
   , action :: a -> IO ()
   , runReader :: Reader -> IO ()
   , getDv :: DV }
-
-mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
-mkListener v action = Listener {..}
-  where getDv = dyv v
-        runReader :: Reader -> IO ()
-        runReader reader = do
-          a <- unReader reader v
-          action a
 
 -- Monad!
 type TMI h w a = (Nice w, History h w) => StateT (h w) IO a
