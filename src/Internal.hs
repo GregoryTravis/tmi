@@ -340,7 +340,6 @@ konstV x = hoist_0_1 $ F0 { name0, ffor0 = x, frev0 = undefined }
 
 data Write = Write DV D
 
---newtype Id = Id { unId :: forall a. a -> a }
 newtype Reader = Reader { unReader :: forall a. Nice a => V a -> IO a }
 
 class History h w where
@@ -359,4 +358,3 @@ data Listener = forall a. Nice a => Listener
 
 -- Monad!
 type TMI h w a = (Nice w, History h w) => StateT (h w) IO a
-
