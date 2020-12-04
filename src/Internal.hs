@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,13 +8,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Internal
-( Key
-, Keyable(..)
-, Nice
+( Nice
 , V(..)
 , mkRoot
 , F(..)
@@ -60,28 +56,13 @@ import Data.Typeable
 
 import Dyno
 import Hash
+import Key
 import Util
 
 type Nice a = (Show a, Eq a, Typeable a)
 -- This works too
 -- class (Eq a, Typeable a) => Nice a
 -- instance (Eq a, Typeable a) => Nice a
-
-data Key = Key String
-  deriving (Show, Eq, Ord)
-
-class Keyable a where
-  toKey :: a -> Key
-
-instance Keyable String where
-  toKey = Key . id
-instance Keyable Int where
-  toKey = Key . show
-
--- compositeKey :: Keyable a => [a] -> Key
--- compositeKey keyables = Key $ hash $ concat $ map (\(Key s) -> s) $ map toKey keyables
-compositeKey :: [Key] -> Key
-compositeKey keys = Key $ hash $ concat $ map (\(Key s) -> s) keys
 
 type D = Dyno
 -- Dynamic (V a), plus key
