@@ -30,4 +30,5 @@ module Tmi
 import Data.Dynamic
 
 import Internal
+import Lift
 import State

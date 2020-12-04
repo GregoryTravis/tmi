@@ -12,6 +12,7 @@ import Control.Monad.State hiding (lift)
 
 import History
 import Internal
+import Lift
 
 infix 4 <--.
 (<--.) :: Nice a => V a -> a -> TMI h w ()
