@@ -30,3 +30,4 @@ module Tmi
 import Data.Dynamic
 
 import Internal
+import State

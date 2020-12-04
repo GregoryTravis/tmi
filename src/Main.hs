@@ -14,7 +14,7 @@ module Main where
 
 import Control.Monad.State hiding (lift)
 
-import Evaluator
+import History
 import Hash
 import Tmi
 import Util

@@ -41,15 +41,9 @@ module Internal
 , mkListener
 , Reader(..)
 , TMI
-, listen
-, (<--)
-, (<--.)
-, tmiRun
-, rd
-, dump
 ) where
 
-import Control.Monad.State hiding (lift)
+import Control.Monad.State (StateT)
 import Data.List (intercalate)
 import Data.Maybe (catMaybes)
 import Data.Typeable
@@ -375,87 +369,3 @@ mkListener v action = Listener {..}
 -- Monad!
 type TMI h w a = (Nice w, History h w) => StateT (h w) IO a
 
-infix 4 <--.
-(<--.) :: Nice a => V a -> a -> TMI h w ()
-vlvalue <--. rvalue = vlvalue <-- konstV rvalue
-
-infix 4 <--
-(<--) :: Nice a => V a -> V a -> TMI h w ()
-vlvalue <-- vrvalue = do
-  history <- get
-  rvalue <- rd vrvalue
-  let wr = Write (dyv vlvalue) (dy rvalue)
-  history' <- liftIO $ write history [wr]
-  put history'
-  return ()
-
---mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
-listen :: Nice a => V a -> (a -> IO ()) -> TMI h w ()
-listen v action = do
-  history <- get
-  let listener = mkListener v action
-      history' = addListener history listener
-  put history'
-
-dump :: TMI h w ()
-dump = do
-  history <- get
-  liftIO $ runListeners history
-
-tmiRun :: (Nice w, History h w) => w -> TMI h w a -> IO (a, h w)
-tmiRun w action = do
-  let history = mkHistory w
-  runStateT action history
-
-rd :: (Nice a, Nice w, History h w) => V a -> TMI h w a
-rd v = do
-  history <- get
-  a <- liftIO $ readV history v
-  return a
-
-{-
-  -- let w0 = Write (dyv leftV) (dy (100::Int))
-  --     w1 = Write (dyv leftV) (dy (200::Int))
-  -- h''' <- write h' [w0, w1]
-
-rr :: Nice a => V a -> TMI a
-rr v = do
-  history <- get
-  return $ r history v
-
-tmiRun :: W -> TMI a -> IO a
-tmiRun world action = do
-  (x, _) <- tmiRunHistory (History [world]) action
-  return x
-
-tmiRunHistory :: History -> TMI a -> IO (a, History)
-tmiRunHistory history action = do
-  runStateT action history
-
--- Loads the initial state from a file, and saves the final state back to the
--- file when done.
-persistentTmiRun :: FilePath -> TMI a -> IO a
-persistentTmiRun historyFile action = do
-  fileContents <- readFile historyFile
-  let history :: History
-      history = read fileContents
-  (x, history) <- tmiRunHistory history action
-  writeFile historyFile (show history)
-  return x
--}
-
--- -- Some currying stuff
-
--- data Write = forall a. Show a => Write { showIt :: String }
--- data Q a b = Q (a -> ([Write], b))
-
--- infixr 0 +->
--- type a +-> b = Q a b
-
--- foo :: a +-> (b +-> c)
--- foo = undefined
-
--- data InOut a b = In (a -> b) | Out a b
-
--- -- doInOut (In f) x = f x
--- -- doInOut (Out a b) f
