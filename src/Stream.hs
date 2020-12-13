@@ -2,7 +2,9 @@
   ExistentialQuantification
 , MultiParamTypeClasses
 , NumericUnderscores
+, NamedFieldPuns
 , RankNTypes
+, RecordWildCards
 , TupleSections
 #-}
 
@@ -15,14 +17,15 @@ import Data.List (sortOn)
 import Data.Maybe (fromJust)
 import Data.Typeable
 
---import Internal
+import History
 import Tmi
 import Util
 
 data EmailReq = EmailReq
   { address :: String
   , subject :: String
-  , body :: String } deriving Show
+  , body :: String } deriving (Show, Eq, Typeable)
+--instance Nice EmailReq
 
 type EmailResp = Bool
 
@@ -39,7 +42,7 @@ emailReqs = Stream
   , (1, EmailReq "b@c.com" "hi" "yo?") ]
 
 -- String: email address
-data Invitation = Invitation String deriving Show
+data Invitation = Invitation String deriving (Show, Eq, Typeable)
 
 invitations = Stream
   [ (4, Invitation "a@b.com")
@@ -48,7 +51,7 @@ invitations = Stream
 ----------------------------
 
 -- Most recent is first
-data Stream a = Stream [(Int, a)] deriving Show
+data Stream a = Stream [(Int, a)] deriving (Eq, Show)
 
 emptyStream :: Stream a
 emptyStream = Stream []
@@ -77,23 +80,54 @@ append t a (Stream as) = Stream ((t, a) : as)
 
 ----------------------------
 
-type DynQueue = Stream (String, Dynamic)
+data IONexus = IONexus [DynStream] [DynStream]
+initIONexus :: IONexus
+initIONexus = IONexus [] []
 
-addQueue :: Typeable a => String -> Stream a -> DynQueue -> DynQueue
-addQueue tag stream dq = mergeStreams dq (dynStream stream)
-  where dynStream = fmap ((tag,) . toDyn)
+type DynStream = Stream (String, Dynamic)
 
-getStream :: Typeable a => DynQueue -> String -> Stream a
-getStream dq tag = fmap (fromJust . fromDynamic . snd) (filterStream ((==tag) . fst) dq)
+toDynStream :: Nice a => String -> Stream a -> DynStream
+toDynStream tag = fmap ((tag,) . toDyn)
+
+addQueue :: Nice a => String -> Stream a -> DynStream -> DynStream
+addQueue tag stream dq = mergeStreams dq (toDynStream tag stream)
+
+fromDynStream :: Typeable a => DynStream -> String -> Stream a
+fromDynStream dq tag = fmap (fromJust . fromDynamic . snd) (filterStream ((==tag) . fst) dq)
+
+-- _toDynStream :: Nice a => F2 String (Stream a) DynStream
+-- _toDynStream = F2 "_toDynStream" toDynStream undefined
+-- _toDynStream :: Nice a => V String -> V (Stream a) -> V DynStream
+-- _toDynStream = hoist_2_1 $ F2 "_toDynStream" toDynStream undefined
 
 ----------------------------
+
+data Rpc req resp = Rpc (req -> IO resp) (Stream req)
+_rpc_1 :: F (Rpc req resp) (Stream req)
+_rpc_1 = F "_rpc_1" (\(Rpc _ s) -> s) undefined
+
+data W = W
+  { ioNexus :: IONexus
+  , rpc :: Rpc EmailReq EmailResp}
+w :: W
+w = W { ioNexus = initIONexus
+      , rpc = Rpc sendEmail emptyStream }
+
+_ioNexus :: F W IONexus
+_ioNexus = F {..}
+  where name = "_ioNexus"
+        ffor W {..} = ioNexus
+        frev w ioNexus = w { ioNexus }
+
+addRpc :: V (Rpc req resp) -> V IONexus -> TMI h w ()
+addRpc = undefined
 
 streamMain = do
   let dq = addQueue "invitations" invitations (addQueue "emails" emailReqs emptyStream)
       emailReqs' :: Stream EmailReq
-      emailReqs' = getStream dq "emails"
+      emailReqs' = fromDynStream dq "emails"
       invitations' :: Stream Invitation
-      invitations' = getStream dq "invitations"
+      invitations' = fromDynStream dq "invitations"
   msp dq
   msp emailReqs'
   msp invitations'
