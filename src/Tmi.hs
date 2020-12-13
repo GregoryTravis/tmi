@@ -22,6 +22,7 @@ module Tmi
 , History
 , TMI
 , listen
+, dump
 , (<--)
 , (<--.)
 , tmiRun

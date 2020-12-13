@@ -3,6 +3,7 @@
 
 module State
 ( listen
+, dump
 , (<--)
 , (<--.)
 , tmiRun
@@ -43,10 +44,10 @@ listen v action = do
       history' = addListener history listener
   put history'
 
--- dump :: TMI h w ()
--- dump = do
---   history <- get
---   liftIO $ runListeners history
+dump :: TMI h w ()
+dump = do
+  history <- get
+  liftIO $ runListeners history
 
 tmiRun :: (Nice w, History h w) => w -> TMI h w a -> IO (a, h w)
 tmiRun w action = do

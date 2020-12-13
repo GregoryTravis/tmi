@@ -5,6 +5,7 @@
 , NamedFieldPuns
 , RankNTypes
 , RecordWildCards
+, TypeApplications 
 , TupleSections
 #-}
 
@@ -17,6 +18,7 @@ import Data.List (sortOn)
 import Data.Maybe (fromJust)
 import Data.Typeable
 
+import Dyno
 import History
 import Tmi
 import Util
@@ -80,55 +82,81 @@ append t a (Stream as) = Stream ((t, a) : as)
 
 ----------------------------
 
-data IONexus = IONexus [DynStream] [DynStream]
+data IONexus = IONexus [DynStream] [DynStream] deriving (Eq, Show)
 initIONexus :: IONexus
 initIONexus = IONexus [] []
 
-type DynStream = Stream (String, Dynamic)
+addReqStream :: IONexus -> DynStream -> IONexus
+addReqStream (IONexus reqs resps) s = IONexus (s : reqs) resps
+_addReqStream :: V IONexus -> V DynStream -> V IONexus
+_addReqStream = hoist_2_1 $ F2 "_addReqStream" addReqStream undefined
+
+type DynStream = Stream (String, Dyno)
 
 toDynStream :: Nice a => String -> Stream a -> DynStream
-toDynStream tag = fmap ((tag,) . toDyn)
+toDynStream tag = fmap ((tag,) . mkDyno)
 
 addQueue :: Nice a => String -> Stream a -> DynStream -> DynStream
 addQueue tag stream dq = mergeStreams dq (toDynStream tag stream)
 
-fromDynStream :: Typeable a => DynStream -> String -> Stream a
-fromDynStream dq tag = fmap (fromJust . fromDynamic . snd) (filterStream ((==tag) . fst) dq)
+fromDynStream :: Nice a => DynStream -> String -> Stream a
+fromDynStream dq tag = fmap (fromJust . getit . snd) (filterStream ((==tag) . fst) dq)
 
 -- _toDynStream :: Nice a => F2 String (Stream a) DynStream
 -- _toDynStream = F2 "_toDynStream" toDynStream undefined
--- _toDynStream :: Nice a => V String -> V (Stream a) -> V DynStream
--- _toDynStream = hoist_2_1 $ F2 "_toDynStream" toDynStream undefined
+_toDynStream :: Nice a => V String -> V (Stream a) -> V DynStream
+_toDynStream = hoist_2_1 $ F2 "_toDynStream" toDynStream undefined
 
 ----------------------------
 
 data Rpc req resp = Rpc (req -> IO resp) (Stream req)
-_rpc_1 :: F (Rpc req resp) (Stream req)
-_rpc_1 = F "_rpc_1" (\(Rpc _ s) -> s) undefined
+instance (Show req) => Show (Rpc req resp) where
+  show (Rpc _ s) = "(Rpc " ++ (show s) ++ ")"
+-- TODO oh this is very wrong
+instance (Eq req) => Eq (Rpc req resp) where
+  Rpc _ s0 == Rpc _ s1 = s0 == s1
+
+-- _rpc_1 :: F (Rpc req resp) (Stream req)
+-- _rpc_1 = F "_rpc_1" (\(Rpc _ s) -> s) undefined
+_rpc_1 :: (Nice req, Nice resp) => V (Rpc req resp) -> V (Stream req)
+_rpc_1 = hoist_1_1 $ F "_rpc_1" (\(Rpc _ s) -> s) undefined
 
 data W = W
   { ioNexus :: IONexus
-  , rpc :: Rpc EmailReq EmailResp}
+  , rpc :: Rpc EmailReq EmailResp } deriving (Eq, Show)
+
+_ioNexus = hoist_1_1 $ F "_ioNexus" ioNexus (\w ioNexus -> w { ioNexus })
+_rpc = hoist_1_1 $ F "_rpc" rpc undefined
+
 w :: W
 w = W { ioNexus = initIONexus
       , rpc = Rpc sendEmail emptyStream }
+vw = mkRoot w
 
-_ioNexus :: F W IONexus
-_ioNexus = F {..}
-  where name = "_ioNexus"
-        ffor W {..} = ioNexus
-        frev w ioNexus = w { ioNexus }
+-- _ioNexus :: F W IONexus
+-- _ioNexus = F {..}
+--   where name = "_ioNexus"
+--         ffor W {..} = ioNexus
+--         frev w ioNexus = w { ioNexus }
 
-addRpc :: V (Rpc req resp) -> V IONexus -> TMI h w ()
-addRpc = undefined
+addRpc :: (Nice req, Nice resp) => V (Rpc req resp) -> V IONexus -> TMI h w ()
+addRpc vrpc vionexus = do
+  let dynReqStream = _toDynStream (konstV "rpc") (_rpc_1 vrpc)
+      vionexus' = _addReqStream vionexus dynReqStream
+  vionexus <-- vionexus'
 
 streamMain = do
-  let dq = addQueue "invitations" invitations (addQueue "emails" emailReqs emptyStream)
-      emailReqs' :: Stream EmailReq
-      emailReqs' = fromDynStream dq "emails"
-      invitations' :: Stream Invitation
-      invitations' = fromDynStream dq "invitations"
-  msp dq
-  msp emailReqs'
-  msp invitations'
+  tmiRun @W @Dum w $ do
+    listen vw $ \w -> do
+      msp ("w", w)
+    dump
+    addRpc (_rpc vw) (_ioNexus vw)
+  -- let dq = addQueue "invitations" invitations (addQueue "emails" emailReqs emptyStream)
+  --     emailReqs' :: Stream EmailReq
+  --     emailReqs' = fromDynStream dq "emails"
+  --     invitations' :: Stream Invitation
+  --     invitations' = fromDynStream dq "invitations"
+  -- msp dq
+  -- msp emailReqs'
+  -- msp invitations'
   msp "stream hi"
