@@ -16,6 +16,7 @@ import Control.Monad.State hiding (lift)
 
 import History
 import Hash
+import Stream
 import Tmi
 import Util
 
@@ -71,7 +72,8 @@ splitF = hoist_1_2 $ F_1_2 {..}
 
 andPlusV = plusF leftV rightV
 
-main = do
+main = streamMain
+_main = do
   -- msp ("leftV", leftV)
   -- msp ("rightV", rightV)
   tmiRun @W @Dum world $ do
