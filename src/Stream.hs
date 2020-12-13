@@ -88,27 +88,6 @@ getStream dq tag = fmap (fromJust . fromDynamic . snd) (filterStream ((==tag) . 
 
 ----------------------------
 
--- Ideal interface for dialogs
-data Dialog req resp
-mkDialog :: (req -> IO resp) -> V (Dialog req resp)
-mkDialog = undefined
-getAll :: Dialog req resp -> Stream (req, Maybe resp)
-getAll = undefined
-getCompleted :: Dialog req resp -> Stream (req, resp)
-getCompleted = undefined
-
--- data Dialog req resp = Dialog (req -> IO resp) [req] [resp]
--- addDialog :: Dialog req resp -> TMI h w ()
--- addDialog dialog = do
---   return ()
-
--- -- TODO I guess we don't care about the tag, so maybe it should be generated
--- -- Maybe pass in the input queue here? Otherwise where do we put it?
--- addDialog :: String -> (req -> IO resp) -> V req -> TMI h w (V (Stream resp))
--- addDialog action = do
---   dialogManager <- getDialogManager
---   putDialogManager dialogManager
-
 streamMain = do
   let dq = addQueue "invitations" invitations (addQueue "emails" emailReqs emptyStream)
       emailReqs' :: Stream EmailReq
@@ -119,15 +98,3 @@ streamMain = do
   msp emailReqs'
   msp invitations'
   msp "stream hi"
-
----- A queue of heterogeneously-typed rpcs
-----
----- t: Eq, used to distinguish the typed queues. All entries with a single tag
-----    are the same type (though not vice versa)
---data DynQueue t = DynQueue
-
---data Dialog req resp = Dialog [req] [resp]
-
----- TODO also should be a method of the TMI monad, returning two (V (Stream a))
---addQueue :: (req -> IO resp) -> DynQueue t -> DynQueue t
---addQueue = undefined
