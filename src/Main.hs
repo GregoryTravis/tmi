@@ -14,6 +14,7 @@ module Main where
 
 import Control.Monad.State hiding (lift)
 
+import Curry
 import History
 import Hash
 import Stream
@@ -72,7 +73,7 @@ splitF = hoist_1_2 $ F_1_2 {..}
 
 andPlusV = plusF leftV rightV
 
-main = streamMain
+main = curryMain
 _main = do
   -- msp ("leftV", leftV)
   -- msp ("rightV", rightV)
