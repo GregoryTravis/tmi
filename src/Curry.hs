@@ -10,6 +10,92 @@ import Util
 -- alt lens
 -- (a -> (b, b -> a))
 -- (a -> b -> (c, c -> (a, b)))
+-- curry lens
+-- (a -> (b, b -> Write))
+-- (a -> b -> (c, c -> Write))
+-- but
+-- (a -> b -> c)
+-- (a -> (b -> c, (b -> c) -> Write))
+-- (a -> b -> c, d)
+-- (a -> (b -> c -> d, (b -> c -> d) -> Write))
+-- but then
+--       (b -> c -> d, (b -> c -> d) -> Write) =>
+--       b -> (c -> d, (c -> d) -> Write)
+-- so then
+-- (a -> b -> (c -> d, (c -> d) -> Write))
+-- and again
+-- (a -> b -> c -> (d, d -> Write))
+
+-- TODO: compact syntax, something like this:
+-- hmmPlus x y = withRev rev (x + y)
+--   where rev x y z =
+--     let [blah blah] 
+--      in x <-- x' <>
+--         y <-- y'
+
+hmmPlus_for :: Int -> Int -> Int
+hmmPlus_for = (+)
+hmmPlus_rev :: Int -> Int -> Int -> Write'
+hmmPlus_rev x y nZ =
+  -- let oZ = hmmPlus_for x y -- if needed
+  x <-- x' <>
+  y <-- y'
+  where x' = nZ `div` 2
+        y' = nZ - x'
+
+data Hmm a b = Hmm a b
+
+hmmApp :: (Hmm (a -> b) (a -> c)) -> a -> Hmm b c
+hmmApp (Hmm for rev) x = Hmm (for x) (rev x)
+
+hmmPlus0 :: Hmm (Int -> Int -> Int) (Int -> Int -> Int -> Write')
+hmmPlus0 = Hmm hmmPlus_for hmmPlus_rev
+
+hmmPlus1 :: Hmm (Int -> Int) (Int -> Int -> Write')
+hmmPlus1 = hmmApp hmmPlus0 1
+
+hmmPlus2 :: Hmm (Int) (Int -> Write')
+hmmPlus2 = hmmApp hmmPlus1 2
+
+rHmm :: Hmm a b -> a
+rHmm (Hmm for _) = for
+
+wHmm :: Hmm a (b -> Write') -> b -> Write'
+wHmm (Hmm _ rev) x = rev x
+
+--(<***>) :: Hmm (a -> r) (a -> r -> Write') -> a -> Hmm r (r -> Write')
+(<***>) :: Hmm (t -> a) (t -> b) -> t -> Hmm a b
+(Hmm for rev) <***> x = Hmm (for x) (rev x)
+
+hmmVal :: Hmm Int (Int -> Write')
+hmmVal = (Hmm hmmPlus_for hmmPlus_rev) <***> 1 <***> 2
+
+hmmRead :: Int
+hmmRead = rHmm hmmVal
+
+hmmWrote :: Write'
+hmmWrote = wHmm hmmVal 30
+
+{-
+-- This looks the same as L, below, but without the Vs -- ?
+data Hmm a r s = Hmm (a -> r) (a -> s)
+
+-- No
+hmmPlus0 :: Hmm Int (Int -> Int) (Int -> Int -> Write')
+hmmPlus0 = Hmm hmmPlus_for hmmPlus_rev
+
+hmmApp :: Hmm a1 (a2 -> r) (a2 -> s) -> a1 -> Hmm a2 r s
+hmmApp (Hmm for rev) x = Hmm (for x) (rev x)
+
+hmmPlus1 :: Hmm Int Int (Int -> Write')
+hmmPlus1 = hmmApp hmmPlus0 1
+-- ish:
+-- hmmPlus1 = Hmm (Int -> Int) (Int -> (Int -> Write'))
+
+--hmmPlus2 = hmmApp hmmPlus1 2
+-}
+
+--------
 
 data V a = V a
   deriving Show
@@ -21,9 +107,13 @@ data Write = Write | Writes [Write]
   deriving Show
 
 data Write' = Write' Pr | Writes' [Write']
-data Pr = forall a. Pr (a, a)
+data Pr = forall a. Show a => Pr (a, a)
+
+-- instance Show Pr where
+--   show (Pr (x, y)) = show (x, y)
+
 infix 8 <--
-(<--) :: a -> a -> Write'
+(<--) :: Show a => a -> a -> Write'
 x <-- y = Write' (Pr (x, y))
 
 -- TODO: This is a super-dumb implementation, should flatten as we go
@@ -64,7 +154,7 @@ primPlus_rev x y _oZ nZ =
   where x' = nZ `div` 2
         y' = nZ - x'
 
---data PrimL a b = PrimL a b
+(<**>) = lft_for
 
 lft_for :: V (a -> b) -> (V a -> V b)
 lft_for vf = \va -> V $ (rv vf) (rv va)
@@ -97,6 +187,24 @@ primPlus_rev2 = lft_rev .: primPlus_rev1
 primPlus_rev3 :: V Int -> V Int -> V Int -> V Int -> V Write'
 --primPlus_rev3 vx vy vz vnz = (lft_rev (primPlus_rev2 vx vy vz) vnz)
 primPlus_rev3 = lft_rev .:: primPlus_rev2
+
+aPrimV :: V Int
+aPrimV = primPlus_for1 (V 1) (V 2)
+
+aPrimVRev :: V Int -> V Write'
+aPrimVRev = primPlus_rev3 (V 1) (V 2) aPrimV
+
+aPrimVRevWrote :: V Write'
+aPrimVRevWrote = aPrimVRev (V 30)
+
+aPrimV' :: V Int
+aPrimV' = (V primPlus_for) <**> (V 1) <**> (V 2)
+
+aPrimVRev' :: V (Int -> Write')
+aPrimVRev' = (V primPlus_rev) <**> (V 1) <**> (V 2) <**> aPrimV
+
+aPrimVRevWrote' :: V Write'
+aPrimVRevWrote' = aPrimVRev' <**> (V 30)
 
 plus :: L (V Int -> V Int -> V Int) (V Int -> V Int -> V Int -> V Int -> Write)
 plus = L plus_for plus_rev
