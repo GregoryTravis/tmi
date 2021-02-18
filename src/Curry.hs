@@ -1,9 +1,64 @@
-{-# LANGUAGE ExistentialQuantification, TypeOperators #-}
+{-# LANGUAGE ExistentialQuantification, TypeOperators, RecordWildCards #-}
 
 module Curry (curryMain) where
 
 import Util
 
+data V a = V a
+  deriving Show
+
+data R a = R (V a)
+  deriving Show
+
+r :: V a -> a
+r (V x) = x
+
+data Write = forall a. Show a => Write { receiver :: R a, value :: a, shower :: String }
+instance Show Write where
+  show (Write {..}) = shower
+
+mkWrite :: Show a => R a -> a -> Write
+mkWrite rx x = Write rx x (show ("Write", rx, x))
+type Writes = [Write]
+
+infix 8 <--
+(<--) :: Show a => R a -> a -> [Write]
+rx <-- x = [mkWrite rx x]
+
+plus_for :: Int -> Int -> Int
+plus_for = (+)
+plus_rev :: R Int -> Int -> R Int -> Int -> Int -> Writes
+plus_rev rx x ry y nZ =
+  -- let oZ = hmmPlus_for x y -- if needed
+  rx <-- x' <>
+  ry <-- y'
+  where x' = nZ `div` 2
+        y' = nZ - x'
+
+data F a b = F a b
+plus = F (V plus_for) (V plus_rev)
+
+app :: F (V (a -> b)) (V (R a -> a -> c)) -> V a -> F (V b) (V c)
+app (F for rev) va = F (V for') (V rev')
+  where for' = (r for) (r va)
+        rev' = (r rev) (R va) (r va)
+
+la :: F (V (Int -> Int)) (V (R Int -> Int -> Int -> Writes))
+la = plus `app` (V 1) -- `app` (V 2)
+
+la' :: F (V (Int)) (V (Int -> Writes))
+la' = la `app` (V 2)
+
+rF :: F (V a) b -> a
+rF (F va _) = r va
+
+wF :: F a (V (b -> Writes)) -> V b -> Writes
+wF (F _ rev) vb = (r rev) (r vb)
+
+yep = rF la'
+yup = wF la' (V 30)
+
+{-
 -- std lens
 -- (a -> b, a -> b -> a)
 -- (a -> b -> c, a -> b -> c -> (a, b))
@@ -247,6 +302,7 @@ theWrote = wL foo'2 (V 20)
 --   - maybe use (V Write') everywhere?
 --   - lift them together
 --   - make plus (the L) out of those plain funs
+-}
 
 curryMain = do
   msp "curry hi"
