@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, MultiParamTypeClasses, TypeApplications, TypeOperators, RecordWildCards #-}
+{-# LANGUAGE ExistentialQuantification, TypeOperators, RecordWildCards #-}
 
 module Curry (curryMain) where
 
@@ -15,16 +15,9 @@ import Util
 data V a = V a
   deriving Show
 
--- Not really using this -- we don't want 2^n lifts caused by having to handle
--- U/V separately each time. Maybe this is some kind of subclassing thing?
-data U a = U a
-  deriving Show
-
 -- TODO these would be united with subclassing
-rv :: V a -> a
-rv (V x) = x
-ru :: U a -> a
-ru (U x) = x
+r :: V a -> a
+r (V x) = x
 
 -- This is TMI-specific, but in unlifted mode, contains no TMI machinery, like this:
 data Receiver a = Receiver
@@ -37,16 +30,7 @@ data R a = R (Receiver a) a
 
 -- In lifted mode we'd stuff the V a in there or something
 mkR :: V a -> R a
-mkR va = R Receiver (rv va)
-
--- Not used, not really doing anything with U yet
--- Unidirectional non-receiver tag
-data UR a = UR a
-  deriving Show
-
--- In lifted mode we'd stuff the V a in there or something
-mkUR :: U a -> UR a
-mkUR ua = UR (ru ua)
+mkR va = R Receiver (r va)
 
 data Write = forall a. Show a => Write { receiver :: Receiver a, value :: a, shower :: String }
 instance Show Write where
@@ -77,13 +61,13 @@ plus = F plus_for plus_rev
 
 plus_for' :: Int -> Int -> Int
 plus_for' = (+)
-plus_rev' :: R Int -> UR Int -> Int -> Writes
-plus_rev' (R rx x) (UR y) nZ =
+plus_rev' :: R Int -> R Int -> Int -> Writes
+plus_rev' (R rx x) (R _ y) nZ =
   -- let oZ = hmmPlus_for x y -- if needed
   rx <-- x'
   where x' = nZ - y
 
-plus' :: F (Int -> Int -> Int) (R Int -> UR Int -> Int -> Writes)
+plus' :: F (Int -> Int -> Int) (R Int -> R Int -> Int -> Writes)
 plus' = F plus_for' plus_rev'
 
 -- TODO aliases for these
@@ -95,7 +79,7 @@ plus' = F plus_for' plus_rev'
 -- liftT :: (V (F (a -> b) (R a -> b -> Writes))) -> (V a -> V (F b (b -> Writes)))
 liftT :: (V (F (a -> b) (R a -> c))) -> (V a -> V (F b (c)))
 liftT (V (F for rev)) va = V $ F for' rev'
-  where for' = for (rv va)
+  where for' = for (r va)
         rev' = rev (mkR va)
 
 -- By analogy with Applicative
@@ -108,7 +92,7 @@ f <$$> x = (V f) <**> x
 -- Can it be done compositionally?
 liftT2 :: (V (F (a -> b -> c) (R a -> R b -> c -> Writes))) -> (V a -> V b -> V (F c (c -> Writes)))
 liftT2 (V (F for rev)) va vb = V $ F for' rev'
-  where for' = for (rv va) (rv vb)
+  where for' = for (r va) (r vb)
         rev' nC = rev (mkR va) (mkR vb) nC
 
 -- This hyar is almost composition
@@ -119,27 +103,6 @@ liftT2' :: V (F (a1 -> a2 -> b) (R a1 -> R a2 -> c)) -> V a1 -> V a2 -> V (F b c
 -- liftT2' f x y = liftT (liftT f x) y
 -- liftT2' f x = liftT (liftT f x)
 liftT2' f = liftT . liftT f
-
--- Ok, U stuff.
-liftTU :: (V (F (a -> b) (UR a -> c))) -> (U a -> V (F b (c)))
-liftTU (V (F for rev)) ua = V $ F for' rev'
-  where for' = for (ru ua)
-        rev' = rev (mkUR ua)
--- Only doing this one
-liftTU2' :: V (F (a -> b -> c) (UR a -> UR b -> d)) -> U a -> U b -> V (F c d)
-liftTU2' f = liftTU . liftTU f
-
--- This is what we don't want -- 2^n options for arity n; but it does work
-liftT_V_U :: V (F (a1 -> a2 -> b) (R a1 -> UR a2 -> c)) -> V a1 -> U a2 -> V (F b c)
-liftT_V_U f = liftTU . liftT f
-
-(<***>) :: V (F (a -> b) (UR a -> c)) -> U a -> V (F b c)
-(<***>) = liftTU
-
--- app :: F (V (a -> b)) (V (R a -> a -> c)) -> V a -> F (V b) (V c)
--- app (F for rev) va = F (V for') (V rev')
---   where for' = (r for) (r va)
---         rev' = (r rev) (R va) (r va)
 
 la :: V (F Int (Int -> Writes))
 la = liftT2 (V plus) (V 1) (V 2)
@@ -156,95 +119,16 @@ la2 = la1 <**> (V 2)
 la2' :: V (F Int (Int -> Writes))
 la2' = plus <$$> (V 1) <**> (V 2)
 
-lo :: V (F Int (Int -> Writes))
-lo = liftT_V_U (V plus') (V 1) (U 2)
-
-lo' :: V (F Int (Int -> Writes))
-lo' = (V plus') <**> (V 1) <***> (U 2)
-
--- classery
--- This has the usual problem that you have to declare what instances you are
--- using, which is overkill; we simply want to implement a (U|V) type.
-class Readable f where
-  r :: f a -> a
-  -- mkReadable :: a -> f a
-
--- TODO there's only one, so do we need this?
--- class Writable f where
---   w :: f a -> a -> Write
-class Show a => Writable f a where
-  w :: f a -> a -> Write
-
-instance Readable V where
-  r = rv
-  -- mkReadable = V
-
-instance Show a => Writable V a where
-  w (V _) x = mkWrite Receiver x
-
-instance Readable U where
-  r = ru
-  -- mkReadable = U
-
-mkCV :: (Readable w, Writable w a) => w a -> R a
-mkCV va = R Receiver (r va)
-
-mkCU :: Readable r => r a -> UR a
-mkCU ua = UR (r ua)
-
--- Lift with readable param
--- What about the funs, should they be readable or writable?
-liftCTU :: Readable r => (V (F (a -> b) (UR a -> c))) -> (r a -> V (F b (c)))
-liftCTU (V (F for rev)) ua = V $ F for' rev'
-  where for' = for (r ua)
-        rev' = rev (mkCU ua)
-
-liftCTV :: (Readable w, Writable w a) => (V (F (a -> b) (R a -> c))) -> (w a -> V (F b (c)))
-liftCTV (V (F for rev)) va = V $ F for' rev'
-  where for' = for (r va)
-        rev' = rev (mkCV va)
-
--- plus' :: F (Int -> Int -> Int) (R Int -> UR Int -> Int -> Writes)
-
-le1 = liftCTV (V plus') :: V Int -> V (F (Int -> Int) (UR Int -> Int -> Writes))
-le1applied :: V (F (Int -> Int) (UR Int -> Int -> Writes))
-le1applied = le1 (V 1)
-le2 :: U Int -> V (F Int (Int -> Writes))
-le2 = liftCTU le1applied
-le2applied :: V (F Int (Int -> Writes))
-le2applied = le2 (U 2)
-le = le2applied
-
-le' :: V (F Int (Int -> Writes))
-le' = liftCTU ((liftCTV (V plus')) (V 1)) (U 2)
-
-lift_W_R :: (Readable r, Readable w, Writable w a1) =>
-     V (F (a1 -> a2 -> b) (R a1 -> UR a2 -> c))
-     -> w a1 -> r a2 -> V (F b c)
-lift_W_R f = liftCTU . liftCTV f
-le'' :: V (F Int (Int -> Writes))
-le'' = lift_W_R (V plus') (V 1) (U 2)
-
 curryMain = do
   msp $ case la of Curry.V (Curry.F x _) -> x
   msp $ case la' of Curry.V (Curry.F x _) -> x
   msp $ case la2 of Curry.V (Curry.F x _) -> x
   msp $ case la2' of Curry.V (Curry.F x _) -> x
-  msp $ case lo of Curry.V (Curry.F x _) -> x
-  msp $ case lo' of Curry.V (Curry.F x _) -> x
-  msp $ case le of Curry.V (Curry.F x _) -> x
-  msp $ case le' of Curry.V (Curry.F x _) -> x
-  msp $ case le'' of Curry.V (Curry.F x _) -> x
 
   msp $ (case la of Curry.V (Curry.F x y) -> y) 30
   msp $ (case la' of Curry.V (Curry.F x y) -> y) 30
   msp $ (case la2 of Curry.V (Curry.F x y) -> y) 30
   msp $ (case la2' of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case lo of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case lo' of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case le of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case le' of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case le'' of Curry.V (Curry.F x y) -> y) 30
   msp "curry hi"
 
 -- la :: F (V (Int -> Int)) (V (R Int -> Int -> Int -> Writes))
