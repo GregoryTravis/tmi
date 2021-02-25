@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, TypeOperators, RecordWildCards #-}
+{-# LANGUAGE ExistentialQuantification, RecordWildCards #-}
 
 module Curry (curryMain) where
 
