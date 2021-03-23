@@ -102,6 +102,8 @@ runNForwards dum reader (N {..}) = do
   argVals <- mapM (readDV dum reader) args
   return $ for n_s argVals
 
+-- Run the N backwards, reading reverse inputs from the cache and writing the
+-- reverse outputs to the cache.
 runNBackwards :: Nice w => Dum w -> Cache -> N -> IO Cache
 runNBackwards dum cache n@(N {..}) = do
   let r = rev n_s
