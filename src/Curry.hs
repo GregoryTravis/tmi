@@ -70,6 +70,19 @@ plus_rev' (R rx x) (R _ y) nZ =
 plus' :: F (Int -> Int -> Int) (R Int -> R Int -> Int -> Writes)
 plus' = F plus_for' plus_rev'
 
+plus3_for :: Int -> Int -> Int -> Int
+plus3_for x y z = x + y + z
+plus3_rev :: R Int -> R Int -> R Int -> Int -> Writes
+plus3_rev (R rx x) (R ry y) (R rz z) nW =
+  rx <-- x' <>
+  ry <-- y' <>
+  rz <-- z'
+  where x' = nW `div` 3
+        y' = (nW - x') `div` 2
+        z' = (nW - x' - y')
+
+plus3 = F plus3_for plus3_rev
+
 -- TODO aliases for these
 -- TODO that last one is a V
 --
@@ -104,6 +117,9 @@ liftT2 :: V (F (a1 -> a2 -> b) (R a1 -> R a2 -> c)) -> V a1 -> V a2 -> V (F b c)
 -- liftT2' f x = liftT (liftT f x)
 liftT2 f = liftT . liftT f
 
+liftT3 :: V (F (a1 -> a2 -> a3 -> b) (R a1 -> R a2 -> R a3 -> c)) -> V a1 -> V a2 -> V a3 -> V (F b c)
+liftT3 f = liftT2 . liftT f
+
 la :: V (F Int (Int -> Writes))
 la = liftT2 (V plus) (V 1) (V 2)
 
@@ -113,10 +129,15 @@ la1 = plus <$$> (V 1)
 la2 :: V (F Int (Int -> Writes))
 la2 = plus <$$> (V 1) <**> (V 2)
 
+lla :: V (F Int (Int -> Writes))
+lla = liftT3 (V plus3) (V 1) (V 2) (V 3)
+
 curryMain = do
   msp $ case la of Curry.V (Curry.F x _) -> x
   msp $ case la2 of Curry.V (Curry.F x _) -> x
+  msp $ case lla of Curry.V (Curry.F x _) -> x
 
   msp $ (case la of Curry.V (Curry.F x y) -> y) 30
   msp $ (case la2 of Curry.V (Curry.F x y) -> y) 30
+  msp $ (case lla of Curry.V (Curry.F x y) -> y) 301
   msp "curry hi"
