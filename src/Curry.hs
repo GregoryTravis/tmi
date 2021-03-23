@@ -89,44 +89,34 @@ liftT (V (F for rev)) va = V $ F for' rev'
 (<$$>) :: F (a -> b) (R a -> c) -> V a -> V (F b c)
 f <$$> x = (V f) <**> x
 
--- Can it be done compositionally?
-liftT2 :: (V (F (a -> b -> c) (R a -> R b -> c -> Writes))) -> (V a -> V b -> V (F c (c -> Writes)))
-liftT2 (V (F for rev)) va vb = V $ F for' rev'
-  where for' = for (r va) (r vb)
-        rev' nC = rev (mkR va) (mkR vb) nC
+-- -- Can it be done compositionally?
+-- liftT2 :: (V (F (a -> b -> c) (R a -> R b -> c -> Writes))) -> (V a -> V b -> V (F c (c -> Writes)))
+-- liftT2 (V (F for rev)) va vb = V $ F for' rev'
+--   where for' = for (r va) (r vb)
+--         rev' nC = rev (mkR va) (mkR vb) nC
 
 -- This hyar is almost composition
 -- Again, first sig is overspecified but correct for arity 2 (?)
 -- liftT2' :: V (F (a -> b -> c) (R a -> R b -> c -> Writes)) -> V a -> V b -> V (F c (c -> Writes))
-liftT2' :: V (F (a1 -> a2 -> b) (R a1 -> R a2 -> c)) -> V a1 -> V a2 -> V (F b c)
+liftT2 :: V (F (a1 -> a2 -> b) (R a1 -> R a2 -> c)) -> V a1 -> V a2 -> V (F b c)
 -- These are all the same
 -- liftT2' f x y = liftT (liftT f x) y
 -- liftT2' f x = liftT (liftT f x)
-liftT2' f = liftT . liftT f
+liftT2 f = liftT . liftT f
 
 la :: V (F Int (Int -> Writes))
 la = liftT2 (V plus) (V 1) (V 2)
-la' :: V (F Int (Int -> Writes))
-la' = liftT2' (V plus) (V 1) (V 2)
 
 la1 :: V (F (Int -> Int) (R Int -> Int -> Writes))
-la1 = (V plus) <**> (V 1)
-la1' :: V (F (Int -> Int) (R Int -> Int -> Writes))
-la1' = plus <$$> (V 1)
+la1 = plus <$$> (V 1)
 
 la2 :: V (F Int (Int -> Writes))
-la2 = la1 <**> (V 2)
-la2' :: V (F Int (Int -> Writes))
-la2' = plus <$$> (V 1) <**> (V 2)
+la2 = plus <$$> (V 1) <**> (V 2)
 
 curryMain = do
   msp $ case la of Curry.V (Curry.F x _) -> x
-  msp $ case la' of Curry.V (Curry.F x _) -> x
   msp $ case la2 of Curry.V (Curry.F x _) -> x
-  msp $ case la2' of Curry.V (Curry.F x _) -> x
 
   msp $ (case la of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case la' of Curry.V (Curry.F x y) -> y) 30
   msp $ (case la2 of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case la2' of Curry.V (Curry.F x y) -> y) 30
   msp "curry hi"
