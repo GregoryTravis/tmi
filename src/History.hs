@@ -42,7 +42,7 @@ instance History Dum w where
 
 --readV :: (Nice w, Nice a) => Dum w -> V a -> IO a
   readV dum (V n i) = do
-    dyns <- runNForwards dum (Reader $ readV dum) n
+    dyns <- runNForwards dum n
     return $ undy $ (dyns !! i)
 
   -- TODO use some kind of cast here
@@ -86,20 +86,20 @@ runAllNs dum@(Dum _ listeners) writes =
       ns = rToLNs dvs
    in foldM (runNBackwards dum) cache ns
 
-readDV :: (Nice w) => Dum w -> Reader -> DV -> IO D
-readDV dum reader (DV _ _ dReader) = dReader reader
-readDV (Dum ws _) reader DRoot = return $ dy $ head ws
+readDV :: (Nice w) => Dum w -> DV -> IO D
+readDV dum (DV _ _ dReader) = dReader (Reader $ readV dum)
+readDV (Dum ws _) DRoot = return $ dy $ head ws
 
-readDVWithCache :: (Nice w) => Cache -> Dum w -> Reader -> DV -> IO D
-readDVWithCache cache dum reader dv = do
+readDVWithCache :: (Nice w) => Cache -> Dum w -> DV -> IO D
+readDVWithCache cache dum dv = do
   case getMaybe cache dv of
     Just d -> return d
-    Nothing -> readDV dum reader dv
+    Nothing -> readDV dum dv
 
 -- Compute outputs from inputs
-runNForwards :: Nice w => Dum w -> Reader -> N -> IO Ds
-runNForwards dum reader (N {..}) = do
-  argVals <- mapM (readDV dum reader) args
+runNForwards :: Nice w => Dum w -> N -> IO Ds
+runNForwards dum (N {..}) = do
+  argVals <- mapM (readDV dum ) args
   return $ for n_s argVals
 
 -- Run the N backwards, reading reverse inputs from the cache and writing the
@@ -107,10 +107,10 @@ runNForwards dum reader (N {..}) = do
 runNBackwards :: Nice w => Dum w -> Cache -> N -> IO Cache
 runNBackwards dum cache n@(N {..}) = do
   let r = rev n_s
-      reader = Reader $ readV dum
+      --reader = Reader $ readV dum
       --readerWithCache = makeReaderWithCache cache reader
-  argsVals <- mapM (readDV dum reader) args :: IO Ds
-  resultsVals <- mapM (readDVWithCache cache dum reader) results :: IO Ds
+  argsVals <- mapM (readDV dum) args :: IO Ds
+  resultsVals <- mapM (readDVWithCache cache dum) results :: IO Ds
   let newInputs = rev n_s argsVals resultsVals
   -- TODO confusing the categories
   let writes = [Write dv d | (dv, d) <- zip args newInputs]
