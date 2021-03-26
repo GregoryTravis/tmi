@@ -4,140 +4,43 @@ module Curry (curryMain) where
 
 import Util
 
-{-
-+ V out of Receiver
-+ liftT2 by composition? ish
-+ U, somehow: we want static guarantee we don't pass a U as a V, but vice versa is ok
-- --> etc meaning V a -> UR b etc
-- write cascade
--}
+data W = W
 
-data V a = V a
-  deriving Show
+data Write = Write
 
--- TODO these would be united with subclassing
-r :: V a -> a
-r (V x) = x
+data R a = R
 
--- This is TMI-specific, but in unlifted mode, contains no TMI machinery, like this:
-data Receiver a = Receiver
-  deriving Show
--- It could also be (Receiver (V a)) in lifted mode
+-- TODO other arities
+data F b a = F (b -> a) ((R b, b) -> a -> Writes)
 
--- Bidirectional receiver
-data R a = R (Receiver a) a
-  deriving Show
+data V a = VRoot | VConst a | VApp (App a)
 
--- In lifted mode we'd stuff the V a in there or something
-mkR :: V a -> R a
-mkR va = R Receiver (r va)
+-- r :: V a -> a
+-- r VRoot = W
 
-data Write = forall a. Show a => Write { receiver :: Receiver a, value :: a, shower :: String }
-instance Show Write where
-  show (Write {..}) = shower
+-- TODO inline this into V?
+data App a = forall b. App (V (F b a)) (V b)
 
-mkWrite :: Show a => Receiver a -> a -> Write
-mkWrite rx x = Write rx x (show ("Write", rx, x))
+app :: V (F b a) -> V b -> V a
+app vf vb = VApp $ App vf vb
+
 type Writes = [Write]
-
 infix 8 <--
-(<--) :: Show a => Receiver a -> a -> [Write]
-rx <-- x = [mkWrite rx x]
+(<--) :: Show a => R a -> a -> [Write]
+rx <-- x = [Write]
 
--- This is still haskell, just a lens, no tmi machinery other than R
-data F a b = F a b
-
-plus_for :: Int -> Int -> Int
-plus_for = (+)
-plus_rev :: R Int -> R Int -> Int -> Writes
-plus_rev (R rx x) (R ry y) nZ =
-  -- let oZ = hmmPlus_for x y -- if needed
-  rx <-- x' <>
-  ry <-- y'
-  where x' = nZ `div` 2
-        y' = nZ - x'
-
-plus = F plus_for plus_rev
-
-plus_for' :: Int -> Int -> Int
-plus_for' = (+)
-plus_rev' :: R Int -> R Int -> Int -> Writes
-plus_rev' (R rx x) (R _ y) nZ =
-  -- let oZ = hmmPlus_for x y -- if needed
+inc_for :: Int -> Int
+inc_for = (+1)
+inc_rev :: (R Int, Int) -> Int -> Writes
+inc_rev (rx, _) x =
   rx <-- x'
-  where x' = nZ - y
+  where x' = x - 1
 
-plus' :: F (Int -> Int -> Int) (R Int -> R Int -> Int -> Writes)
-plus' = F plus_for' plus_rev'
+inc = VConst (F inc_for inc_rev)
+three = VConst 3
+threeInced = app inc three
 
-plus3_for :: Int -> Int -> Int -> Int
-plus3_for x y z = x + y + z
-plus3_rev :: R Int -> R Int -> R Int -> Int -> Writes
-plus3_rev (R rx x) (R ry y) (R rz z) nW =
-  rx <-- x' <>
-  ry <-- y' <>
-  rz <-- z'
-  where x' = nW `div` 3
-        y' = (nW - x') `div` 2
-        z' = (nW - x' - y')
-
-plus3 = F plus3_for plus3_rev
-
--- TODO aliases for these
--- TODO that last one is a V
---
--- The first, commented-out signature is for lifting arity-1 functions, but
--- replacing (b -> Writes) with c seems to let it work on arity-2 by repeated
--- application.
--- liftT :: (V (F (a -> b) (R a -> b -> Writes))) -> (V a -> V (F b (b -> Writes)))
-liftT :: (V (F (a -> b) (R a -> c))) -> (V a -> V (F b (c)))
-liftT (V (F for rev)) va = V $ F for' rev'
-  where for' = for (r va)
-        rev' = rev (mkR va)
-
--- By analogy with Applicative
-(<**>) :: V (F (a -> b) (R a -> c)) -> V a -> V (F b c)
-(<**>) = liftT
-
-(<$$>) :: F (a -> b) (R a -> c) -> V a -> V (F b c)
-f <$$> x = (V f) <**> x
-
--- -- Can it be done compositionally?
--- liftT2 :: (V (F (a -> b -> c) (R a -> R b -> c -> Writes))) -> (V a -> V b -> V (F c (c -> Writes)))
--- liftT2 (V (F for rev)) va vb = V $ F for' rev'
---   where for' = for (r va) (r vb)
---         rev' nC = rev (mkR va) (mkR vb) nC
-
--- This hyar is almost composition
--- Again, first sig is overspecified but correct for arity 2 (?)
--- liftT2' :: V (F (a -> b -> c) (R a -> R b -> c -> Writes)) -> V a -> V b -> V (F c (c -> Writes))
-liftT2 :: V (F (a1 -> a2 -> b) (R a1 -> R a2 -> c)) -> V a1 -> V a2 -> V (F b c)
--- These are all the same
--- liftT2' f x y = liftT (liftT f x) y
--- liftT2' f x = liftT (liftT f x)
-liftT2 f = liftT . liftT f
-
-liftT3 :: V (F (a1 -> a2 -> a3 -> b) (R a1 -> R a2 -> R a3 -> c)) -> V a1 -> V a2 -> V a3 -> V (F b c)
-liftT3 f = liftT2 . liftT f
-
-la :: V (F Int (Int -> Writes))
-la = liftT2 (V plus) (V 1) (V 2)
-
-la1 :: V (F (Int -> Int) (R Int -> Int -> Writes))
-la1 = plus <$$> (V 1)
-
-la2 :: V (F Int (Int -> Writes))
-la2 = plus <$$> (V 1) <**> (V 2)
-
-lla :: V (F Int (Int -> Writes))
-lla = liftT3 (V plus3) (V 1) (V 2) (V 3)
+--runFor :: App a
 
 curryMain = do
-  msp $ case la of Curry.V (Curry.F x _) -> x
-  msp $ case la2 of Curry.V (Curry.F x _) -> x
-  msp $ case lla of Curry.V (Curry.F x _) -> x
-
-  msp $ (case la of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case la2 of Curry.V (Curry.F x y) -> y) 30
-  msp $ (case lla of Curry.V (Curry.F x y) -> y) 301
   msp "curry hi"
