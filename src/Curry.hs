@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, RecordWildCards #-}
+{-# LANGUAGE ExistentialQuantification, GADTs, RecordWildCards #-}
 
 module Curry (curryMain) where
 
@@ -13,7 +13,10 @@ data R a = R
 -- TODO other arities
 data F a b = F a b
 
-data V a = VRoot | VConst a | VApp (App a)
+data V a where
+  VRoot :: V W
+  VConst :: a -> V a
+  VApp :: App a -> V a
 
 -- r :: V a -> a
 -- r VRoot = W
