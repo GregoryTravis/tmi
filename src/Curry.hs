@@ -11,7 +11,7 @@ data Write = Write
 data R a = R
 
 -- TODO other arities
-data F b a = F (b -> a) ((R b, b) -> a -> Writes)
+data F a b = F a b
 
 data V a = VRoot | VConst a | VApp (App a)
 
@@ -19,9 +19,9 @@ data V a = VRoot | VConst a | VApp (App a)
 -- r VRoot = W
 
 -- TODO inline this into V?
-data App a = forall b. App (V (F b a)) (V b)
+data App a = forall b. App (V (F (b -> a) ((R b, b) -> a -> Writes))) (V b)
 
-app :: V (F b a) -> V b -> V a
+app :: V (F (b -> a) ((R b, b) -> a -> Writes)) -> V b -> V a
 app vf vb = VApp $ App vf vb
 
 type Writes = [Write]
