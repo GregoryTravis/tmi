@@ -18,14 +18,21 @@ data V a where
   VConst :: a -> V a
   VApp :: App a -> V a
 
--- r :: V a -> a
--- r VRoot = W
+r :: V a -> a
+r VRoot = W
+r (VConst x) = x
+r (VApp app) = runAppForwards app
 
 -- TODO inline this into V?
 data App a = forall b. App (V (F (b -> a) ((R b, b) -> a -> Writes))) (V b)
 
 app :: V (F (b -> a) ((R b, b) -> a -> Writes)) -> V b -> V a
 app vf vb = VApp $ App vf vb
+
+runAppForwards :: App a -> a
+runAppForwards (App vf vx) = f x
+  where f = case r vf of (F f _) -> f
+        x = r vx
 
 type Writes = [Write]
 infix 8 <--
@@ -46,4 +53,6 @@ threeInced = app inc three
 --runFor :: App a
 
 curryMain = do
+  msp $ r three
+  msp $ r threeInced
   msp "curry hi"
