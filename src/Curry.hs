@@ -32,6 +32,8 @@ app vf vb = VApp $ App vf vb
 app' :: V (F (b -> c) ((R b, b) -> d)) -> V b -> V (F c d)
 app' = undefined
 
+data App'' c d = forall b. App'' (V (F (b -> c) ((R b, b) -> d))) (V b)
+
 runAppForwards :: App a -> a
 runAppForwards (App vf vx) = f x
   where f = case r vf of (F f _) -> f
