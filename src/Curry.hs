@@ -46,10 +46,22 @@ inc_rev (rx, _) x =
   rx <-- x'
   where x' = x - 1
 
+plus_for :: Int -> Int -> Int
+plus_for = (+)
+plus_rev :: (R Int, Int) -> (R Int, Int) -> Int -> Writes
+plus_rev (rx, x) (ry, y) nZ =
+  rx <-- x' <>
+  ry <-- y'
+  where x' = nZ `div` 2
+        y' = nZ - x'
+
 inc = VConst (F inc_for inc_rev)
+plus = VConst (F plus_for plus_rev)
 three = VConst 3
 threeInced = app inc three
 threeInced2x = app inc threeInced
+four = VConst 4
+-- seven = app (app plus three) four
 
 --runFor :: App a
 
