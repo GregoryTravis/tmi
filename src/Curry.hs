@@ -49,10 +49,12 @@ inc_rev (rx, _) x =
 inc = VConst (F inc_for inc_rev)
 three = VConst 3
 threeInced = app inc three
+threeInced2x = app inc threeInced
 
 --runFor :: App a
 
 curryMain = do
   msp $ r three
   msp $ r threeInced
+  msp $ r threeInced2x
   msp "curry hi"
