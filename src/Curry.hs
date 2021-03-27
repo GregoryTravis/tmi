@@ -29,6 +29,9 @@ data App a = forall b. App (V (F (b -> a) ((R b, b) -> a -> Writes))) (V b)
 app :: V (F (b -> a) ((R b, b) -> a -> Writes)) -> V b -> V a
 app vf vb = VApp $ App vf vb
 
+app' :: V (F (b -> c) ((R b, b) -> d)) -> V b -> V (F c d)
+app' = undefined
+
 runAppForwards :: App a -> a
 runAppForwards (App vf vx) = f x
   where f = case r vf of (F f _) -> f
@@ -60,8 +63,8 @@ plus = VConst (F plus_for plus_rev)
 three = VConst 3
 threeInced = app inc three
 threeInced2x = app inc threeInced
-four = VConst 4
--- seven = app (app plus three) four
+four = VConst (4::Int)
+seven = app' (app' plus three) four
 
 --runFor :: App a
 
@@ -69,4 +72,5 @@ curryMain = do
   msp $ r three
   msp $ r threeInced
   msp $ r threeInced2x
+  msp $ case r seven of Curry.F x _ -> x
   msp "curry hi"
