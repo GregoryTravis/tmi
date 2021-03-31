@@ -4,18 +4,21 @@ module Curry (curryMain) where
 
 import Util
 
-data Write = forall a. Write (R a) a
+data Write = forall a. Show a => Write (R a) a
 --data Write = Write
 type Writes = [Write]
 infix 8 <--
 (<--) :: Show a => R a -> a -> [Write]
 rx <-- x = [Write rx x]
 
+instance Show Write where
+  show (Write _ a) = show a
+
 -- e.g.
 -- for: a -> b -> c
 -- rev: a -> R a -> b -> R b -> c -> R c
 
-data R a = R (a -> Writes)
+data R a = R (V (F a))
 
 -- TODO maybe this is just V -- nope, where would the a come from!
 data F a = F a (Rev a)
@@ -23,11 +26,11 @@ data F a = F a (Rev a)
 instance Show a => Show (F a) where
   show (F a _) = show a
 
-app :: F (a -> b) -> F a -> F b
--- app :: F (a -> b) (a -> R a -> b -> R b)
---     -> F a (a -> R a)
---     -> F b (b -> R b)
-app (F f_for f_rev) (F a_for a_rev) = undefined
+-- app :: F (a -> b) -> F a -> F b
+-- -- app :: F (a -> b) (a -> R a -> b -> R b)
+-- --     -> F a (a -> R a)
+-- --     -> F b (b -> R b)
+-- app (F f_for f_rev) (F a_for a_rev) = undefined
 
 type family Rev a where
   Rev (a -> b) = (a -> R a -> Rev b)
@@ -94,9 +97,15 @@ r :: V a -> a
 r VRoot = (F world undefined)
 r (VConst x) = x
 r (VApp vf vb) =
-  let (F forF revF) = r vf
-      (F forB revB) = r vb
-   in F (forF forB) undefined
+  let (F forF _revF) = r vf
+      (F forB _revB) = r vb
+   in F (forF forB) (error "r VApp not impl")
+
+-- -- TOOD we want to write to anIntVV
+-- w :: V (F a) -> a -> Writes
+-- w VRoot = error "Can't write to VRoot"
+-- w (VConst _) = error "Can't write to VConst"
+-- w (VApp vf vb)
 
 curryMain = do
   msp $ r threeV
@@ -104,4 +113,5 @@ curryMain = do
   msp $ r five
   msp $ r anIntVV
   msp $ r seven
+  msp $ length $ (case r anIntVV of Curry.F x y -> y) 100
   msp "curry hi"
