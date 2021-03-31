@@ -16,8 +16,6 @@ rx <-- x = [Write rx x]
 -- rev: a -> R a -> b -> R b -> c -> R c
 
 data R a = R (a -> Writes)
--- TODO only created this Q so I could show the result of a rev could be different
-data Q a = Q (a -> Writes)
 
 -- TODO maybe this is just V -- nope, where would the a come from!
 data F a = F a (Rev a)
@@ -33,12 +31,12 @@ app (F f_for f_rev) (F a_for a_rev) = undefined
 
 type family Rev a where
   Rev (a -> b) = (a -> R a -> Rev b)
-  Rev a = a -> Q a
+  Rev a = a -> Writes
 
 inc_for :: Int -> Int
 inc_for = (+1)
-inc_rev :: Int -> R Int -> Int -> Q Int
-inc_rev _x rx x = Q $ \_ ->
+inc_rev :: Int -> R Int -> Int -> Writes
+inc_rev _x rx x =
   rx <-- x'
   where x' = x - 1
 inc :: F (Int -> Int)
@@ -46,8 +44,8 @@ inc = F inc_for inc_rev
 
 plus_for :: Int -> Int -> Int
 plus_for = (+)
-plus_rev :: Int -> R Int -> Int -> R Int -> Int -> Q Int
-plus_rev x rx y ry nZ = Q $ \_ ->
+plus_rev :: Int -> R Int -> Int -> R Int -> Int -> Writes
+plus_rev x rx y ry nZ =
   rx <-- x' <>
   ry <-- y'
   where x' = nZ `div` 2
@@ -64,8 +62,8 @@ world = W { anInt = 1 }
 
 anInt_for :: W -> Int
 anInt_for = anInt
-anInt_rev :: W -> R W -> Int -> Q Int
-anInt_rev w rw nAnInt = Q $ \_ ->
+anInt_rev :: W -> R W -> Int -> Writes
+anInt_rev w rw nAnInt =
   rw <-- w { anInt = nAnInt }
 anIntV :: V (F (W -> Int))
 anIntV = VConst (F anInt_for anInt_rev)
