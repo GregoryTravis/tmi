@@ -85,7 +85,7 @@ anIntVV = VApp anIntV VRoot
 data V a where
   VRoot :: V (F W (W -> Writes))
   VConst :: F f r -> V (F f r)
-  VApp :: V (F (b -> a) (Rev (b -> a))) -> V (F b (b -> Writes)) -> V (F a c)
+  VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
 
 incV :: V (F (Int -> Int) (Rev (Int -> Int)))
 incV = VConst inc
@@ -112,7 +112,7 @@ r (VApp vf vb) =
    in F (forF forB) (error "rev VApp not impl")
 
 -- TOOD we want to write to anIntVV
-w :: V (F a (Rev a)) -> a -> Writes
+w :: V (F a (a -> Writes)) -> a -> Writes
 w VRoot _ = error "Can't write to VRoot"
 w (VConst _) _ = error "Can't write to VConst"
 w (VApp vf vb) nA =
@@ -120,7 +120,7 @@ w (VApp vf vb) nA =
   -- revB :: Int -> Writes
   let (F forF revF) = r vf
       (F forB revB) = r vb
-   in undefined -- revF forB (R vb) nA
+   in revF forB (R vb) nA
 
 curryMain = do
   msp $ r threeV
