@@ -85,7 +85,7 @@ anIntVV = VApp anIntV VRoot
 data V a where
   VRoot :: V (F W (W -> Writes))
   VConst :: F f r -> V (F f r)
-  VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
+  VApp :: V (F (b -> a) (Rev (b -> a))) -> V (F b (b -> Writes)) -> V (F a c)
 
 incV :: V (F (Int -> Int) (Rev (Int -> Int)))
 incV = VConst inc
