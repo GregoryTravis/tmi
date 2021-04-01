@@ -58,10 +58,10 @@ plus :: F (Int -> Int -> Int)
 plus = F plus_for plus_rev
 plusV = VConst plus
 
-data W = W { anInt :: Int }
+data W = W { anInt :: Int, anotherInt :: Int }
   deriving Show
 world :: W
-world = W { anInt = 1 }
+world = W { anInt = 1, anotherInt = 50 }
 
 anInt_for :: W -> Int
 anInt_for = anInt
@@ -70,6 +70,13 @@ anInt_rev w rw nAnInt =
   rw <-- w { anInt = nAnInt }
 anIntV :: V (F (W -> Int))
 anIntV = VConst (F anInt_for anInt_rev)
+anotherInt_for :: W -> Int
+anotherInt_for = anotherInt
+anotherInt_rev :: W -> R W -> Int -> Writes
+anotherInt_rev w rw nanotherInt =
+  rw <-- w { anotherInt = nanotherInt }
+anotherIntV :: V (F (W -> Int))
+anotherIntV = VConst (F anotherInt_for anotherInt_rev)
 -- TODO bad name
 anIntVV = VApp anIntV VRoot
 
@@ -93,6 +100,8 @@ five = VApp incV four
 seven :: V (F Int)
 seven = VApp (VApp plusV threeV) four
 
+fiftyOne = VApp (VApp plusV (VApp anotherIntV VRoot)) (VApp anIntV VRoot)
+
 r :: V a -> a
 r VRoot = (F world undefined)
 r (VConst x) = x
@@ -113,5 +122,7 @@ curryMain = do
   msp $ r five
   msp $ r anIntVV
   msp $ r seven
+  msp $ r fiftyOne
+  msp $ r (VApp incV fiftyOne)
   msp $ length $ (case r anIntVV of Curry.F x y -> y) 100
   msp "curry hi"
