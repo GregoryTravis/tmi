@@ -108,13 +108,18 @@ r (VConst x) = x
 r (VApp vf vb) =
   let (F forF _revF) = r vf
       (F forB _revB) = r vb
-   in F (forF forB) (error "r VApp not impl")
+   in F (forF forB) (error "rev VApp not impl")
 
--- -- TOOD we want to write to anIntVV
--- w :: V (F a) -> a -> Writes
--- w VRoot = error "Can't write to VRoot"
--- w (VConst _) = error "Can't write to VConst"
--- w (VApp vf vb)
+-- TOOD we want to write to anIntVV
+w :: V (F a) -> a -> Writes
+w VRoot _ = error "Can't write to VRoot"
+w (VConst _) _ = error "Can't write to VConst"
+w (VApp vf vb) nA =
+  -- revF :: Int -> R Int -> Int -> Writes
+  -- revB :: Int -> Writes
+  let (F forF revF) = r vf
+      (F forB revB) = r vb
+   in undefined -- revF forB (R vb) nA
 
 curryMain = do
   msp $ r threeV
@@ -124,5 +129,5 @@ curryMain = do
   msp $ r seven
   msp $ r fiftyOne
   msp $ r (VApp incV fiftyOne)
-  msp $ length $ (case r anIntVV of Curry.F x y -> y) 100
+  --msp $ length $ (case r anIntVV of Curry.F x y -> y) 100
   msp "curry hi"
