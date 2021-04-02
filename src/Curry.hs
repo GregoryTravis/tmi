@@ -5,16 +5,41 @@ module Curry (curryMain) where
 
 import Util
 
-data Write = forall a. Show a => Write (R a) a
+data Write = forall a. Show a => Write (V a) a
 --data Write = Write
 type Writes = [Write]
 infix 8 <--
-(<--) :: Show a => R a -> a -> [Write]
+(<--) :: Show a => V a -> a -> [Write]
 rx <-- x = [Write rx x]
 
-instance Show Write where
-  show (Write r a) = "(" ++ (show r) ++ " <-- " ++ (show a) ++ ")"
+-- instance Show Write where
+--   show (Write r a) = "(" ++ (show r) ++ " <-- " ++ (show a) ++ ")"
 
+data V a = V a (a -> Writes)
+
+-- TODO how to write this?
+feh :: (a -> V a -> b -> c) -> ((a -> b) -> c)
+feh = undefined
+
+-- TODO Can this be written?
+umm :: (a -> b, (a -> b) -> Writes) ->
+       (a,      a        -> Writes) ->
+       (b,      b        -> Writes)
+umm = undefined
+
+inc_for :: Int -> Int
+inc_for = (+1)
+inc_rev :: Int -> V Int -> Int -> Writes
+inc_rev _x rx x =
+  rx <-- x'
+  where x' = x - 1
+upp = feh inc_rev
+inc = V inc_for (feh inc_rev)
+
+curryMain = do
+  msp "curry hi"
+
+{-
 -- e.g.
 -- for: a -> b -> c
 -- rev: a -> R a -> b -> R b -> c -> R c
@@ -205,3 +230,4 @@ curryMain = do
   msp $ w (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
                       (VApp yetAnotherIntV VRoot)) 25001
   msp "curry hi"
+-}
