@@ -1,4 +1,5 @@
-{-# LANGUAGE ExistentialQuantification, GADTs, RecordWildCards, TypeApplications, TypeFamilies #-}
+{-# LANGUAGE ExistentialQuantification, GADTs, RecordWildCards, StandaloneDeriving,
+             TypeApplications, TypeFamilies #-}
 
 module Curry (curryMain) where
 
@@ -12,23 +13,24 @@ infix 8 <--
 rx <-- x = [Write rx x]
 
 instance Show Write where
-  show (Write _ a) = show a
+  show (Write r a) = "(" ++ (show r) ++ " <-- " ++ (show a) ++ ")"
 
 -- e.g.
 -- for: a -> b -> c
 -- rev: a -> R a -> b -> R b -> c -> R c
 
 data R a = R (V (F a (a -> Writes)))
+  deriving Show
 
 -- TODO maybe this is just V -- nope, where would the a come from!
-data F f r = F f r
+data F f r = F String f r
 
 type family Rev a where
   Rev (a -> b) = (a -> R a -> Rev b)
   Rev a = a -> Writes
 
-instance Show f => Show (F f r) where
-  show (F f _) = show f
+instance Show (F f r) where
+  show (F s f _) = show s
 
 -- app :: F (a -> b) -> F a -> F b
 -- -- app :: F (a -> b) (a -> R a -> b -> R b)
@@ -44,7 +46,7 @@ inc_rev _x rx x =
   where x' = x - 1
 -- TODO maybe put Rev back in just for declaring these, maybe a type alias too
 inc :: F (Int -> Int) (Rev (Int -> Int))
-inc = F inc_for inc_rev
+inc = F "inc" inc_for inc_rev
 
 plus_for :: Int -> Int -> Int
 plus_for = (+)
@@ -56,7 +58,7 @@ plus_rev x rx y ry nZ =
         y' = nZ - x'
 
 plus :: F (Int -> Int -> Int) (Rev (Int -> Int -> Int))
-plus = F plus_for plus_rev
+plus = F "plus" plus_for plus_rev
 plusV = VConst plus
 
 data W = W { anInt :: Int, anotherInt :: Int }
@@ -70,14 +72,14 @@ anInt_rev :: W -> R W -> Int -> Writes
 anInt_rev w rw nAnInt =
   rw <-- w { anInt = nAnInt }
 anIntV :: V (F (W -> Int) (Rev (W -> Int)))
-anIntV = VConst (F anInt_for anInt_rev)
+anIntV = VConst (F "anInt" anInt_for anInt_rev)
 anotherInt_for :: W -> Int
 anotherInt_for = anotherInt
 anotherInt_rev :: W -> R W -> Int -> Writes
 anotherInt_rev w rw nanotherInt =
   rw <-- w { anotherInt = nanotherInt }
 anotherIntV :: V (F (W -> Int) (Rev (W -> Int)))
-anotherIntV = VConst (F anotherInt_for anotherInt_rev)
+anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
 -- TODO bad name
 anIntVV = VApp anIntV VRoot
 
@@ -87,10 +89,15 @@ data V a where
   VConst :: F f r -> V (F f r)
   VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
 
+instance Show a => Show (V a) where
+  show VRoot = "{root}"
+  show (VConst a) = show a
+  show (VApp vf vb) = "(" ++ (show vf) ++ " " ++ (show vb) ++ ")"
+
 incV :: V (F (Int -> Int) (Rev (Int -> Int)))
 incV = VConst inc
 threeF :: F Int (Rev Int)
-threeF = F 3 undefined
+threeF = F "three" 3 undefined
 threeV :: V (F Int (Rev Int))
 threeV = VConst threeF
 -- TODO this should be (V (F Int)), try to do that with ~?
@@ -104,12 +111,15 @@ seven = VApp (VApp plusV threeV) four
 fiftyOne = VApp (VApp plusV (VApp anotherIntV VRoot)) (VApp anIntV VRoot)
 
 r :: V a -> a
-r VRoot = (F world undefined)
+r VRoot = (F "world" world undefined)
 r (VConst x) = x
 r (VApp vf vb) =
-  let (F forF _revF) = r vf
-      (F forB _revB) = r vb
-   in F (forF forB) (error "rev VApp not impl")
+  let (F sF forF _revF) = r vf
+      (F sx forB _revB) = r vb
+   in F (show (sF, sx)) (forF forB) (error "rev VApp not impl")
+
+for :: F a b -> a
+for (F _ f _) = f
 
 -- TOOD we want to write to anIntVV
 w :: V (F a (a -> Writes)) -> a -> Writes
@@ -118,17 +128,20 @@ w (VConst _) _ = error "Can't write to VConst"
 w (VApp vf vb) nA =
   -- revF :: Int -> R Int -> Int -> Writes
   -- revB :: Int -> Writes
-  let (F forF revF) = r vf
-      (F forB revB) = r vb
+  let (F _ forF revF) = r vf
+      (F _ forB revB) = r vb
    in revF forB (R vb) nA
 
 curryMain = do
-  msp $ r threeV
-  msp $ r four
-  msp $ r five
-  msp $ r anIntVV
-  msp $ r seven
-  msp $ r fiftyOne
-  msp $ r (VApp incV fiftyOne)
-  --msp $ length $ (case r anIntVV of Curry.F x y -> y) 100
+  msp $ for $ r threeV
+  msp $ for $ r four
+  msp $ for $ r five
+  msp $ for $ r anIntVV
+  msp $ for $ r seven
+  msp $ for $ r fiftyOne
+  msp $ for $ r (VApp incV fiftyOne)
+  msp $ w four 40
+  msp $ w Curry.anIntVV 99
+  msp $ w (VApp Curry.anotherIntV VRoot) 700
+  -- msp $ w (VApp (VApp plusV threeV) four) 700
   msp "curry hi"
