@@ -165,6 +165,14 @@ w (VApp vf vb) nA =
       (F _ forB revB) = r vb
    in revF forB (R vb) nA
 
+-- So far, behaves like w
+w' :: V (B a) -> a -> Writes
+w' VRoot _ = error "Can't write to VRoot"
+w' (VConst _) _ = error "Can't write to VConst"
+w' va nA =
+  let (F _ for rev) = r va
+   in rev nA
+
 curryMain = do
   msp $ for $ r threeV
   msp $ for $ r four
@@ -175,6 +183,7 @@ curryMain = do
   msp $ for $ r seven
   msp $ for $ r fiftyOne
   msp $ for $ r (VApp incV fiftyOne)
+  msp "===="
   msp $ w four 40
   msp $ w Curry.anIntVV 99
   msp $ w (VApp Curry.anotherIntV VRoot) 700
@@ -182,6 +191,15 @@ curryMain = do
   msp $ w (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
   msp $ w (VApp anIntV VRoot) 50
   msp $ w (VApp anotherIntV VRoot) 51
+  msp "===="
+  msp $ w' four 40
+  msp $ w' Curry.anIntVV 99
+  msp $ w' (VApp Curry.anotherIntV VRoot) 700
+  msp $ w' seven 7001
+  msp $ w' (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
+  msp $ w' (VApp anIntV VRoot) 50
+  msp $ w' (VApp anotherIntV VRoot) 51
+  msp "===="
   msp $ for $ r (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
                             (VApp yetAnotherIntV VRoot))
   msp $ w (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
