@@ -61,10 +61,24 @@ plus :: F (Int -> Int -> Int) (Rev (Int -> Int -> Int))
 plus = F "plus" plus_for plus_rev
 plusV = VConst plus
 
-data W = W { anInt :: Int, anotherInt :: Int }
+-- plus3 :: Integer -> Float -> Double -> Double
+-- plus3 xi yf zd = fromInteger xi + realToFrac yf + zd
+plus3_for :: Int -> Int -> Int -> Int
+plus3_for x y z = x + y + z
+plus3_rev :: Int -> R Int -> Int -> R Int -> Int -> R Int -> Int -> Writes
+plus3_rev x rx y ry z rz nW =
+  rx <-- x' <>
+  ry <-- y' <>
+  rz <-- z'
+  where x' = nW `div` 3
+        y' = (nW - x') `div` 2
+        z' = nW - x' - y'
+plus3V = VConst (F "plus3" plus3_for plus3_rev)
+
+data W = W { anInt :: Int, anotherInt :: Int, yetAnotherInt :: Int }
   deriving Show
 world :: W
-world = W { anInt = 1, anotherInt = 50 }
+world = W { anInt = 1, anotherInt = 50, yetAnotherInt = 2000 }
 
 anInt_for :: W -> Int
 anInt_for = anInt
@@ -80,6 +94,12 @@ anotherInt_rev w rw nanotherInt =
   rw <-- w { anotherInt = nanotherInt }
 anotherIntV :: V (F (W -> Int) (Rev (W -> Int)))
 anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
+yetAnotherInt_for :: W -> Int
+yetAnotherInt_for = yetAnotherInt
+yetAnotherInt_rev :: W -> R W -> Int -> Writes
+yetAnotherInt_rev w rw nyetAnotherInt =
+  rw <-- w { yetAnotherInt = nyetAnotherInt }
+yetAnotherIntV = VConst (F "yetAnotherIntV" yetAnotherInt_for yetAnotherInt_rev)
 -- TODO bad name
 anIntVV = VApp anIntV VRoot
 
@@ -150,6 +170,8 @@ curryMain = do
   msp $ for $ r four
   msp $ for $ r five
   msp $ for $ r anIntVV
+  msp $ for $ r (VApp anotherIntV VRoot)
+  msp $ for $ r (VApp yetAnotherIntV VRoot)
   msp $ for $ r seven
   msp $ for $ r fiftyOne
   msp $ for $ r (VApp incV fiftyOne)
@@ -160,4 +182,8 @@ curryMain = do
   msp $ w (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
   msp $ w (VApp anIntV VRoot) 50
   msp $ w (VApp anotherIntV VRoot) 51
+  msp $ for $ r (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
+                            (VApp yetAnotherIntV VRoot))
+  msp $ w (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
+                      (VApp yetAnotherIntV VRoot)) 25001
   msp "curry hi"
