@@ -157,4 +157,7 @@ curryMain = do
   msp $ w Curry.anIntVV 99
   msp $ w (VApp Curry.anotherIntV VRoot) 700
   msp $ w seven 7001
+  msp $ w (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
+  msp $ w (VApp anIntV VRoot) 50
+  msp $ w (VApp anotherIntV VRoot) 51
   msp "curry hi"
