@@ -5,6 +5,22 @@ module Curry (curryMain) where
 
 import Util
 
+{-
+
+            F
+       a ------> b
+(V a, a) <------ b
+
+data F a b = F (a -> b) (b -> (V a, a))
+
+Wrong:
+
+            F                      F
+       a ------> b            b -------> c
+(V a, a) <------ b     (V b, b) <------- c
+
+ -}
+
 data Write = forall a. Show a => Write (V a) a
 --data Write = Write
 type Writes = [Write]
