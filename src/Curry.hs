@@ -25,6 +25,8 @@ data R a = R (V (B a))
 -- TODO maybe this is just V -- nope, where would the a come from!
 data F f r = F String f r
 
+type L f = F f (Rev f)
+
 -- TODO does this work?
 -- type B a = F a (Rev a)
 type B a = F a (a -> Writes)
@@ -43,7 +45,7 @@ inc_rev _x rx x =
   rx <-- x'
   where x' = x - 1
 -- TODO maybe put Rev back in just for declaring these, maybe a type alias too
-inc :: F (Int -> Int) (Rev (Int -> Int))
+inc :: L (Int -> Int)
 inc = F "inc" inc_for inc_rev
 
 plus_for :: Int -> Int -> Int
@@ -55,7 +57,7 @@ plus_rev x rx y ry nZ =
   where x' = nZ `div` 2
         y' = nZ - x'
 
-plus :: F (Int -> Int -> Int) (Rev (Int -> Int -> Int))
+plus :: L (Int -> Int -> Int)
 plus = F "plus" plus_for plus_rev
 plusV = VConst plus
 
@@ -83,14 +85,14 @@ anInt_for = anInt
 anInt_rev :: Rev (W -> Int)
 anInt_rev w rw nAnInt =
   rw <-- w { anInt = nAnInt }
-anIntV :: V (F (W -> Int) (Rev (W -> Int)))
+anIntV :: V (L (W -> Int))
 anIntV = VConst (F "anInt" anInt_for anInt_rev)
 anotherInt_for :: W -> Int
 anotherInt_for = anotherInt
 anotherInt_rev :: Rev (W -> Int)
 anotherInt_rev w rw nanotherInt =
   rw <-- w { anotherInt = nanotherInt }
-anotherIntV :: V (F (W -> Int) (Rev (W -> Int)))
+anotherIntV :: V (L (W -> Int))
 anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
 yetAnotherInt_for :: W -> Int
 yetAnotherInt_for = yetAnotherInt
@@ -103,7 +105,7 @@ anIntVV = VApp anIntV VRoot
 
 -- data V a = VRoot | VConst a | forall b. VApp (V (F (b -> a))) (V (F a))
 data V a where
-  VRoot :: V (F W (W -> Writes))
+  VRoot :: V (B W)
   VConst :: F f r -> V (F f r)
   VApp :: V (F (b -> a) (b -> R b -> c)) -> V (B b) -> V (F a c)
 
@@ -112,18 +114,18 @@ instance Show a => Show (V a) where
   show (VConst a) = show a
   show (VApp vf vb) = "(VApp " ++ (show vf) ++ " " ++ (show vb) ++ ")"
 
-incV :: V (F (Int -> Int) (Rev (Int -> Int)))
+incV :: V (L (Int -> Int))
 incV = VConst inc
-threeF :: F Int (Rev Int)
+threeF :: B Int
 threeF = F "three" 3 undefined
-threeV :: V (F Int (Rev Int))
+threeV :: V (B Int)
 threeV = VConst threeF
 -- TODO this should be (V (F Int)), try to do that with ~?
-four :: V (F Int (Rev Int))
+four :: V (B Int)
 four = VApp incV threeV
 five = VApp incV four
 
-seven :: V (F Int (Rev Int))
+seven :: V (B Int)
 seven = VApp (VApp plusV threeV) four
 
 fiftyOne = VApp (VApp plusV (VApp anotherIntV VRoot)) (VApp anIntV VRoot)
