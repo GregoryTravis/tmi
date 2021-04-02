@@ -19,11 +19,15 @@ instance Show Write where
 -- for: a -> b -> c
 -- rev: a -> R a -> b -> R b -> c -> R c
 
-data R a = R (V (F a (a -> Writes)))
+data R a = R (V (B a))
   deriving Show
 
 -- TODO maybe this is just V -- nope, where would the a come from!
 data F f r = F String f r
+
+-- TODO does this work?
+-- type B a = F a (Rev a)
+type B a = F a (a -> Writes)
 
 type family Rev a where
   Rev (a -> b) = (a -> R a -> Rev b)
@@ -32,15 +36,9 @@ type family Rev a where
 instance Show (F f r) where
   show (F s f _) = show s
 
--- app :: F (a -> b) -> F a -> F b
--- -- app :: F (a -> b) (a -> R a -> b -> R b)
--- --     -> F a (a -> R a)
--- --     -> F b (b -> R b)
--- app (F f_for f_rev) (F a_for a_rev) = undefined
-
 inc_for :: Int -> Int
 inc_for = (+1)
-inc_rev :: Int -> R Int -> Int -> Writes
+inc_rev :: Rev (Int -> Int)
 inc_rev _x rx x =
   rx <-- x'
   where x' = x - 1
@@ -50,7 +48,7 @@ inc = F "inc" inc_for inc_rev
 
 plus_for :: Int -> Int -> Int
 plus_for = (+)
-plus_rev :: Int -> R Int -> Int -> R Int -> Int -> Writes
+plus_rev :: Rev (Int -> Int -> Int)
 plus_rev x rx y ry nZ =
   rx <-- x' <>
   ry <-- y'
@@ -65,7 +63,7 @@ plusV = VConst plus
 -- plus3 xi yf zd = fromInteger xi + realToFrac yf + zd
 plus3_for :: Int -> Int -> Int -> Int
 plus3_for x y z = x + y + z
-plus3_rev :: Int -> R Int -> Int -> R Int -> Int -> R Int -> Int -> Writes
+plus3_rev :: Rev (Int -> Int -> Int -> Int)
 plus3_rev x rx y ry z rz nW =
   rx <-- x' <>
   ry <-- y' <>
@@ -82,21 +80,21 @@ world = W { anInt = 1, anotherInt = 50, yetAnotherInt = 2000 }
 
 anInt_for :: W -> Int
 anInt_for = anInt
-anInt_rev :: W -> R W -> Int -> Writes
+anInt_rev :: Rev (W -> Int)
 anInt_rev w rw nAnInt =
   rw <-- w { anInt = nAnInt }
 anIntV :: V (F (W -> Int) (Rev (W -> Int)))
 anIntV = VConst (F "anInt" anInt_for anInt_rev)
 anotherInt_for :: W -> Int
 anotherInt_for = anotherInt
-anotherInt_rev :: W -> R W -> Int -> Writes
+anotherInt_rev :: Rev (W -> Int)
 anotherInt_rev w rw nanotherInt =
   rw <-- w { anotherInt = nanotherInt }
 anotherIntV :: V (F (W -> Int) (Rev (W -> Int)))
 anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
 yetAnotherInt_for :: W -> Int
 yetAnotherInt_for = yetAnotherInt
-yetAnotherInt_rev :: W -> R W -> Int -> Writes
+yetAnotherInt_rev :: (Rev (W -> Int))
 yetAnotherInt_rev w rw nyetAnotherInt =
   rw <-- w { yetAnotherInt = nyetAnotherInt }
 yetAnotherIntV = VConst (F "yetAnotherIntV" yetAnotherInt_for yetAnotherInt_rev)
