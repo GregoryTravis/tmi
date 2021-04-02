@@ -92,7 +92,7 @@ data V a where
 instance Show a => Show (V a) where
   show VRoot = "{root}"
   show (VConst a) = show a
-  show (VApp vf vb) = "(" ++ (show vf) ++ " " ++ (show vb) ++ ")"
+  show (VApp vf vb) = "(VApp " ++ (show vf) ++ " " ++ (show vb) ++ ")"
 
 incV :: V (F (Int -> Int) (Rev (Int -> Int)))
 incV = VConst inc
@@ -114,9 +114,22 @@ r :: V a -> a
 r VRoot = (F "world" world undefined)
 r (VConst x) = x
 r (VApp vf vb) =
-  let (F sF forF _revF) = r vf
-      (F sx forB _revB) = r vb
-   in F (show (sF, sx)) (forF forB) (error "rev VApp not impl")
+  let (F sF forF revF) = r vf
+      (F sx forB revB) = r vb
+      -- forF :: Int -> Int
+      -- revF :: Int -> R Int -> Int -> Writes
+      -- forB :: Int
+      -- revB :: Int -> Writes
+      --   vb :: (V (F Int (Int -> Writes)))
+      -- R vb :: R Int ~ R (V (F Int (Int -> Writes)))
+      -- rev' :: Int -> Writes
+      rev' = revF forB (R vb)
+   in F (show (sF, sx)) (forF forB) rev'
+
+-- The rev of (VApp plusV threeV)
+-- arg is (VApp (VApp "plus" "three") (VApp "inc" "three"))
+-- F (Int -> Int -> Int) (Int -> R Int -> Int -> R Int -> Int -> Writes)
+-- VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
 
 for :: F a b -> a
 for (F _ f _) = f
@@ -143,5 +156,5 @@ curryMain = do
   msp $ w four 40
   msp $ w Curry.anIntVV 99
   msp $ w (VApp Curry.anotherIntV VRoot) 700
-  -- msp $ w (VApp (VApp plusV threeV) four) 700
+  msp $ w seven 7001
   msp "curry hi"
