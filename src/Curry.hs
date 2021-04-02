@@ -105,7 +105,7 @@ anIntVV = VApp anIntV VRoot
 data V a where
   VRoot :: V (F W (W -> Writes))
   VConst :: F f r -> V (F f r)
-  VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
+  VApp :: V (F (b -> a) (b -> R b -> c)) -> V (B b) -> V (F a c)
 
 instance Show a => Show (V a) where
   show VRoot = "{root}"
@@ -153,7 +153,7 @@ for :: F a b -> a
 for (F _ f _) = f
 
 -- TOOD we want to write to anIntVV
-w :: V (F a (a -> Writes)) -> a -> Writes
+w :: V (B a) -> a -> Writes
 w VRoot _ = error "Can't write to VRoot"
 w (VConst _) _ = error "Can't write to VConst"
 w (VApp vf vb) nA =
