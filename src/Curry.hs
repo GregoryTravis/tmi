@@ -34,5 +34,38 @@ plus = undefined
 plusV :: V Int -> V Int -> V Int
 plusV = (<*>) . (plus <*>)
 
+-- Combining form?
+
+data NamedFun f = NamedFun String f
+
+instance Show (NamedFun f) where
+  show (NamedFun name _) = name
+
+data Combi c =
+  forall a b. (Show a, Show b) =>
+    Combi (NamedFun (a -> b -> c)) (Combi a) (Combi b) |
+  ConstCombi c
+ 
+-- deriving instance Show c => Show (Combi c)
+
+instance Show c => Show (Combi c) where
+  show (ConstCombi c) = show c
+  show (Combi (NamedFun name _) ca cb) = "(" ++ name ++ " " ++ (show ca) ++ " " ++ (show cb) ++ ")"
+
+readCombi :: Combi c -> c
+readCombi (Combi (NamedFun _ f) ca cb) = f (readCombi ca) (readCombi cb)
+readCombi (ConstCombi c) = c
+
+nplus = NamedFun "plus" (+)
+
+c :: Combi Int
+c = Combi nplus (ConstCombi 1)(ConstCombi 2)
+c2 = Combi nplus c c
+
 curryMain = do
+  msp $ readCombi c
+  msp c
+  -- Causes panic
+  -- msp $ readCombi c2
+  -- msp c2
   msp "curry hi"
