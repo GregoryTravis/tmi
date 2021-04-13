@@ -8,9 +8,16 @@ import Control.Applicative
 import Util
 
 data W = W
+data What
 
 data F a = F (W -> a)
-data R a = R (W -> a -> W)
+--data R a = R (W -> a -> W)
+data R a = R (a -> What)
+
+-- How to implement this?
+-- Whatever is hidden in there is actually like (b -> a)
+hmm :: R (a -> b) -> R a -> R b
+hmm (R aToBToWhat) (R aToWhat) = undefined
 
 data V a = V (F a) (R a)
 
@@ -19,6 +26,18 @@ instance Functor V where
 
 instance Applicative V where
   pure = undefined
+  -- (<*>) :: V (F (a -> b))
+  --            (R (a -> b)) ->
+  --          V (F a)
+  --            (R a) ->
+  --          V (F b)
+  --            (R b)
+  -- (<*>) :: V (W -> (a -> b))
+  --            (W -> (a -> b) -> W) ->
+  --          V (W -> a)
+  --            (W -> a -> W) ->
+  --          V (W -> b)
+  --            (W -> b -> W)
   (<*>) = undefined
   --liftA2 :: (a -> b -> c) -> f a -> f b -> f c
 
