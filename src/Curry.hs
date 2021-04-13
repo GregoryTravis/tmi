@@ -52,9 +52,6 @@ instance Show c => Show (Combi c) where
   show (ConstCombi c) = show c
   show (Combi (NamedFun name _) ca cb) = "(" ++ name ++ " " ++ (show ca) ++ " " ++ (show cb) ++ ")"
 
-instance Show (a -> b) where
-  show f = "->"
-
 readCombi :: Combi c -> c
 readCombi (Combi (NamedFun _ f) ca cb) = f (readCombi ca) (readCombi cb)
 readCombi (ConstCombi c) = c
@@ -65,8 +62,11 @@ c :: Combi Int
 c = Combi nplus (ConstCombi 1)(ConstCombi 2)
 c2 = Combi nplus c c
 
+($$) :: NamedFun (a -> b) -> a -> b
+NamedFun _ f $$ x = f x
+
 d :: Combi Int
-d = Combi (NamedFun "$" ($)) (ConstCombi (+1)) (ConstCombi 10)
+d = Combi (NamedFun "$$" ($$)) (ConstCombi (NamedFun "(+1)" (+1))) (ConstCombi 10)
 
 curryMain = do
   msp $ readCombi c
