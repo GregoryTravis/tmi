@@ -5,11 +5,11 @@ module Curry (curryMain) where
 
 import Util
 
-data Write = forall a. Show a => Write (R a) a
+data Write = forall a. Show a => Write (Receiver a) a
 --data Write = Write
 type Writes = [Write]
 infix 8 <--
-(<--) :: Show a => R a -> a -> [Write]
+(<--) :: Show a => Receiver a -> a -> [Write]
 rx <-- x = [Write rx x]
 
 instance Show Write where
@@ -19,8 +19,10 @@ instance Show Write where
 -- for: a -> b -> c
 -- rev: a -> R a -> b -> R b -> c -> R c
 
-data R a = R (V (B a))
+data Receiver a = Receiver (V (B a))
   deriving Show
+
+data R a = R a (Receiver a)
 
 -- TODO maybe this is just V -- nope, where would the a come from!
 data F f r = F String f r
@@ -32,7 +34,7 @@ type L f = F f (Rev f)
 type B a = F a (a -> Writes)
 
 type family Rev a where
-  Rev (a -> b) = (a -> R a -> Rev b)
+  Rev (a -> b) = (R a -> Rev b)
   Rev a = a -> Writes
 
 instance Show (F f r) where
@@ -41,7 +43,7 @@ instance Show (F f r) where
 inc_for :: Int -> Int
 inc_for = (+1)
 inc_rev :: Rev (Int -> Int)
-inc_rev _x rx x =
+inc_rev (R _x rx) x =
   rx <-- x'
   where x' = x - 1
 -- TODO maybe put Rev back in just for declaring these, maybe a type alias too
@@ -51,11 +53,15 @@ inc = F "inc" inc_for inc_rev
 plus_for :: Int -> Int -> Int
 plus_for = (+)
 plus_rev :: Rev (Int -> Int -> Int)
-plus_rev x rx y ry nZ =
+plus_rev (R x rx) (R y ry) nZ =
   rx <-- x' <>
   ry <-- y'
   where x' = nZ `div` 2
         y' = nZ - x'
+
+-- hybrid_plus :: R Int -> R Int -> R Int
+-- hybrid_plus (R x rx) (R y ry) = R z rz
+--   where z = x + y
 
 plus :: L (Int -> Int -> Int)
 plus = F "plus" plus_for plus_rev
@@ -66,7 +72,7 @@ plusV = VConst plus
 plus3_for :: Int -> Int -> Int -> Int
 plus3_for x y z = x + y + z
 plus3_rev :: Rev (Int -> Int -> Int -> Int)
-plus3_rev x rx y ry z rz nW =
+plus3_rev (R x rx) (R y ry) (R z rz) nW =
   rx <-- x' <>
   ry <-- y' <>
   rz <-- z'
@@ -74,6 +80,21 @@ plus3_rev x rx y ry z rz nW =
         y' = (nW - x') `div` 2
         z' = nW - x' - y'
 plus3V = VConst (F "plus3" plus3_for plus3_rev)
+
+-- plus3V_h :: V (F (Int -> Int -> Int -> Int) (Rev (Int -> Int -> Int -> Int)))
+plus3V_h :: V (L (Int -> Int -> Int -> Int))
+plus3V_h = VConst (F "plus3" for rev)
+  where
+    for :: Int -> Int -> Int -> Int
+    for x y z = x + y + z
+    rev :: Rev (Int -> Int -> Int -> Int)
+    rev (R x rx) (R y ry) (R z rz) nW =
+      rx <-- x' <>
+      ry <-- y' <>
+      rz <-- z'
+      where x' = nW `div` 3
+            y' = (nW - x') `div` 2
+            z' = nW - x' - y'
 
 data W = W { anInt :: Int, anotherInt :: Int, yetAnotherInt :: Int }
   deriving Show
@@ -83,21 +104,21 @@ world = W { anInt = 1, anotherInt = 50, yetAnotherInt = 2000 }
 anInt_for :: W -> Int
 anInt_for = anInt
 anInt_rev :: Rev (W -> Int)
-anInt_rev w rw nAnInt =
+anInt_rev (R w rw) nAnInt =
   rw <-- w { anInt = nAnInt }
 anIntV :: V (L (W -> Int))
 anIntV = VConst (F "anInt" anInt_for anInt_rev)
 anotherInt_for :: W -> Int
 anotherInt_for = anotherInt
 anotherInt_rev :: Rev (W -> Int)
-anotherInt_rev w rw nanotherInt =
+anotherInt_rev (R w rw) nanotherInt =
   rw <-- w { anotherInt = nanotherInt }
 anotherIntV :: V (L (W -> Int))
 anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
 yetAnotherInt_for :: W -> Int
 yetAnotherInt_for = yetAnotherInt
 yetAnotherInt_rev :: (Rev (W -> Int))
-yetAnotherInt_rev w rw nyetAnotherInt =
+yetAnotherInt_rev (R w rw) nyetAnotherInt =
   rw <-- w { yetAnotherInt = nyetAnotherInt }
 yetAnotherIntV = VConst (F "yetAnotherIntV" yetAnotherInt_for yetAnotherInt_rev)
 -- TODO bad name
@@ -107,7 +128,7 @@ anIntVV = VApp anIntV VRoot
 data V a where
   VRoot :: V (B W)
   VConst :: F f r -> V (F f r)
-  VApp :: V (F (b -> a) (b -> R b -> c)) -> V (B b) -> V (F a c)
+  VApp :: V (F (b -> a) (R b -> c)) -> V (B b) -> V (F a c)
 
 instance Show a => Show (V a) where
   show VRoot = "{root}"
@@ -143,7 +164,7 @@ r (VApp vf vb) =
       --   vb :: (V (F Int (Int -> Writes)))
       -- R vb :: R Int ~ R (V (F Int (Int -> Writes)))
       -- rev' :: Int -> Writes
-      rev' = revF forB (R vb)
+      rev' = revF (R forB (Receiver vb))
    in F (show (sF, sx)) (forF forB) rev'
 
 -- The rev of (VApp plusV threeV)
@@ -163,7 +184,7 @@ w (VApp vf vb) nA =
   -- revB :: Int -> Writes
   let (F _ forF revF) = r vf
       (F _ forB revB) = r vb
-   in revF forB (R vb) nA
+   in revF (R forB (Receiver vb)) nA
 
 -- So far, behaves like w
 w' :: V (B a) -> a -> Writes
@@ -203,5 +224,7 @@ curryMain = do
   msp $ for $ r (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
                             (VApp yetAnotherIntV VRoot))
   msp $ w (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
+                      (VApp yetAnotherIntV VRoot)) 25001
+  msp $ w (VApp (VApp (VApp plus3V_h anIntVV) (VApp anotherIntV VRoot))
                       (VApp yetAnotherIntV VRoot)) 25001
   msp "curry hi"
