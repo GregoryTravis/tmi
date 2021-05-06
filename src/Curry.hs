@@ -31,6 +31,7 @@ type L f = F f (Rev f)
 
 -- TODO does this work?
 -- type B a = F a (Rev a)
+-- type B a = L a
 type B a = F a (a -> Writes)
 
 type family Rev a where
@@ -65,6 +66,7 @@ plus_rev (R x rx) (R y ry) nZ =
 
 plus :: L (Int -> Int -> Int)
 plus = F "plus" plus_for plus_rev
+plusV :: V (L (Int -> Int -> Int))
 plusV = VConst plus
 
 -- plus3 :: Integer -> Float -> Double -> Double
@@ -79,6 +81,7 @@ plus3_rev (R x rx) (R y ry) (R z rz) nW =
   where x' = nW `div` 3
         y' = (nW - x') `div` 2
         z' = nW - x' - y'
+plus3V :: V (L (Int -> Int -> Int -> Int))
 plus3V = VConst (F "plus3" plus3_for plus3_rev)
 
 -- plus3V_h :: V (F (Int -> Int -> Int -> Int) (Rev (Int -> Int -> Int -> Int)))
@@ -120,14 +123,17 @@ yetAnotherInt_for = yetAnotherInt
 yetAnotherInt_rev :: (Rev (W -> Int))
 yetAnotherInt_rev (R w rw) nyetAnotherInt =
   rw <-- w { yetAnotherInt = nyetAnotherInt }
+yetAnotherIntV :: V (L (W -> Int))
 yetAnotherIntV = VConst (F "yetAnotherIntV" yetAnotherInt_for yetAnotherInt_rev)
 -- TODO bad name
+anIntVV :: V (L Int)
 anIntVV = VApp anIntV VRoot
 
 -- data V a = VRoot | VConst a | forall b. VApp (V (F (b -> a))) (V (F a))
 data V a where
   VRoot :: V (B W)
-  VConst :: F f r -> V (F f r)
+  --VConst :: F f r -> V (F f r)
+  VConst :: a  -> V a
   VApp :: V (F (b -> a) (R b -> c)) -> V (B b) -> V (F a c)
 
 instance Show a => Show (V a) where
@@ -144,11 +150,13 @@ threeV = VConst threeF
 -- TODO this should be (V (F Int)), try to do that with ~?
 four :: V (B Int)
 four = VApp incV threeV
+five :: V (B Int)
 five = VApp incV four
 
 seven :: V (B Int)
 seven = VApp (VApp plusV threeV) four
 
+fiftyOne :: V (B Int)
 fiftyOne = VApp (VApp plusV (VApp anotherIntV VRoot)) (VApp anIntV VRoot)
 
 r :: V a -> a
@@ -227,4 +235,8 @@ curryMain = do
                       (VApp yetAnotherIntV VRoot)) 25001
   msp $ w (VApp (VApp (VApp plus3V_h anIntVV) (VApp anotherIntV VRoot))
                       (VApp yetAnotherIntV VRoot)) 25001
+  msp $ w' (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
+                       (VApp yetAnotherIntV VRoot)) 25001
+  msp $ w' (VApp (VApp (VApp plus3V_h anIntVV) (VApp anotherIntV VRoot))
+                       (VApp yetAnotherIntV VRoot)) 25001
   msp "curry hi"
