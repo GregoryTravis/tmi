@@ -3,240 +3,142 @@
 
 module Curry (curryMain) where
 
+import Control.Monad.Cont
+
 import Util
 
-data Write = forall a. Show a => Write (Receiver a) a
---data Write = Write
-type Writes = [Write]
-infix 8 <--
-(<--) :: Show a => Receiver a -> a -> [Write]
-rx <-- x = [Write rx x]
-
-instance Show Write where
-  show (Write r a) = "(" ++ (show r) ++ " <-- " ++ (show a) ++ ")"
-
--- e.g.
--- for: a -> b -> c
--- rev: a -> R a -> b -> R b -> c -> R c
-
-data Receiver a = Receiver (V (B a))
-  deriving Show
-
+data Write1 = forall a. Write1 a
+-- data Write1 = forall a. Write1 (V a) a
+data Write = Write [Write1]
+instance Semigroup Write where
+  Write ws <> Write ws' = Write $ ws ++ ws'
+data Receiver a = Receiver (a -> Write)
+-- data Receiver a = Receiver (V a)
 data R a = R a (Receiver a)
+infix 1 <--
+(<--) :: Receiver a -> a -> Write
+rx <-- x = Write [Write1 x]
+-- Receiver va <-- x = Write [Write1 va x]
 
--- TODO maybe this is just V -- nope, where would the a come from!
-data F f r = F String f r
-
-type L f = F f (Rev f)
-
--- TODO does this work?
--- type B a = F a (Rev a)
--- type B a = L a
-type B a = F a (a -> Writes)
-
-type family Rev a where
-  Rev (a -> b) = (R a -> Rev b)
-  Rev a = a -> Writes
-
-instance Show (F f r) where
-  show (F s f _) = show s
-
+inc_hy :: R Int -> R Int
+inc_hy (R x rx) = R x' rx'
+  where x' = x + 1
+        rx' = Receiver $ \x ->
+          rx <-- (x - 1)
 inc_for :: Int -> Int
 inc_for = (+1)
-inc_rev :: Rev (Int -> Int)
-inc_rev (R _x rx) x =
-  rx <-- x'
-  where x' = x - 1
--- TODO maybe put Rev back in just for declaring these, maybe a type alias too
-inc :: L (Int -> Int)
-inc = F "inc" inc_for inc_rev
+inc_rev :: R Int -> Int -> Write
+inc_rev (R x rx) newX =
+  rx <-- newX - 1
+inc_hy' :: R Int -> R Int
+inc_hy' = hybrid1 inc_for inc_rev
 
+hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
+hybrid1 f r ra@(R x rx) = R x' rx'
+  where x' = f x
+        rx' = Receiver $ \x -> r ra x
+
+plus_hy :: R Int -> R Int -> R Int
+plus_hy (R x rx) (R y ry) = R z rz
+  where z = x + y
+        rz = Receiver $ \newZ ->
+          let x' = newZ `div` 2
+              y' = newZ - x'
+           in (rx <-- x') <>
+              (ry <-- y')
 plus_for :: Int -> Int -> Int
 plus_for = (+)
-plus_rev :: Rev (Int -> Int -> Int)
-plus_rev (R x rx) (R y ry) nZ =
-  rx <-- x' <>
-  ry <-- y'
-  where x' = nZ `div` 2
-        y' = nZ - x'
+plus_rev :: R Int -> R Int -> Int -> Write
+plus_rev (R x rx) (R y ry) newZ =
+  (rx <-- x') <>
+  (ry <-- y')
+  where x' = newZ `div` 2
+        y' = newZ - x'
+plus_hy' :: R Int -> R Int -> R Int
+plus_hy' = hybrid2 plus_for plus_rev
 
--- hybrid_plus :: R Int -> R Int -> R Int
--- hybrid_plus (R x rx) (R y ry) = R z rz
---   where z = x + y
+hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
+hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
+  where z = f x y
+        rz = Receiver $ \x -> r ra rb x
 
-plus :: L (Int -> Int -> Int)
-plus = F "plus" plus_for plus_rev
-plusV :: V (L (Int -> Int -> Int))
-plusV = VConst plus
-
--- plus3 :: Integer -> Float -> Double -> Double
--- plus3 xi yf zd = fromInteger xi + realToFrac yf + zd
-plus3_for :: Int -> Int -> Int -> Int
-plus3_for x y z = x + y + z
-plus3_rev :: Rev (Int -> Int -> Int -> Int)
-plus3_rev (R x rx) (R y ry) (R z rz) nW =
-  rx <-- x' <>
-  ry <-- y' <>
-  rz <-- z'
-  where x' = nW `div` 3
-        y' = (nW - x') `div` 2
-        z' = nW - x' - y'
-plus3V :: V (L (Int -> Int -> Int -> Int))
-plus3V = VConst (F "plus3" plus3_for plus3_rev)
-
--- plus3V_h :: V (F (Int -> Int -> Int -> Int) (Rev (Int -> Int -> Int -> Int)))
-plus3V_h :: V (L (Int -> Int -> Int -> Int))
-plus3V_h = VConst (F "plus3" for rev)
-  where
-    for :: Int -> Int -> Int -> Int
-    for x y z = x + y + z
-    rev :: Rev (Int -> Int -> Int -> Int)
-    rev (R x rx) (R y ry) (R z rz) nW =
-      rx <-- x' <>
-      ry <-- y' <>
-      rz <-- z'
-      where x' = nW `div` 3
-            y' = (nW - x') `div` 2
-            z' = nW - x' - y'
-
-data W = W { anInt :: Int, anotherInt :: Int, yetAnotherInt :: Int }
+data W = W { anInt :: Int }
   deriving Show
 world :: W
-world = W { anInt = 1, anotherInt = 50, yetAnotherInt = 2000 }
+world = W { anInt = 10 }
 
-anInt_for :: W -> Int
-anInt_for = anInt
-anInt_rev :: Rev (W -> Int)
-anInt_rev (R w rw) nAnInt =
-  rw <-- w { anInt = nAnInt }
-anIntV :: V (L (W -> Int))
-anIntV = VConst (F "anInt" anInt_for anInt_rev)
-anotherInt_for :: W -> Int
-anotherInt_for = anotherInt
-anotherInt_rev :: Rev (W -> Int)
-anotherInt_rev (R w rw) nanotherInt =
-  rw <-- w { anotherInt = nanotherInt }
-anotherIntV :: V (L (W -> Int))
-anotherIntV = VConst (F "anotherInt" anotherInt_for anotherInt_rev)
-yetAnotherInt_for :: W -> Int
-yetAnotherInt_for = yetAnotherInt
-yetAnotherInt_rev :: (Rev (W -> Int))
-yetAnotherInt_rev (R w rw) nyetAnotherInt =
-  rw <-- w { yetAnotherInt = nyetAnotherInt }
-yetAnotherIntV :: V (L (W -> Int))
-yetAnotherIntV = VConst (F "yetAnotherIntV" yetAnotherInt_for yetAnotherInt_rev)
--- TODO bad name
-anIntVV :: V (L Int)
-anIntVV = VApp anIntV VRoot
+_anInt :: R W -> R Int
+_anInt (R w rw) = (R i ri)
+  where i = anInt w
+        ri = Receiver $ \newI ->
+            rw <-- w { anInt = newI }
 
--- data V a = VRoot | VConst a | forall b. VApp (V (F (b -> a))) (V (F a))
 data V a where
-  VRoot :: V (B W)
-  --VConst :: F f r -> V (F f r)
-  VConst :: a  -> V a
-  VApp :: V (F (b -> a) (R b -> c)) -> V (B b) -> V (F a c)
+  VRoot :: V W
+  VConst :: a -> V a
+  VApp :: (V (R b -> R a)) -> V b -> V a
 
-instance Show a => Show (V a) where
-  show VRoot = "{root}"
-  show (VConst a) = show a
-  show (VApp vf vb) = "(VApp " ++ (show vf) ++ " " ++ (show vb) ++ ")"
+-- TODO maybe tf for this?
+incV :: V (R Int -> R Int)
+incV = VConst inc_hy
 
-incV :: V (L (Int -> Int))
-incV = VConst inc
-threeF :: B Int
-threeF = F "three" 3 undefined
-threeV :: V (B Int)
-threeV = VConst threeF
--- TODO this should be (V (F Int)), try to do that with ~?
-four :: V (B Int)
-four = VApp incV threeV
-five :: V (B Int)
-five = VApp incV four
+vw :: V W
+vw = VRoot
 
-seven :: V (B Int)
-seven = VApp (VApp plusV threeV) four
+anIntV = VApp (VConst _anInt) vw
+inced = VApp incV anIntV
 
-fiftyOne :: V (B Int)
-fiftyOne = VApp (VApp plusV (VApp anotherIntV VRoot)) (VApp anIntV VRoot)
+r :: W -> V a -> a
+r w VRoot = w
+r _ (VConst x) = x
+-- TODO not crazy about constructing receivers here
+r w (VApp vf vx) = a
+  where rbra = r w vf
+        b = r w vx
+        rb = R b (Receiver $ \b' -> Write [Write1 b'])
+        ra = rbra rb
+        a = case ra of R a _ -> a
 
-r :: V a -> a
-r VRoot = (F "world" world undefined)
-r (VConst x) = x
-r (VApp vf vb) =
-  let (F sF forF revF) = r vf
-      (F sx forB revB) = r vb
-      -- forF :: Int -> Int
-      -- revF :: Int -> R Int -> Int -> Writes
-      -- forB :: Int
-      -- revB :: Int -> Writes
-      --   vb :: (V (F Int (Int -> Writes)))
-      -- R vb :: R Int ~ R (V (F Int (Int -> Writes)))
-      -- rev' :: Int -> Writes
-      rev' = revF (R forB (Receiver vb))
-   in F (show (sF, sx)) (forF forB) rev'
-
--- The rev of (VApp plusV threeV)
--- arg is (VApp (VApp "plus" "three") (VApp "inc" "three"))
--- F (Int -> Int -> Int) (Int -> R Int -> Int -> R Int -> Int -> Writes)
--- VApp :: V (F (b -> a) (b -> R b -> c)) -> V (F b (b -> Writes)) -> V (F a c)
-
-for :: F a b -> a
-for (F _ f _) = f
-
--- TOOD we want to write to anIntVV
-w :: V (B a) -> a -> Writes
-w VRoot _ = error "Can't write to VRoot"
-w (VConst _) _ = error "Can't write to VConst"
-w (VApp vf vb) nA =
-  -- revF :: Int -> R Int -> Int -> Writes
-  -- revB :: Int -> Writes
-  let (F _ forF revF) = r vf
-      (F _ forB revB) = r vb
-   in revF (R forB (Receiver vb)) nA
-
--- So far, behaves like w
-w' :: V (B a) -> a -> Writes
-w' VRoot _ = error "Can't write to VRoot"
-w' (VConst _) _ = error "Can't write to VConst"
-w' va nA =
-  let (F _ for rev) = r va
-   in rev nA
+write :: W -> V a -> a -> Write
+write w VRoot _ = undefined "Can't write to root"
+write w (VConst _) _ = undefined "Can't write to a const"
+write w (VApp vf vx) _ = undefined
 
 curryMain = do
-  msp $ for $ r threeV
-  msp $ for $ r four
-  msp $ for $ r five
-  msp $ for $ r anIntVV
-  msp $ for $ r (VApp anotherIntV VRoot)
-  msp $ for $ r (VApp yetAnotherIntV VRoot)
-  msp $ for $ r seven
-  msp $ for $ r fiftyOne
-  msp $ for $ r (VApp incV fiftyOne)
-  msp "===="
-  msp $ w four 40
-  msp $ w Curry.anIntVV 99
-  msp $ w (VApp Curry.anotherIntV VRoot) 700
-  msp $ w seven 7001
-  msp $ w (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
-  msp $ w (VApp anIntV VRoot) 50
-  msp $ w (VApp anotherIntV VRoot) 51
-  msp "===="
-  msp $ w' four 40
-  msp $ w' Curry.anIntVV 99
-  msp $ w' (VApp Curry.anotherIntV VRoot) 700
-  msp $ w' seven 7001
-  msp $ w' (VApp (VApp plusV anIntVV) (VApp anotherIntV VRoot)) 101
-  msp $ w' (VApp anIntV VRoot) 50
-  msp $ w' (VApp anotherIntV VRoot) 51
-  msp "===="
-  msp $ for $ r (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
-                            (VApp yetAnotherIntV VRoot))
-  msp $ w (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
-                      (VApp yetAnotherIntV VRoot)) 25001
-  msp $ w (VApp (VApp (VApp plus3V_h anIntVV) (VApp anotherIntV VRoot))
-                      (VApp yetAnotherIntV VRoot)) 25001
-  msp $ w' (VApp (VApp (VApp plus3V anIntVV) (VApp anotherIntV VRoot))
-                       (VApp yetAnotherIntV VRoot)) 25001
-  msp $ w' (VApp (VApp (VApp plus3V_h anIntVV) (VApp anotherIntV VRoot))
-                       (VApp yetAnotherIntV VRoot)) 25001
+  msp $ r world vw
+  msp $ r world anIntV
+  msp $ r world inced
   msp "curry hi"
+
+-- $> :module +*Curry
+--
+-- $> :t anIntV
+--
+-- $> :t inced
+--
+-- $> curryMain
+
+--data V a where
+--  VRoot :: V (B W)
+--  VConst :: F f r -> V (F f r)
+--  --VConst :: F f r -> V (F f r)
+--  VConst :: a  -> V a
+--  VApp :: V (F (b -> a) (R b -> c)) -> V (B b) -> V (F a c)
+
+-- -- covar :: F (b -> a) -> F a -> F b
+-- -- covar :: F (c -> b -> a) -> F (b -> a) -> F c
+
+-- data F x a = F (x -> a)
+-- data R a y = R (a -> y)
+-- data V x a y = V (F x a) (R a y)
+
+-- lah :: V x (a -> b) y -> V x a y -> V x b y
+-- lah (V (F tof) (R fromf)) (V (F toa) (R froma)) = V (F toy) (R fromb)
+--   where toy x = (tof x) (toa x)
+--         -- fromf :: ((a -> b) -> y)
+--         -- froma :: (a -> y)
+--         -- fromb :: (b -> y)
+--         -- whaa :: ((a -> b) -> y) -> (a -> y) -> (b -> y)
+--         -- ???? :: ((b -> a) -> y) -> (a -> y) -> (b -> y)
+--         fromb = whaa fromf froma
+--         whaa = undefined
