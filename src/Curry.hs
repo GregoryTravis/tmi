@@ -7,8 +7,8 @@ import Control.Monad.Cont
 
 import Util
 
-data Write1 = forall a. Write1 a
--- data Write1 = forall a. Write1 (V a) a
+-- data Write1 = forall a. Write1 a
+data Write1 = forall a. Write1 (V a) a
 data Write = Write [Write1]
 instance Semigroup Write where
   Write ws <> Write ws' = Write $ ws ++ ws'
@@ -17,7 +17,8 @@ data Receiver a = Receiver (a -> Write)
 data R a = R a (Receiver a)
 infix 1 <--
 (<--) :: Receiver a -> a -> Write
-rx <-- x = Write [Write1 x]
+Receiver r <-- x = r x
+-- Receiver va <-- x = Write [Write1 va x]
 -- Receiver va <-- x = Write [Write1 va x]
 
 inc_hy :: R Int -> R Int
@@ -92,22 +93,32 @@ r :: W -> V a -> a
 r w VRoot = w
 r _ (VConst x) = x
 -- TODO not crazy about constructing receivers here
-r w (VApp vf vx) = a
+r w (VApp vf vb) = a
   where rbra = r w vf
-        b = r w vx
-        rb = R b (Receiver $ \b' -> Write [Write1 b'])
+        b = r w vb
+        -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
+        rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
         ra = rbra rb
         a = case ra of R a _ -> a
 
-write :: W -> V a -> a -> Write
-write w VRoot _ = undefined "Can't write to root"
-write w (VConst _) _ = undefined "Can't write to a const"
-write w (VApp vf vx) _ = undefined
+wr :: W -> V a -> a -> Write
+wr w VRoot _ = undefined "Can't write to root"
+wr w (VConst _) _ = undefined "Can't write to a const"
+wr w (VApp vfbfa vb) a = write
+  where -- write = Write [Write1 vb b']
+        write = reca a
+        rbra = r w vfbfa
+        -- ra = rbra rb
+        R _ (Receiver reca) = rbra rb
+        rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
+        b = r w vb
+        --b' = undefined
 
 curryMain = do
   msp $ r world vw
   msp $ r world anIntV
   msp $ r world inced
+  msp $ wr world anIntV 100
   msp "curry hi"
 
 -- $> :module +*Curry
