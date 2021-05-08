@@ -8,8 +8,9 @@ import Control.Monad.Cont
 import Util
 
 -- data Write1 = forall a. Write1 a
-data Write1 = forall a. Write1 (V a) a
-data Write = Write [Write1]
+data Write1 = forall a. Show a => Write1 (V a) a
+deriving instance Show Write1
+data Write = Write [Write1] deriving Show
 instance Semigroup Write where
   Write ws <> Write ws' = Write $ ws ++ ws'
 data Receiver a = Receiver (a -> Write)
@@ -76,8 +77,16 @@ _anInt (R w rw) = (R i ri)
 
 data V a where
   VRoot :: V W
-  VConst :: a -> V a
-  VApp :: (V (R b -> R a)) -> V b -> V a
+  VConst :: Show a => a -> V a
+  VApp :: (Show a, Show b) => (V (R b -> R a)) -> V b -> V a
+
+instance Show (a -> b) where
+  show _ = "fn"
+
+instance Show a => Show (V a) where
+  show VRoot = "[root]"
+  show (VConst a) = show a
+  show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
 
 -- TODO maybe tf for this?
 incV :: V (R Int -> R Int)
@@ -119,6 +128,7 @@ curryMain = do
   msp $ r world anIntV
   msp $ r world inced
   msp $ wr world anIntV 100
+  msp $ wr world inced 100
   msp "curry hi"
 
 -- $> :module +*Curry
