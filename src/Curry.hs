@@ -64,10 +64,10 @@ hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
   where z = f x y
         rz = Receiver $ \x -> r ra rb x
 
-data W = W { anInt :: Int }
+data W = W { anInt :: Int, anotherInt :: Int }
   deriving Show
 world :: W
-world = W { anInt = 10 }
+world = W { anInt = 10, anotherInt = 20 }
 
 _anInt :: R W -> R Int
 _anInt (R w rw) = (R i ri)
@@ -75,10 +75,21 @@ _anInt (R w rw) = (R i ri)
         ri = Receiver $ \newI ->
             rw <-- w { anInt = newI }
 
+_anotherInt :: R W -> R Int
+_anotherInt (R w rw) = (R i ri)
+  where i = anotherInt w
+        ri = Receiver $ \newI ->
+            rw <-- w { anotherInt = newI }
+
 data V a where
   VRoot :: V W
   VConst :: Show a => a -> V a
+  VPartialApp :: V (R a -> rest) -> V a -> V rest
   VApp :: (Show a, Show b) => (V (R b -> R a)) -> V b -> V a
+
+-- app2 :: V (R a -> R b -> R c) -> V a -> V (R b -> R c)
+-- partialApp :: V (R a -> rest) -> V a -> V rest
+-- partialApp = undefined
 
 instance Show (a -> b) where
   show _ = "fn"
@@ -92,11 +103,18 @@ instance Show a => Show (V a) where
 incV :: V (R Int -> R Int)
 incV = VConst inc_hy
 
+plusV :: V (R Int -> R Int -> R Int)
+plusV = VConst plus_hy
+
 vw :: V W
 vw = VRoot
 
 anIntV = VApp (VConst _anInt) vw
+anotherIntV = VApp (VConst _anotherInt) vw
 inced = VApp incV anIntV
+plusPartialV = VPartialApp plusV anIntV
+plusPartialV' = VPartialApp plusPartialV anotherIntV
+sumV = VApp plusPartialV anotherIntV
 
 r :: W -> V a -> a
 r w VRoot = w
@@ -109,6 +127,9 @@ r w (VApp vf vb) = a
         rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
         ra = rbra rb
         a = case ra of R a _ -> a
+--   V (R b -> rest) -> V b -> rest
+r w (VPartialApp vfba vb) = error "partial app not impl"
+-- VPartialApp :: V (R a -> rest) -> V a -> V rest
 
 wr :: W -> V a -> a -> Write
 wr w VRoot _ = undefined "Can't write to root"
@@ -127,13 +148,18 @@ curryMain = do
   msp $ r world vw
   msp $ r world anIntV
   msp $ r world inced
+  msp $ r world sumV
   msp $ wr world anIntV 100
   msp $ wr world inced 100
   msp "curry hi"
 
 -- $> :module +*Curry
 --
--- $> :t anIntV
+-- $> :t plusPartialV
+--
+-- $> :t plusPartialV'
+--
+-- $> :t sumV
 --
 -- $> :t inced
 --
