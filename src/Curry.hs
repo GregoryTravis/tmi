@@ -14,8 +14,11 @@ data Write = Write [Write1] deriving Show
 instance Semigroup Write where
   Write ws <> Write ws' = Write $ ws ++ ws'
 data Receiver a = Receiver (a -> Write)
+instance Show (Receiver a) where
+  show (Receiver _) = "Receiver"
 -- data Receiver a = Receiver (V a)
 data R a = R a (Receiver a)
+  deriving Show
 infix 1 <--
 (<--) :: Receiver a -> a -> Write
 Receiver r <-- x = r x
@@ -69,23 +72,37 @@ data W = W { anInt :: Int, anotherInt :: Int }
 world :: W
 world = W { anInt = 10, anotherInt = 20 }
 
-_anInt :: R W -> R Int
-_anInt (R w rw) = (R i ri)
-  where i = anInt w
-        ri = Receiver $ \newI ->
-            rw <-- w { anInt = newI }
+_anInt :: V (R W -> R Int)
+_anInt = VConst __anInt
+  where __anInt (R w rw) = (R i ri)
+          where i = anInt w
+                ri = Receiver $ \newI ->
+                    rw <-- w { anInt = newI }
 
-_anotherInt :: R W -> R Int
-_anotherInt (R w rw) = (R i ri)
-  where i = anotherInt w
-        ri = Receiver $ \newI ->
-            rw <-- w { anotherInt = newI }
+_anotherInt :: V (R W -> R Int)
+_anotherInt = VConst __anotherInt
+  where __anotherInt (R w rw) = (R i ri)
+          where i = anotherInt w
+                ri = Receiver $ \newI ->
+                    rw <-- w { anotherInt = newI }
 
 data V a where
   VRoot :: V W
   VConst :: Show a => a -> V a
-  VPartialApp :: V (R a -> rest) -> V a -> V rest
-  VApp :: (Show a, Show b) => (V (R b -> R a)) -> V b -> V a
+  VPartialApp :: Show a => V (R a -> rest) -> V a -> V rest
+  VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
+  VSeal :: (Show a) => V (R a) -> V a
+
+-- more succinct
+k :: Show a => a -> V a
+k = VConst
+root = VRoot
+infixl 4 <**>
+(<**>) :: Show a => V (R a -> rest) -> V a -> V rest
+(<**>) = VPartialApp
+infixl 4 <$$>
+(<$$>) :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
+(<$$>) = VApp
 
 -- app2 :: V (R a -> R b -> R c) -> V a -> V (R b -> R c)
 -- partialApp :: V (R a -> rest) -> V a -> V rest
@@ -98,68 +115,86 @@ instance Show a => Show (V a) where
   show VRoot = "[root]"
   show (VConst a) = show a
   show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
+  show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
+  show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
 -- TODO maybe tf for this?
 incV :: V (R Int -> R Int)
 incV = VConst inc_hy
 
-plusV :: V (R Int -> R Int -> R Int)
-plusV = VConst plus_hy
+plus :: V (R Int -> R Int -> R Int)
+plus = VConst plus_hy
 
 vw :: V W
 vw = VRoot
 
-anIntV = VApp (VConst _anInt) vw
-anotherIntV = VApp (VConst _anotherInt) vw
-inced = VApp incV anIntV
-plusPartialV = VPartialApp plusV anIntV
-plusPartialV' = VPartialApp plusPartialV anotherIntV
-sumV = VApp plusPartialV anotherIntV
+anIntV = _anInt <$$> vw
+anotherIntV = _anotherInt <$$> vw
+inced = incV <$$> anIntV
+plusPartialV = plus <**> anIntV
+plusPartialV' = plusPartialV <**> anotherIntV
+sumV = plusPartialV <$$> anotherIntV
+sumV' = VSeal plusPartialV'
+sumV'' = plus <**> anIntV <$$> anotherIntV
 
 r :: W -> V a -> a
 r w VRoot = w
 r _ (VConst x) = x
 -- TODO not crazy about constructing receivers here
-r w (VApp vf vb) = a
-  where rbra = r w vf
-        b = r w vb
+r w (VApp vf va) = b
+  where f = r w vf
+        a = r w va
         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
-        rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
-        ra = rbra rb
+        ra = R a (Receiver $ \a' -> Write [Write1 va a'])
+        rb = f ra
+        b = case rb of R b _ -> b
+r w (VSeal vra) = a
+  where ra = r w vra
         a = case ra of R a _ -> a
---   V (R b -> rest) -> V b -> rest
-r w (VPartialApp vfba vb) = error "partial app not impl"
--- VPartialApp :: V (R a -> rest) -> V a -> V rest
+r w (VPartialApp vf va) = paf
+  where f = r w vf
+        a = r w va
+        ra = R a (Receiver $ \a' -> Write [Write1 va a'])
+        paf = f ra
 
 wr :: W -> V a -> a -> Write
 wr w VRoot _ = undefined "Can't write to root"
 wr w (VConst _) _ = undefined "Can't write to a const"
-wr w (VApp vfbfa vb) a = write
-  where -- write = Write [Write1 vb b']
-        write = reca a
-        rbra = r w vfbfa
-        -- ra = rbra rb
-        R _ (Receiver reca) = rbra rb
-        rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
-        b = r w vb
-        --b' = undefined
+wr w (VApp vfbfa vb) b = wr w (VSeal (VPartialApp vfbfa vb)) b
+  --where -- write = Write [Write1 vb b']
+  --      write = reca a
+  --      rbra = r w vfbfa
+  --      -- ra = rbra rb
+  --      R _ (Receiver reca) = rbra rb
+  --      rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
+  --      b = r w vb
+  --      --b' = undefined
+-- Good gravy why is this not needed?
+wr w (VPartialApp vf va) _ = error "Why is this error not happening"
+wr w (VSeal vra) a = write
+  where write = reca a
+        R _ (Receiver reca) = ra
+        ra = r w vra
 
 curryMain = do
-  msp $ r world vw
-  msp $ r world anIntV
-  msp $ r world inced
+  -- msp $ r world vw
+  -- msp $ r world anIntV
+  -- msp $ r world inced
   msp $ r world sumV
-  msp $ wr world anIntV 100
-  msp $ wr world inced 100
+  msp $ r world sumV'
+  -- msp $ wr world anIntV 100
+  -- msp $ wr world anIntV 100
+  -- msp $ wr world sumV 100
+  -- msp $ wr world sumV' 100
+  msp $ wr world sumV'' 100
+  -- msp $ wr world (VApp incV sumV) 201
+  -- msp $ wr world (VApp incV sumV') 201
+  msp $ wr world (VApp incV sumV'') 201
   msp "curry hi"
 
 -- $> :module +*Curry
 --
--- $> :t plusPartialV
---
--- $> :t plusPartialV'
---
--- $> :t sumV
+-- $> :t sumV''
 --
 -- $> :t inced
 --
