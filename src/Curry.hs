@@ -13,22 +13,22 @@ deriving instance Show Write1
 data Write = Write [Write1] deriving Show
 instance Semigroup Write where
   Write ws <> Write ws' = Write $ ws ++ ws'
-data Receiver a = Receiver (a -> Write)
+data Receiver a = Receiver String (a -> Write)
 instance Show (Receiver a) where
-  show (Receiver _) = "Receiver"
+  show (Receiver s _) = "REC Receiver " ++ s
 -- data Receiver a = Receiver (V a)
 data R a = R a (Receiver a)
   deriving Show
 infix 1 <--
 (<--) :: Receiver a -> a -> Write
-Receiver r <-- x = r x
+Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 -- Receiver va <-- x = Write [Write1 va x]
 -- Receiver va <-- x = Write [Write1 va x]
 
 inc_hy :: R Int -> R Int
 inc_hy (R x rx) = R x' rx'
   where x' = x + 1
-        rx' = Receiver $ \x ->
+        rx' = Receiver "inc_hy" $ \x ->
           rx <-- (x - 1)
 inc_for :: Int -> Int
 inc_for = (+1)
@@ -41,12 +41,12 @@ inc_hy' = hybrid1 inc_for inc_rev
 hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
 hybrid1 f r ra@(R x rx) = R x' rx'
   where x' = f x
-        rx' = Receiver $ \x -> r ra x
+        rx' = Receiver "hybrid1" $ \x -> r ra x
 
 plus_hy :: R Int -> R Int -> R Int
 plus_hy (R x rx) (R y ry) = R z rz
   where z = x + y
-        rz = Receiver $ \newZ ->
+        rz = Receiver "plus_hy" $ \newZ ->
           let x' = newZ `div` 2
               y' = newZ - x'
            in (rx <-- x') <>
@@ -65,7 +65,7 @@ plus_hy' = hybrid2 plus_for plus_rev
 hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
 hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
   where z = f x y
-        rz = Receiver $ \x -> r ra rb x
+        rz = Receiver "hybrid2" $ \x -> r ra rb x
 
 data W = W { anInt :: Int, anotherInt :: Int }
   deriving Show
@@ -76,14 +76,14 @@ _anInt :: V (R W -> R Int)
 _anInt = VConst __anInt
   where __anInt (R w rw) = (R i ri)
           where i = anInt w
-                ri = Receiver $ \newI ->
+                ri = Receiver "_anInt" $ \newI ->
                     rw <-- w { anInt = newI }
 
 _anotherInt :: V (R W -> R Int)
 _anotherInt = VConst __anotherInt
   where __anotherInt (R w rw) = (R i ri)
           where i = anotherInt w
-                ri = Receiver $ \newI ->
+                ri = Receiver "_anotherInt" $ \newI ->
                     rw <-- w { anotherInt = newI }
 
 data V a where
@@ -141,20 +141,21 @@ r :: W -> V a -> a
 r w VRoot = w
 r _ (VConst x) = x
 -- TODO not crazy about constructing receivers here
-r w (VApp vf va) = b
-  where f = r w vf
-        a = r w va
-        -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
-        ra = R a (Receiver $ \a' -> Write [Write1 va a'])
-        rb = f ra
-        b = case rb of R b _ -> b
+r w (VApp vfbfa vb) = r w (VSeal (VPartialApp vfbfa vb))
+-- r w (VApp vf va) = b
+--   where f = r w vf
+--         a = r w va
+--         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
+--         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
+--         rb = f ra
+--         b = case rb of R b _ -> b
 r w (VSeal vra) = a
   where ra = r w vra
         a = case ra of R a _ -> a
 r w (VPartialApp vf va) = paf
   where f = r w vf
         a = r w va
-        ra = R a (Receiver $ \a' -> Write [Write1 va a'])
+        ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
         paf = f ra
 
 wr :: W -> V a -> a -> Write
@@ -172,23 +173,23 @@ wr w (VApp vfbfa vb) b = wr w (VSeal (VPartialApp vfbfa vb)) b
 -- Good gravy why is this not needed?
 wr w (VPartialApp vf va) _ = error "Why is this error not happening"
 wr w (VSeal vra) a = write
-  where write = reca a
-        R _ (Receiver reca) = ra
+  where write = {-eeesp ("REC wr2", s) $-} reca a
+        R _ (Receiver s reca) = ra
         ra = r w vra
 
 curryMain = do
-  -- msp $ r world vw
-  -- msp $ r world anIntV
-  -- msp $ r world inced
+  msp $ r world vw
+  msp $ r world anIntV
+  msp $ r world inced
   msp $ r world sumV
   msp $ r world sumV'
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world sumV 100
-  -- msp $ wr world sumV' 100
+  msp $ wr world anIntV 100
+  msp $ wr world anIntV 100
+  msp $ wr world sumV 100
+  msp $ wr world sumV' 100
   msp $ wr world sumV'' 100
-  -- msp $ wr world (VApp incV sumV) 201
-  -- msp $ wr world (VApp incV sumV') 201
+  msp $ wr world (VApp incV sumV) 201
+  msp $ wr world (VApp incV sumV') 201
   msp $ wr world (VApp incV sumV'') 201
   msp "curry hi"
 

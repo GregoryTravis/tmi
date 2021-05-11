@@ -123,6 +123,7 @@ leesp logFile s a = unsafePerformIO $ do
   appendFile logFile (evalString $ show s ++ "\n")
   return a
 
+eeesp :: (Show s, Show a) => s -> a -> a
 eeesp s a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ (s, a)
   return a
