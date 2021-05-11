@@ -133,7 +133,13 @@ split = VConst $ hybrid1 for rev
         rev (R _ rx) (x', x'') =
           rx <-- (x' + x'')
 
+splitted :: V (Int, Int)
 splitted = split <$$> inced
+
+idV :: V (R a -> R a)
+idV = VConst $ hybrid1 for rev
+  where for x = x
+        rev (R _ rx) x = rx <-- x
 
 --hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
 -- hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
@@ -205,7 +211,9 @@ curryMain = do
   -- msp $ wr world (VApp incV sumV') 201
   -- msp $ wr world (VApp incV sumV'') 201
   msp $ r world splitted
+  msp $ r world (idV <$$> splitted)
   msp $ wr world splitted (8, 9)
+  msp $ wr world (idV <$$> splitted) (8, 9)
   msp "curry hi"
 
 -- $> :module +*Curry
