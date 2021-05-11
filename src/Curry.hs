@@ -125,6 +125,19 @@ incV = VConst inc_hy
 plus :: V (R Int -> R Int -> R Int)
 plus = VConst plus_hy
 
+split :: V (R Int -> R (Int, Int))
+split = VConst $ hybrid1 for rev
+  where for x = (x', x'')
+          where x' = x `div` 2
+                x'' = x - x'
+        rev (R _ rx) (x', x'') =
+          rx <-- (x' + x'')
+
+splitted = split <$$> inced
+
+--hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
+-- hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
+
 vw :: V W
 vw = VRoot
 
@@ -178,19 +191,21 @@ wr w (VSeal vra) a = write
         ra = r w vra
 
 curryMain = do
-  msp $ r world vw
-  msp $ r world anIntV
-  msp $ r world inced
-  msp $ r world sumV
-  msp $ r world sumV'
-  msp $ wr world anIntV 100
-  msp $ wr world anIntV 100
-  msp $ wr world sumV 100
-  msp $ wr world sumV' 100
-  msp $ wr world sumV'' 100
-  msp $ wr world (VApp incV sumV) 201
-  msp $ wr world (VApp incV sumV') 201
-  msp $ wr world (VApp incV sumV'') 201
+  -- msp $ r world vw
+  -- msp $ r world anIntV
+  -- msp $ r world inced
+  -- msp $ r world sumV
+  -- msp $ r world sumV'
+  -- msp $ wr world anIntV 100
+  -- msp $ wr world anIntV 100
+  -- msp $ wr world sumV 100
+  -- msp $ wr world sumV' 100
+  -- msp $ wr world sumV'' 100
+  -- msp $ wr world (VApp incV sumV) 201
+  -- msp $ wr world (VApp incV sumV') 201
+  -- msp $ wr world (VApp incV sumV'') 201
+  msp $ r world splitted
+  msp $ wr world splitted (8, 9)
   msp "curry hi"
 
 -- $> :module +*Curry
@@ -198,6 +213,8 @@ curryMain = do
 -- $> :t sumV''
 --
 -- $> :t inced
+--
+-- $> :t splitted
 --
 -- $> curryMain
 
