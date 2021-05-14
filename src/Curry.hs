@@ -1,11 +1,27 @@
 {-# LANGUAGE ExistentialQuantification, GADTs, RecordWildCards, StandaloneDeriving,
              TypeApplications, TypeFamilies #-}
 
-module Curry (curryMain) where
+module Curry
+( W(..)
+, R(..)
+, Write
+, V(..)
+, Receiver(..)
+, hybrid1
+, hybrid2
+, (<--)
+, (<**>)
+, (<$$>)
+, r
+, wr
+) where
 
 import Control.Monad.Cont
 
 import Util
+
+data W = W { anInt :: Int, anotherInt :: Int }
+  deriving Show
 
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
@@ -25,66 +41,15 @@ Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 -- Receiver va <-- x = Write [Write1 va x]
 -- Receiver va <-- x = Write [Write1 va x]
 
-inc_hy :: R Int -> R Int
-inc_hy (R x rx) = R x' rx'
-  where x' = x + 1
-        rx' = Receiver "inc_hy" $ \x ->
-          rx <-- (x - 1)
-inc_for :: Int -> Int
-inc_for = (+1)
-inc_rev :: R Int -> Int -> Write
-inc_rev (R x rx) newX =
-  rx <-- newX - 1
-inc_hy' :: R Int -> R Int
-inc_hy' = hybrid1 inc_for inc_rev
-
 hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
 hybrid1 f r ra@(R x rx) = R x' rx'
   where x' = f x
         rx' = Receiver "hybrid1" $ \x -> r ra x
 
-plus_hy :: R Int -> R Int -> R Int
-plus_hy (R x rx) (R y ry) = R z rz
-  where z = x + y
-        rz = Receiver "plus_hy" $ \newZ ->
-          let x' = newZ `div` 2
-              y' = newZ - x'
-           in (rx <-- x') <>
-              (ry <-- y')
-plus_for :: Int -> Int -> Int
-plus_for = (+)
-plus_rev :: R Int -> R Int -> Int -> Write
-plus_rev (R x rx) (R y ry) newZ =
-  (rx <-- x') <>
-  (ry <-- y')
-  where x' = newZ `div` 2
-        y' = newZ - x'
-plus_hy' :: R Int -> R Int -> R Int
-plus_hy' = hybrid2 plus_for plus_rev
-
 hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
 hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
   where z = f x y
         rz = Receiver "hybrid2" $ \x -> r ra rb x
-
-data W = W { anInt :: Int, anotherInt :: Int }
-  deriving Show
-world :: W
-world = W { anInt = 10, anotherInt = 20 }
-
-_anInt :: V (R W -> R Int)
-_anInt = VConst __anInt
-  where __anInt (R w rw) = (R i ri)
-          where i = anInt w
-                ri = Receiver "_anInt" $ \newI ->
-                    rw <-- w { anInt = newI }
-
-_anotherInt :: V (R W -> R Int)
-_anotherInt = VConst __anotherInt
-  where __anotherInt (R w rw) = (R i ri)
-          where i = anotherInt w
-                ri = Receiver "_anotherInt" $ \newI ->
-                    rw <-- w { anotherInt = newI }
 
 data V a where
   VRoot :: V W
@@ -96,7 +61,6 @@ data V a where
 -- more succinct
 k :: Show a => a -> V a
 k = VConst
-root = VRoot
 infixl 4 <**>
 (<**>) :: Show a => V (R a -> rest) -> V a -> V rest
 (<**>) = VPartialApp
@@ -117,44 +81,6 @@ instance Show a => Show (V a) where
   show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
-
--- TODO maybe tf for this?
-incV :: V (R Int -> R Int)
-incV = VConst inc_hy
-
-plus :: V (R Int -> R Int -> R Int)
-plus = VConst plus_hy
-
-split :: V (R Int -> R (Int, Int))
-split = VConst $ hybrid1 for rev
-  where for x = (x', x'')
-          where x' = x `div` 2
-                x'' = x - x'
-        rev (R _ rx) (x', x'') =
-          rx <-- (x' + x'')
-
-splitted :: V (Int, Int)
-splitted = split <$$> inced
-
-idV :: V (R a -> R a)
-idV = VConst $ hybrid1 for rev
-  where for x = x
-        rev (R _ rx) x = rx <-- x
-
---hybrid2 :: (a -> b -> c) -> (R a -> R b -> c -> Write) -> (R a -> R b -> R c)
--- hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
-
-vw :: V W
-vw = VRoot
-
-anIntV = _anInt <$$> vw
-anotherIntV = _anotherInt <$$> vw
-inced = incV <$$> anIntV
-plusPartialV = plus <**> anIntV
-plusPartialV' = plusPartialV <**> anotherIntV
-sumV = plusPartialV <$$> anotherIntV
-sumV' = VSeal plusPartialV'
-sumV'' = plus <**> anIntV <$$> anotherIntV
 
 r :: W -> V a -> a
 r w VRoot = w
@@ -196,57 +122,58 @@ wr w (VSeal vra) a = write
         R _ (Receiver s reca) = ra
         ra = r w vra
 
-curryMain = do
-  -- msp $ r world vw
-  -- msp $ r world anIntV
-  -- msp $ r world inced
-  -- msp $ r world sumV
-  -- msp $ r world sumV'
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world sumV 100
-  -- msp $ wr world sumV' 100
-  -- msp $ wr world sumV'' 100
-  -- msp $ wr world (VApp incV sumV) 201
-  -- msp $ wr world (VApp incV sumV') 201
-  -- msp $ wr world (VApp incV sumV'') 201
-  msp $ r world splitted
-  msp $ r world (idV <$$> splitted)
-  msp $ wr world splitted (8, 9)
-  msp $ wr world (idV <$$> splitted) (8, 9)
-  msp "curry hi"
+--class History 
 
--- $> :module +*Curry
---
--- $> :t sumV''
---
--- $> :t inced
---
--- $> :t splitted
---
--- $> curryMain
+{-
+class History h w where
+  mkHistory :: w -> h w
+  addListener :: h w -> Listener -> h w
+  write :: Nice w => h w -> [Write] -> IO (h w)
+  -- TODO debug onlyl
+  readV :: (Show a, Nice w, Nice a) => h w -> V a -> IO a
+  runListeners :: Nice w => h w -> IO ()
 
---data V a where
---  VRoot :: V (B W)
---  VConst :: F f r -> V (F f r)
---  --VConst :: F f r -> V (F f r)
---  VConst :: a  -> V a
---  VApp :: V (F (b -> a) (R b -> c)) -> V (B b) -> V (F a c)
+data Listener = forall a. Nice a => Listener
+  { v :: V a
+  , action :: a -> IO ()
+  , runReader :: Reader -> IO ()
+  , getDv :: DV }
 
--- -- covar :: F (b -> a) -> F a -> F b
--- -- covar :: F (c -> b -> a) -> F (b -> a) -> F c
+-- Monad!
+type TMI h w a = (Nice w, History h w) => StateT (h w) IO a
 
--- data F x a = F (x -> a)
--- data R a y = R (a -> y)
--- data V x a y = V (F x a) (R a y)
+infix 4 <--
+(<--) :: Nice a => V a -> V a -> TMI h w ()
+vlvalue <-- vrvalue = do
+  history <- get
+  rvalue <- rd vrvalue
+  let wr = Write (dyv vlvalue) (dy rvalue)
+  history' <- liftIO $ write history [wr]
+  put history'
+  return ()
 
--- lah :: V x (a -> b) y -> V x a y -> V x b y
--- lah (V (F tof) (R fromf)) (V (F toa) (R froma)) = V (F toy) (R fromb)
---   where toy x = (tof x) (toa x)
---         -- fromf :: ((a -> b) -> y)
---         -- froma :: (a -> y)
---         -- fromb :: (b -> y)
---         -- whaa :: ((a -> b) -> y) -> (a -> y) -> (b -> y)
---         -- ???? :: ((b -> a) -> y) -> (a -> y) -> (b -> y)
---         fromb = whaa fromf froma
---         whaa = undefined
+mkListener :: Nice a => V a -> (a -> IO ()) -> Listener
+mkListener v action = Listener {..}
+  where getDv = dyv v
+        runReader :: Reader -> IO ()
+        runReader reader = do
+          a <- unReader reader v
+          action a
+
+listen :: Nice a => V a -> (a -> IO ()) -> TMI h w ()
+listen v action = do
+  history <- get
+  let listener = mkListener v action
+      history' = addListener history listener
+  put history'
+
+dump :: TMI h w ()
+dump = do
+  history <- get
+  liftIO $ runListeners history
+
+tmiRun :: (Nice w, History h w) => w -> TMI h w a -> IO (a, h w)
+tmiRun w action = do
+  let history = mkHistory w
+  runStateT action history
+-}

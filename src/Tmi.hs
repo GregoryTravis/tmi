@@ -8,28 +8,20 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Tmi
-( V
-, Nice
-, mkRoot
-, F(..)
-, F2(..)
-, F_1_2(..)
-, N(..) -- Just for debugging in the absence of an evaluator
-, hoist_1_1
-, hoist_2_1
-, hoist_1_2
-, konstV
-, History
-, TMI
-, listen
-, dump
+( W(..)
+, R(..)
+, Write
+, V(..)
+, Receiver(..)
+, hybrid1
+, hybrid2
 , (<--)
-, (<--.)
-, tmiRun
+, (<**>)
+, (<$$>)
+, r
+, wr
 ) where
 
 import Data.Dynamic
 
-import Internal
-import Lift
-import State
+import Curry
