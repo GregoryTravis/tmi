@@ -17,6 +17,7 @@ module Curry
 , TMI
 , tmiRun
 , (<---)
+, listen
 ) where
 
 import Control.Monad.Cont
@@ -93,6 +94,8 @@ class Show w => History h w where
   mkHistory :: w -> h w
   getRoot :: h w -> V w
   newGeneration :: h w -> w -> h w
+  addListener :: h w -> Listener -> h w
+  runListeners :: h w -> IO ()
   r :: h w -> V a -> a
   wr :: h w -> V a -> a -> Write
 
@@ -100,18 +103,28 @@ sinfulCast :: (Typeable a, Typeable b) => a -> b
 sinfulCast = fromJust . fromDynamic . toDyn
 
 -- Stored in reverse order
-data SimpleHistory w = SimpleHistory [w]
-  deriving Show
+data SimpleHistory w = SimpleHistory [w] [Listener]
+
+instance Show w => Show (SimpleHistory w) where
+  show (SimpleHistory ws _) = show ws
 
 instance (Typeable w, Show w) => History SimpleHistory w where
-  mkHistory w = SimpleHistory [w]
+  mkHistory w = SimpleHistory [w] []
 
-  getRoot (SimpleHistory (w:_)) = VRoot
+  getRoot (SimpleHistory (w:_) _) = VRoot
 
-  newGeneration (SimpleHistory ws) w = SimpleHistory (w:ws)
+  newGeneration (SimpleHistory ws ls) w = SimpleHistory (w:ws) ls
+
+  addListener (SimpleHistory ws listeners) listener =
+    SimpleHistory ws (listener:listeners)
+
+  runListeners h@(SimpleHistory _ ls) = mapM_ runListener ls
+    where runListener (Listener va action) = do
+            let a = r h va
+            action a
 
   -- r :: W -> V a -> a
-  r (SimpleHistory (w:_)) VRoot = sinfulCast w
+  r (SimpleHistory (w:_) _) VRoot = sinfulCast w
   r _ (VConst x) = x
   -- TODO not crazy about constructing receivers here
   r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
@@ -179,7 +192,17 @@ vlvalue <--- vrvalue = do
       w' = propagateFully history write
       history' = newGeneration history w'
   put history'
+  liftIO $ runListeners history'
   return ()
+
+data Listener = forall a. Listener (V a) (a -> IO ())
+
+listen :: Typeable a => V a -> (a -> IO ()) -> TMI h w ()
+listen v action = do
+  history <- get
+  let listener = Listener v action
+      history' = addListener history listener
+  put history'
 
 {-
 class History h w where

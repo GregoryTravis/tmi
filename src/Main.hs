@@ -95,6 +95,9 @@ sumV = plusPartialV <$$> anotherIntV
 sumV' = VSeal plusPartialV'
 sumV'' = plus <**> anIntV <$$> anotherIntV
 
+listeny :: Show a => a -> IO ()
+listeny x = putStrLn $ "Listeny: " ++ (show x)
+
 main = do
   -- msp $ r world vw
   -- msp $ r world anIntV
@@ -109,11 +112,13 @@ main = do
   -- msp $ wr world (VApp incV sumV) 201
   -- msp $ wr world (VApp incV sumV') 201
   -- msp $ wr world (VApp incV sumV'') 201
-  msp $ r history splitted
-  msp $ r history (idV <$$> splitted)
-  msp $ wr history splitted (8, 9)
-  msp $ wr history (idV <$$> splitted) (8, 9)
+  -- msp $ r history splitted
+  -- msp $ r history (idV <$$> splitted)
+  -- msp $ wr history splitted (8, 9)
+  -- msp $ wr history (idV <$$> splitted) (8, 9)
   (a, history') <- tmiRun history $ do
+    listen splitted listeny
+    listen anIntV listeny
     splitted <--- VConst (8, 9)
   msp a
   msp history'

@@ -14,6 +14,7 @@ module Tmi
 , TMI
 , tmiRun
 , (<---)
+, listen
 ) where
 
 import Data.Dynamic
