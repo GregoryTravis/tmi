@@ -13,12 +13,16 @@
 module Main where
 
 import Control.Monad.State hiding (lift)
+import Data.Dynamic
 
 import Tmi
 import Util
 
 world :: W
 world = W { anInt = 10, anotherInt = 20 }
+
+history :: SimpleHistory W
+history = mkHistory world
 
 inc_hy :: R Int -> R Int
 inc_hy (R x rx) = R x' rx'
@@ -84,15 +88,15 @@ split = VConst $ hybrid1 for rev
 splitted :: V (Int, Int)
 splitted = split <$$> inced
 
-idV :: V (R a -> R a)
+idV :: Typeable a => V (R a -> R a)
 idV = VConst $ hybrid1 for rev
   where for x = x
         rev (R _ rx) x = rx <-- x
 
-root = VRoot
+-- root = VRoot
 
 vw :: V W
-vw = VRoot
+vw = getRoot history
 
 anIntV = _anInt <$$> vw
 anotherIntV = _anotherInt <$$> vw
@@ -117,10 +121,10 @@ main = do
   -- msp $ wr world (VApp incV sumV) 201
   -- msp $ wr world (VApp incV sumV') 201
   -- msp $ wr world (VApp incV sumV'') 201
-  msp $ r world splitted
-  msp $ r world (idV <$$> splitted)
-  msp $ wr world splitted (8, 9)
-  msp $ wr world (idV <$$> splitted) (8, 9)
+  msp $ r history splitted
+  msp $ r history (idV <$$> splitted)
+  msp $ wr history splitted (8, 9)
+  msp $ wr history (idV <$$> splitted) (8, 9)
   msp "curry hi"
 
 -- $> :module +*Curry

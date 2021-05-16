@@ -18,8 +18,8 @@ module Tmi
 , (<--)
 , (<**>)
 , (<$$>)
-, r
-, wr
+, History(..)
+, SimpleHistory
 ) where
 
 import Data.Dynamic

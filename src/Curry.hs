@@ -1,5 +1,5 @@
-{-# LANGUAGE ExistentialQuantification, GADTs, RecordWildCards, StandaloneDeriving,
-             TypeApplications, TypeFamilies #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, GADTs, MultiParamTypeClasses,
+             RecordWildCards, StandaloneDeriving, TypeApplications, TypeFamilies #-}
 
 module Curry
 ( W(..)
@@ -12,11 +12,14 @@ module Curry
 , (<--)
 , (<**>)
 , (<$$>)
-, r
-, wr
+, History(..)
+, SimpleHistory
 ) where
 
 import Control.Monad.Cont
+import Data.Dynamic
+import Data.Maybe
+import Data.Proxy
 
 import Util
 
@@ -52,20 +55,20 @@ hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
         rz = Receiver "hybrid2" $ \x -> r ra rb x
 
 data V a where
-  VRoot :: V W
-  VConst :: Show a => a -> V a
-  VPartialApp :: Show a => V (R a -> rest) -> V a -> V rest
-  VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
-  VSeal :: (Show a) => V (R a) -> V a
+  VRoot :: Typeable a => V a
+  VConst :: (Show a, Typeable a) => a -> V a
+  VPartialApp :: (Show a, Typeable a) => V (R a -> rest) -> V a -> V rest
+  VApp :: (Typeable a, Typeable b, Show a, Show b) => V (R b -> R a) -> V b -> V a
+  VSeal :: (Show a, Typeable a) => V (R a) -> V a
 
 -- more succinct
-k :: Show a => a -> V a
+k :: (Show a, Typeable a) => a -> V a
 k = VConst
 infixl 4 <**>
-(<**>) :: Show a => V (R a -> rest) -> V a -> V rest
+(<**>) :: (Show a, Typeable a) => V (R a -> rest) -> V a -> V rest
 (<**>) = VPartialApp
 infixl 4 <$$>
-(<$$>) :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
+(<$$>) :: (Typeable a, Typeable b, Show a, Show b) => V (R b -> R a) -> V b -> V a
 (<$$>) = VApp
 
 -- app2 :: V (R a -> R b -> R c) -> V a -> V (R b -> R c)
@@ -82,45 +85,62 @@ instance Show a => Show (V a) where
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
-r :: W -> V a -> a
-r w VRoot = w
-r _ (VConst x) = x
--- TODO not crazy about constructing receivers here
-r w (VApp vfbfa vb) = r w (VSeal (VPartialApp vfbfa vb))
--- r w (VApp vf va) = b
---   where f = r w vf
---         a = r w va
---         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
---         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
---         rb = f ra
---         b = case rb of R b _ -> b
-r w (VSeal vra) = a
-  where ra = r w vra
-        a = case ra of R a _ -> a
-r w (VPartialApp vf va) = paf
-  where f = r w vf
-        a = r w va
-        ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
-        paf = f ra
+class Show w => History h w where
+  mkHistory :: w -> h w
+  getRoot :: h w -> V w
+  r :: h w -> V a -> a
+  wr :: h w -> V a -> a -> Write
 
-wr :: W -> V a -> a -> Write
-wr w VRoot _ = undefined "Can't write to root"
-wr w (VConst _) _ = undefined "Can't write to a const"
-wr w (VApp vfbfa vb) b = wr w (VSeal (VPartialApp vfbfa vb)) b
-  --where -- write = Write [Write1 vb b']
-  --      write = reca a
-  --      rbra = r w vfbfa
-  --      -- ra = rbra rb
-  --      R _ (Receiver reca) = rbra rb
-  --      rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
-  --      b = r w vb
-  --      --b' = undefined
--- Good gravy why is this not needed?
-wr w (VPartialApp vf va) _ = error "Why is this error not happening"
-wr w (VSeal vra) a = write
-  where write = {-eeesp ("REC wr2", s) $-} reca a
-        R _ (Receiver s reca) = ra
-        ra = r w vra
+sinfulCast :: (Typeable a, Typeable b) => a -> b
+sinfulCast = fromJust . fromDynamic . toDyn
+
+-- Stored in reverse order
+data SimpleHistory w = SimpleHistory [w]
+
+instance (Typeable w, Show w) => History SimpleHistory w where
+  mkHistory w = SimpleHistory [w]
+
+  getRoot (SimpleHistory (w:_)) = VRoot
+
+  -- r :: W -> V a -> a
+  r (SimpleHistory (w:_)) VRoot = sinfulCast w
+  r _ (VConst x) = x
+  -- TODO not crazy about constructing receivers here
+  r w (VApp vfbfa vb) = r w (VSeal (VPartialApp vfbfa vb))
+  -- r w (VApp vf va) = b
+  --   where f = r w vf
+  --         a = r w va
+  --         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
+  --         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
+  --         rb = f ra
+  --         b = case rb of R b _ -> b
+  r w (VSeal vra) = a
+    where ra = r w vra
+          a = case ra of R a _ -> a
+  r w (VPartialApp vf va) = paf
+    where f = r w vf
+          a = r w va
+          ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
+          paf = f ra
+
+  -- wr :: W -> V a -> a -> Write
+  -- wr w VRoot _ = undefined "Can't write to root"
+  wr w (VConst _) _ = undefined "Can't write to a const"
+  wr w (VApp vfbfa vb) b = wr w (VSeal (VPartialApp vfbfa vb)) b
+    --where -- write = Write [Write1 vb b']
+    --      write = reca a
+    --      rbra = r w vfbfa
+    --      -- ra = rbra rb
+    --      R _ (Receiver reca) = rbra rb
+    --      rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
+    --      b = r w vb
+    --      --b' = undefined
+  -- Good gravy why is this not needed?
+  wr w (VPartialApp vf va) _ = error "Why is this error not happening"
+  wr w (VSeal vra) a = write
+    where write = {-eeesp ("REC wr2", s) $-} reca a
+          R _ (Receiver s reca) = ra
+          ra = r w vra
 
 --class History 
 

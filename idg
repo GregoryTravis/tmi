@@ -1,1 +1,1 @@
-ghcid --command "stack ghci" --allow-eval
+ghcid --run --command "stack ghci" --allow-eval
