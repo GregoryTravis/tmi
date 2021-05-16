@@ -1,5 +1,5 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, GADTs, MultiParamTypeClasses,
-             StandaloneDeriving #-}
+             RankNTypes, StandaloneDeriving #-}
 
 module Curry
 ( W(..)
@@ -14,9 +14,13 @@ module Curry
 , (<$$>)
 , History(..)
 , SimpleHistory
+, TMI
+, tmiRun
+, (<---)
 ) where
 
 import Control.Monad.Cont
+import Control.Monad.State.Lazy
 import Data.Dynamic
 import Data.Maybe
 import Data.Proxy
@@ -88,6 +92,7 @@ instance Show a => Show (V a) where
 class Show w => History h w where
   mkHistory :: w -> h w
   getRoot :: h w -> V w
+  newGeneration :: h w -> w -> h w
   r :: h w -> V a -> a
   wr :: h w -> V a -> a -> Write
 
@@ -96,17 +101,20 @@ sinfulCast = fromJust . fromDynamic . toDyn
 
 -- Stored in reverse order
 data SimpleHistory w = SimpleHistory [w]
+  deriving Show
 
 instance (Typeable w, Show w) => History SimpleHistory w where
   mkHistory w = SimpleHistory [w]
 
   getRoot (SimpleHistory (w:_)) = VRoot
 
+  newGeneration (SimpleHistory ws) w = SimpleHistory (w:ws)
+
   -- r :: W -> V a -> a
   r (SimpleHistory (w:_)) VRoot = sinfulCast w
   r _ (VConst x) = x
   -- TODO not crazy about constructing receivers here
-  r w (VApp vfbfa vb) = r w (VSeal (VPartialApp vfbfa vb))
+  r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
   -- r w (VApp vf va) = b
   --   where f = r w vf
   --         a = r w va
@@ -114,19 +122,19 @@ instance (Typeable w, Show w) => History SimpleHistory w where
   --         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
   --         rb = f ra
   --         b = case rb of R b _ -> b
-  r w (VSeal vra) = a
-    where ra = r w vra
+  r h (VSeal vra) = a
+    where ra = r h vra
           a = case ra of R a _ -> a
-  r w (VPartialApp vf va) = paf
-    where f = r w vf
-          a = r w va
+  r h (VPartialApp vf va) = paf
+    where f = r h vf
+          a = r h va
           ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
           paf = f ra
 
   -- wr :: W -> V a -> a -> Write
   -- wr w VRoot _ = undefined "Can't write to root"
-  wr w (VConst _) _ = undefined "Can't write to a const"
-  wr w (VApp vfbfa vb) b = wr w (VSeal (VPartialApp vfbfa vb)) b
+  wr h (VConst _) _ = undefined "Can't write to a const"
+  wr h (VApp vfbfa vb) b = wr h (VSeal (VPartialApp vfbfa vb)) b
     --where -- write = Write [Write1 vb b']
     --      write = reca a
     --      rbra = r w vfbfa
@@ -136,13 +144,42 @@ instance (Typeable w, Show w) => History SimpleHistory w where
     --      b = r w vb
     --      --b' = undefined
   -- Good gravy why is this not needed?
-  wr w (VPartialApp vf va) _ = error "Why is this error not happening"
-  wr w (VSeal vra) a = write
+  wr h (VPartialApp vf va) _ = error "Why is this error not happening"
+  wr h (VSeal vra) a = write
     where write = {-eeesp ("REC wr2", s) $-} reca a
           R _ (Receiver s reca) = ra
-          ra = r w vra
+          ra = r h vra
 
---class History 
+-- Monad!
+type TMI h w a = (History h w) => StateT (h w) IO a
+
+tmiRun :: (Typeable w, History h w) => h w -> TMI h w a -> IO (a, h w)
+tmiRun history action = do
+  runStateT action history
+
+propagateFully :: (Typeable w, History h w) => h w -> Write -> w
+propagateFully = propagateOneAtATime
+
+-- This only works for a single assignment that always propagates to a single
+-- assignment
+propagateOneAtATime :: (Typeable w, History h w) => h w -> Write -> w
+propagateOneAtATime h (Write [Write1 VRoot w]) = sinfulCast w
+propagateOneAtATime h (Write [Write1 va a]) =
+  let write' = wr h va a
+   in propagateOneAtATime h write'
+
+  -- wr :: h w -> V a -> a -> Write
+
+infix 4 <---
+(<---) :: (Typeable w, Show a) => V a -> V a -> TMI h w ()
+vlvalue <--- vrvalue = do
+  history <- get
+  let rvalue = r history vrvalue
+      write = Write [Write1 vlvalue rvalue]
+      w' = propagateFully history write
+      history' = newGeneration history w'
+  put history'
+  return ()
 
 {-
 class History h w where

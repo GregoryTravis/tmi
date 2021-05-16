@@ -113,6 +113,10 @@ main = do
   msp $ r history (idV <$$> splitted)
   msp $ wr history splitted (8, 9)
   msp $ wr history (idV <$$> splitted) (8, 9)
+  (a, history') <- tmiRun history $ do
+    splitted <--- VConst (8, 9)
+  msp a
+  msp history'
   msp "curry hi"
 
 -- $> :module +*Curry

@@ -11,6 +11,9 @@ module Tmi
 , (<$$>)
 , History(..)
 , SimpleHistory
+, TMI
+, tmiRun
+, (<---)
 ) where
 
 import Data.Dynamic
