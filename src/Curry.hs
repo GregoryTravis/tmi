@@ -1,5 +1,5 @@
 {-# LANGUAGE ExistentialQuantification, FlexibleInstances, GADTs, MultiParamTypeClasses,
-             RecordWildCards, StandaloneDeriving, TypeApplications, TypeFamilies #-}
+             StandaloneDeriving #-}
 
 module Curry
 ( W(..)
