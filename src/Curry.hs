@@ -1,5 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, GADTs, MultiParamTypeClasses,
-             RankNTypes, StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification, GADTs, StandaloneDeriving #-}
 
 module Curry
 ( W(..)

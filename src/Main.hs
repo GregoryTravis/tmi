@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments, FlexibleContexts #-}
-
 module Main where
 
 import Control.Monad.State hiding (lift)
