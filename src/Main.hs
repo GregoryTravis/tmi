@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments, FlexibleContexts #-}
+
 module Main where
 
 import Control.Monad.State hiding (lift)
@@ -98,30 +100,18 @@ sumV'' = plus <**> anIntV <$$> anotherIntV
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)
 
+action :: StateT (SimpleHistory W) IO ()
+action = do
+      listen splitted listeny
+      listen anIntV listeny
+      splitted <--- VConst (80, 90)
+
 main = do
-  -- msp $ r world vw
-  -- msp $ r world anIntV
-  -- msp $ r world inced
-  -- msp $ r world sumV
-  -- msp $ r world sumV'
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world anIntV 100
-  -- msp $ wr world sumV 100
-  -- msp $ wr world sumV' 100
-  -- msp $ wr world sumV'' 100
-  -- msp $ wr world (VApp incV sumV) 201
-  -- msp $ wr world (VApp incV sumV') 201
-  -- msp $ wr world (VApp incV sumV'') 201
-  -- msp $ r history splitted
-  -- msp $ r history (idV <$$> splitted)
-  -- msp $ wr history splitted (8, 9)
-  -- msp $ wr history (idV <$$> splitted) (8, 9)
-  (a, history') <- tmiRun history $ do
-    listen splitted listeny
-    listen anIntV listeny
-    splitted <--- VConst (8, 9)
+  -- writeHistory "history.db" history
+  (a, history') <- tmiRun history action
   msp a
   msp history'
+  () <- persistentTmiRun "history.db" action
   msp "curry hi"
 
 -- $> :module +*Curry

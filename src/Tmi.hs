@@ -13,6 +13,8 @@ module Tmi
 , SimpleHistory
 , TMI
 , tmiRun
+, persistentTmiRun
+, writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 ) where

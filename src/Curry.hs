@@ -16,6 +16,8 @@ module Curry
 , SimpleHistory
 , TMI
 , tmiRun
+, persistentTmiRun
+, writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 ) where
@@ -29,7 +31,7 @@ import Data.Proxy
 import Util
 
 data W = W { anInt :: Int, anotherInt :: Int }
-  deriving Show
+  deriving (Read, Show)
 
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
@@ -90,12 +92,15 @@ instance Show a => Show (V a) where
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
-class Show w => History h w where
+class (Typeable w, Show w) => History h w where
   mkHistory :: w -> h w
   getRoot :: h w -> V w
   newGeneration :: h w -> w -> h w
   addListener :: h w -> Listener -> h w
   runListeners :: h w -> IO ()
+  -- TODO ehh
+  toString :: h w -> String
+  fromString :: String -> h w
   r :: h w -> V a -> a
   wr :: h w -> V a -> a -> Write
 
@@ -105,10 +110,13 @@ sinfulCast = fromJust . fromDynamic . toDyn
 -- Stored in reverse order
 data SimpleHistory w = SimpleHistory [w] [Listener]
 
+-- data SimpleHistoryRep w = SimpleHistoryRep [w]
+--   deriving Show
+
 instance Show w => Show (SimpleHistory w) where
   show (SimpleHistory ws _) = show ws
 
-instance (Typeable w, Show w) => History SimpleHistory w where
+instance (Typeable w, Read w, Show w) => History SimpleHistory w where
   mkHistory w = SimpleHistory [w] []
 
   getRoot (SimpleHistory (w:_) _) = VRoot
@@ -122,6 +130,10 @@ instance (Typeable w, Show w) => History SimpleHistory w where
     where runListener (Listener va action) = do
             let a = r h va
             action a
+
+  toString (SimpleHistory ws _) = show ws
+  fromString s = SimpleHistory ws []
+    where ws = read s
 
   -- r :: W -> V a -> a
   r (SimpleHistory (w:_) _) VRoot = sinfulCast w
@@ -203,3 +215,19 @@ listen v action = do
   let listener = Listener v action
       history' = addListener history listener
   put history'
+
+--tmiRun :: (Typeable w, History h w) => h w -> TMI h w a -> IO (a, h w)
+persistentTmiRun :: (Typeable w, History h w) => FilePath -> TMI h w a -> IO a
+persistentTmiRun filename action = do
+  history <- readHistory filename
+  (a, history') <- tmiRun history action
+  writeHistory filename history'
+  return a
+
+readHistory :: History h w => FilePath -> IO (h w)
+readHistory filename = do
+  s <- readFile filename
+  return $ fromString s
+
+writeHistory :: History h w => FilePath -> h w -> IO ()
+writeHistory filename h = writeFile filename (toString h)
