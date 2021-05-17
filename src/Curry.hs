@@ -13,7 +13,8 @@ module Curry
 , (<**>)
 , (<$$>)
 , History(..)
-, SimpleHistory
+, mkHistory
+, getRoot
 , TMI
 , tmiRun
 , persistentTmiRun
@@ -92,102 +93,95 @@ instance Show a => Show (V a) where
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
-class (Typeable w, Show w) => History h w where
-  mkHistory :: w -> h w
-  getRoot :: h w -> V w
-  newGeneration :: h w -> w -> h w
-  addListener :: h w -> Listener -> h w
-  runListeners :: h w -> IO ()
-  -- TODO ehh
-  toString :: h w -> String
-  fromString :: String -> h w
-  r :: h w -> V a -> a
-  wr :: h w -> V a -> a -> Write
-
 sinfulCast :: (Typeable a, Typeable b) => a -> b
 sinfulCast = fromJust . fromDynamic . toDyn
 
 -- Stored in reverse order
-data SimpleHistory w = SimpleHistory [w] [Listener]
+data History w = History [w] [Listener]
 
--- data SimpleHistoryRep w = SimpleHistoryRep [w]
---   deriving Show
+instance Show w => Show (History w) where
+  show (History ws _) = show ws
 
-instance Show w => Show (SimpleHistory w) where
-  show (SimpleHistory ws _) = show ws
+mkHistory :: Typeable w => w -> History w
+mkHistory w = History [w] []
 
-instance (Typeable w, Read w, Show w) => History SimpleHistory w where
-  mkHistory w = SimpleHistory [w] []
+getRoot :: Typeable w => History w -> V w
+getRoot (History (w:_) _) = VRoot
 
-  getRoot (SimpleHistory (w:_) _) = VRoot
+newGeneration :: Typeable w => History w -> w -> History w
+newGeneration (History ws ls) w = History (w:ws) ls
 
-  newGeneration (SimpleHistory ws ls) w = SimpleHistory (w:ws) ls
+addListener :: Typeable w => History w -> Listener -> History w
+addListener (History ws listeners) listener =
+  History ws (listener:listeners)
 
-  addListener (SimpleHistory ws listeners) listener =
-    SimpleHistory ws (listener:listeners)
+runListeners :: Typeable w => History w -> IO ()
+runListeners h@(History _ ls) = mapM_ runListener ls
+  where runListener (Listener va action) = do
+          let a = r h va
+          action a
 
-  runListeners h@(SimpleHistory _ ls) = mapM_ runListener ls
-    where runListener (Listener va action) = do
-            let a = r h va
-            action a
+toString :: (Show w, Typeable w) => History w -> String
+toString (History ws _) = show ws
+fromString :: (Read w, Typeable w) => String -> History w
+fromString s = History ws []
+  where ws = read s
 
-  toString (SimpleHistory ws _) = show ws
-  fromString s = SimpleHistory ws []
-    where ws = read s
+r :: Typeable w => History w -> V a -> a
+-- r :: W -> V a -> a
+r (History (w:_) _) VRoot = sinfulCast w
+r _ (VConst x) = x
+-- TODO not crazy about constructing receivers here
+r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
+-- r w (VApp vf va) = b
+--   where f = r w vf
+--         a = r w va
+--         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
+--         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
+--         rb = f ra
+--         b = case rb of R b _ -> b
+r h (VSeal vra) = a
+  where ra = r h vra
+        a = case ra of R a _ -> a
+r h (VPartialApp vf va) = paf
+  where f = r h vf
+        a = r h va
+        ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
+        paf = f ra
 
-  -- r :: W -> V a -> a
-  r (SimpleHistory (w:_) _) VRoot = sinfulCast w
-  r _ (VConst x) = x
-  -- TODO not crazy about constructing receivers here
-  r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
-  -- r w (VApp vf va) = b
-  --   where f = r w vf
-  --         a = r w va
-  --         -- rb = R b (Receiver $ \b' -> Write [Write1 b'])
-  --         ra = R a (Receiver "r VApp" $ \a' -> Write [Write1 va a'])
-  --         rb = f ra
-  --         b = case rb of R b _ -> b
-  r h (VSeal vra) = a
-    where ra = r h vra
-          a = case ra of R a _ -> a
-  r h (VPartialApp vf va) = paf
-    where f = r h vf
-          a = r h va
-          ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
-          paf = f ra
-
-  -- wr :: W -> V a -> a -> Write
-  -- wr w VRoot _ = undefined "Can't write to root"
-  wr h (VConst _) _ = undefined "Can't write to a const"
-  wr h (VApp vfbfa vb) b = wr h (VSeal (VPartialApp vfbfa vb)) b
-    --where -- write = Write [Write1 vb b']
-    --      write = reca a
-    --      rbra = r w vfbfa
-    --      -- ra = rbra rb
-    --      R _ (Receiver reca) = rbra rb
-    --      rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
-    --      b = r w vb
-    --      --b' = undefined
-  -- Good gravy why is this not needed?
-  wr h (VPartialApp vf va) _ = error "Why is this error not happening"
-  wr h (VSeal vra) a = write
-    where write = {-eeesp ("REC wr2", s) $-} reca a
-          R _ (Receiver s reca) = ra
-          ra = r h vra
+wr :: Typeable w => History w -> V a -> a -> Write
+-- wr :: W -> V a -> a -> Write
+-- wr w VRoot _ = undefined "Can't write to root"
+wr h (VConst _) _ = undefined "Can't write to a const"
+wr h (VApp vfbfa vb) b = wr h (VSeal (VPartialApp vfbfa vb)) b
+  --where -- write = Write [Write1 vb b']
+  --      write = reca a
+  --      rbra = r w vfbfa
+  --      -- ra = rbra rb
+  --      R _ (Receiver reca) = rbra rb
+  --      rb = R b (Receiver $ \b' -> Write [Write1 vb b'])
+  --      b = r w vb
+  --      --b' = undefined
+-- Good gravy why is this not needed?
+wr h (VPartialApp vf va) _ = error "Why is this error not happening"
+wr h (VSeal vra) a = write
+  where write = {-eeesp ("REC wr2", s) $-} reca a
+        R _ (Receiver s reca) = ra
+        ra = r h vra
 
 -- Monad!
-type TMI h w a = (History h w) => StateT (h w) IO a
+type TMI w a = StateT (History w) IO a
 
-tmiRun :: (Typeable w, History h w) => h w -> TMI h w a -> IO (a, h w)
+tmiRun :: (Typeable w) => History w -> TMI w a -> IO (a, History w)
 tmiRun history action = do
   runStateT action history
 
-propagateFully :: (Typeable w, History h w) => h w -> Write -> w
+propagateFully :: (Typeable w) => History w -> Write -> w
 propagateFully = propagateOneAtATime
 
 -- This only works for a single assignment that always propagates to a single
 -- assignment
-propagateOneAtATime :: (Typeable w, History h w) => h w -> Write -> w
+propagateOneAtATime :: (Typeable w) => History w -> Write -> w
 propagateOneAtATime h (Write [Write1 VRoot w]) = sinfulCast w
 propagateOneAtATime h (Write [Write1 va a]) =
   let write' = wr h va a
@@ -196,7 +190,7 @@ propagateOneAtATime h (Write [Write1 va a]) =
   -- wr :: h w -> V a -> a -> Write
 
 infix 4 <---
-(<---) :: (Typeable w, Show a) => V a -> V a -> TMI h w ()
+(<---) :: (Typeable w, Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
   history <- get
   let rvalue = r history vrvalue
@@ -209,25 +203,25 @@ vlvalue <--- vrvalue = do
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
-listen :: Typeable a => V a -> (a -> IO ()) -> TMI h w ()
+listen :: Typeable w => V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
   history <- get
   let listener = Listener v action
       history' = addListener history listener
   put history'
 
---tmiRun :: (Typeable w, History h w) => h w -> TMI h w a -> IO (a, h w)
-persistentTmiRun :: (Typeable w, History h w) => FilePath -> TMI h w a -> IO a
+--tmiRun :: (Typeable w) => h w -> TMI h w a -> IO (a, h w)
+persistentTmiRun :: (Show w, Read w, Typeable w) => FilePath -> TMI w a -> IO a
 persistentTmiRun filename action = do
   history <- readHistory filename
   (a, history') <- tmiRun history action
   writeHistory filename history'
   return a
 
-readHistory :: History h w => FilePath -> IO (h w)
+readHistory :: (Typeable w, Read w) => FilePath -> IO (History w)
 readHistory filename = do
   s <- readFile filename
   return $ fromString s
 
-writeHistory :: History h w => FilePath -> h w -> IO ()
+writeHistory :: (Typeable w, Show w) => FilePath -> History w -> IO ()
 writeHistory filename h = writeFile filename (toString h)

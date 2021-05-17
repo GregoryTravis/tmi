@@ -10,7 +10,8 @@ module Tmi
 , (<**>)
 , (<$$>)
 , History(..)
-, SimpleHistory
+, mkHistory
+, getRoot
 , TMI
 , tmiRun
 , persistentTmiRun

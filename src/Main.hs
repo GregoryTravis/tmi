@@ -11,7 +11,7 @@ import Util
 world :: W
 world = W { anInt = 10, anotherInt = 20 }
 
-history :: SimpleHistory W
+history :: History W
 history = mkHistory world
 
 inc_hy :: R Int -> R Int
@@ -100,7 +100,7 @@ sumV'' = plus <**> anIntV <$$> anotherIntV
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)
 
-action :: StateT (SimpleHistory W) IO ()
+action :: StateT (History W) IO ()
 action = do
       listen splitted listeny
       listen anIntV listeny
