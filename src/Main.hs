@@ -3,8 +3,12 @@ module Main where
 import Control.Monad.State hiding (lift)
 import Data.Dynamic
 
+import Ext
 import Tmi
 import Util
+
+data W = W { anInt :: Int, anotherInt :: Int }
+  deriving (Read, Show)
 
 world :: W
 world = W { anInt = 10, anotherInt = 20 }
@@ -104,7 +108,8 @@ action = do
       listen anIntV listeny
       splitted <--- VConst (80, 90)
 
-main = do
+main = extMain
+_main = do
   -- writeHistory "history.db" history
   (a, history') <- tmiRun history action
   msp a
@@ -121,47 +126,3 @@ main = do
 -- $> :t splitted
 --
 -- $> main
-
--- _main = do
---   -- msp ("leftV", leftV)
---   -- msp ("rightV", rightV)
---   tmiRun @W @Dum world $ do
---     listen aW $ \i -> do
---       msp ("aW", i)
---     listen aV $ \i -> do
---       msp ("aV", i)
---     listen anotherV $ \i -> do
---       msp ("anotherV", i)
---     listen leftV $ \i -> do
---       msp ("leftV", i)
---     listen rightV $ \i -> do
---       msp ("rightV", i)
---     listen andPlusV $ \x -> do
---       msp ("andPlusV", x)
---     -- dump
-
---     -- start
---     --                                                         50
---     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
---     -- w            100                 101                 \ rightV /          101
---     --                                                         51
-
---     leftV <--. 200
---     --                                                         200/125
---     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
---     -- w            250                 251                 \ rightV /          251
---     --                                                         51/126
-
---     rightV <--. 201
---     --                                                         125
---     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
---     -- w            325                 326                 \ rightV /          326
---     --                                                         201
-
---     andPlusV <--. 203
---     --                                                         101
---     -- aW -anIntF-> aV -incF-> * -idF-> anotherV -splitF->+- leftV  -+plusV-> andPLusV
---     -- w            202                 203                 \ rightV /          203
---     --                                                         102
-
---   msp "hi"

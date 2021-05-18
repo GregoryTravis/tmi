@@ -1,6 +1,5 @@
 module Tmi
-( W(..)
-, R(..)
+( R(..)
 , Write
 , V(..)
 , Receiver(..)

@@ -1,8 +1,7 @@
 {-# LANGUAGE ExistentialQuantification, GADTs, StandaloneDeriving #-}
 
 module Curry
-( W(..)
-, R(..)
+( R(..)
 , Write
 , V(..)
 , Receiver(..)
@@ -29,9 +28,6 @@ import Data.Maybe
 import Data.Proxy
 
 import Util
-
-data W = W { anInt :: Int, anotherInt :: Int }
-  deriving (Read, Show)
 
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
