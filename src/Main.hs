@@ -108,8 +108,8 @@ action = do
   listen anIntV listeny
   splitted <--- VConst (80, 90)
 
-main = extMain
-_main = do
+_main = extMain
+main = do
   -- writeHistory "history.db" history
   (a, history') <- tmiRun history action
   msp a

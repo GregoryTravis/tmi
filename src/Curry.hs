@@ -238,7 +238,7 @@ persistentTmiRun filename action = do
 
 readHistory :: (Typeable w, Read w) => FilePath -> IO (History w)
 readHistory filename = do
-  s <- readFile filename
+  s <- readFile' filename
   return $ fromString s
 
 writeHistory :: (Typeable w, Show w) => FilePath -> History w -> IO ()

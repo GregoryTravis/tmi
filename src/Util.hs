@@ -58,10 +58,12 @@ module Util
 , cascade
 , upd
 , transfer
+, readFile'
 ) where
 
 import Control.Exception
 import Data.Containers.ListUtils (nubOrd)
+import Control.DeepSeq
 import Data.List (group, groupBy, maximumBy, minimumBy, sort, isSuffixOf, partition)
 import qualified Data.Map.Strict as M
 import Data.Text (unpack)
@@ -72,7 +74,8 @@ import Data.Typeable (typeOf)
 import qualified Debug.Trace as TR
 import GHC.Conc
 import System.Exit (die)
-import System.IO (appendFile, hFlush, stdout, stderr, hSetBuffering, BufferMode(..))
+import System.IO (appendFile, hFlush, stdout, stderr, hSetBuffering, BufferMode(..), withFile,
+  IOMode(..), hGetContents)
 import System.IO.Unsafe
 import System.Random
 import Text.Pretty.Simple (pShowNoColor)
@@ -368,3 +371,14 @@ transfer ins readyToTransfer = go ins []
         go untransferred alreadyTransferred =
           let (someMoreToTransfer, stillUntransferred) = partition (readyToTransfer untransferred alreadyTransferred) untransferred
            in go stillUntransferred (someMoreToTransfer ++ alreadyTransferred)
+
+readFile' :: FilePath -> IO String
+readFile' filePath = do
+  -- handle <- openFile filePath ReadMode
+  -- contents <- hGetContents handle
+  -- hClose handle
+  -- return contents
+  withFile filePath ReadMode $ \handle -> do
+    contents <- hGetContents handle
+    return $!! contents
+    -- return $ length contents `seq` contents
