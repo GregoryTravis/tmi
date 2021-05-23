@@ -107,6 +107,7 @@ action = do
   listen splitted listeny
   listen anIntV listeny
   splitted <--- VConst (80, 90)
+  anotherIntV <--- VConst 200
 
 _main = extMain
 main = do
