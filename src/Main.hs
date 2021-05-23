@@ -109,8 +109,8 @@ action = do
   splitted <--- VConst (80, 90)
   anotherIntV <--- VConst 200
 
-_main = extMain
-main = do
+main = extMain
+_main = do
   -- writeHistory "history.db" history
   (a, history') <- tmiRun history action
   msp a
