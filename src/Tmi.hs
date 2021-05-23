@@ -9,6 +9,7 @@ module Tmi
 , (<**>)
 , (<$$>)
 , History(..)
+, TmiState(..)
 , mkHistory
 , getRoot
 , TMI

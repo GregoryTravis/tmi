@@ -102,11 +102,11 @@ sumV'' = plus <**> anIntV <$$> anotherIntV
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)
 
-action :: StateT (History W) IO ()
+action :: StateT (TmiState W) IO ()
 action = do
-      listen splitted listeny
-      listen anIntV listeny
-      splitted <--- VConst (80, 90)
+  listen splitted listeny
+  listen anIntV listeny
+  splitted <--- VConst (80, 90)
 
 main = extMain
 _main = do

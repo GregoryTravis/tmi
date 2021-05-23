@@ -11,6 +11,7 @@ module Curry
 , (<**>)
 , (<$$>)
 , History(..)
+, TmiState(..)
 , mkHistory
 , getRoot
 , TMI
@@ -33,6 +34,8 @@ import Util
 data Write1 = forall a. Show a => Write1 (V a) a
 deriving instance Show Write1
 data Write = Write [Write1] deriving Show
+emptyWrite :: Write
+emptyWrite = Write []
 instance Semigroup Write where
   Write ws <> Write ws' = Write $ ws ++ ws'
 data Receiver a = Receiver String (a -> Write)
@@ -165,45 +168,65 @@ wr h (VSeal vra) a = write
         ra = r h vra
 
 -- Monad!
-type TMI w a = StateT (History w) IO a
+
+data TmiState w = TmiState Write (History w)
+initTmiState :: History w -> TmiState w
+initTmiState h = TmiState emptyWrite h
+
+type TMI w a = StateT (TmiState w) IO a
 
 tmiRun :: (Typeable w) => History w -> TMI w a -> IO (a, History w)
 tmiRun history action = do
-  runStateT action history
+  let ts = initTmiState history
+  -- TODO need to check that history hasn't changed here?
+  (a, TmiState write _) <- runStateT action ts
+  -- massert "action changed history" (history == history'')
+  let history' = propagateFully history write
+  liftIO $ runListeners history'
+  return (a, history')
 
-propagateFully :: (Typeable w) => History w -> Write -> w
+propagateFully :: (Typeable w) => History w -> Write -> History w
 propagateFully = propagateOneAtATime
 
--- This only works for a single assignment that always propagates to a single
--- assignment
-propagateOneAtATime :: (Typeable w) => History w -> Write -> w
-propagateOneAtATime h (Write [Write1 VRoot w]) = sinfulCast w
-propagateOneAtATime h (Write [Write1 va a]) =
+-- Propagate writes one at a time, all the way to the root. So it's sequential.
+propagateOneAtATime :: (Typeable w) => History w -> Write -> History w
+propagateOneAtATime h (Write (w:ws)) =
+  let w' = propagateOne h first
+      h' = newGeneration h w'
+      first = Write [w]
+      rest = Write ws
+   in propagateOneAtATime h' rest
+propagateOneAtATime h (Write []) = h
+
+propagateOne :: (Typeable w) => History w -> Write -> w
+propagateOne h (Write [Write1 VRoot w]) = sinfulCast w
+propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
-   in propagateOneAtATime h write'
+   in propagateOne h write'
 
   -- wr :: h w -> V a -> a -> Write
 
+-- It is critical that history is not modified, only write
 infix 4 <---
 (<---) :: (Typeable w, Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
-  history <- get
+  TmiState write history <- get
   let rvalue = r history vrvalue
-      write = Write [Write1 vlvalue rvalue]
-      w' = propagateFully history write
-      history' = newGeneration history w'
-  put history'
-  liftIO $ runListeners history'
+      write' = Write [Write1 vlvalue rvalue]
+      -- w' = propagateFully history write
+      -- history' = newGeneration history w'
+  put $ TmiState (write <> write') history
+  -- liftIO $ runListeners history'
   return ()
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
 listen :: Typeable w => V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
-  history <- get
+  TmiState write history <- get
   let listener = Listener v action
       history' = addListener history listener
-  put history'
+  put $ TmiState write history'
 
 --tmiRun :: (Typeable w) => h w -> TMI h w a -> IO (a, h w)
 persistentTmiRun :: (Show w, Read w, Typeable w) => FilePath -> TMI w a -> IO a
