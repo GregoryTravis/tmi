@@ -4,16 +4,22 @@ module Ext
 ( extMain
 ) where
 
+import Data.Time.Clock (UTCTime, getCurrentTime)
 import Control.Monad.State hiding (lift)
 
 import Tmi
 import Util
 
+data Request a = Request (IO a)
+
 data W = W
-  { invitedUsers :: [String] }
+  { invitedUsers :: [String]
+  }
   deriving Show
 
-world = W { invitedUsers = [] }
+world = W
+  { invitedUsers = []
+  }
 
 history :: History W
 history = mkHistory world
@@ -38,10 +44,30 @@ action = do
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
   listen invitedUsersV listeny
-  invitedUsersV <--- VConst ["a"]
+  invitedUsersV <--- VConst ["b"]
+
+modString_for :: String -> String
+modString_for = (++ "!")
+modString_rev :: R String -> String -> Write
+modString_rev (R _ rs) newS =
+  rs <-- init newS
+modStringV :: V (R String -> R String)
+modStringV = VConst $ hybrid1 modString_for modString_rev
+
+-- requests = map toRequest invitedUsersV
+-- duped = mapV modStringV invitedUsersV
 
 extMain = do
   (a, history') <- tmiRun history action
   msp a
   msp history'
   msp "ext hi"
+
+-- $> :t invitedUsersV
+--
+{- $>
+expr1
+expr2
+...
+exprN
+<$ -}

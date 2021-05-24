@@ -120,10 +120,4 @@ _main = do
 
 -- $> :module +*Curry
 --
--- $> :t sumV''
---
--- $> :t inced
---
--- $> :t splitted
---
--- $> main
+-- $> :module +*Ext
