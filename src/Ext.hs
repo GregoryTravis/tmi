@@ -4,7 +4,9 @@ module Ext
 ( extMain
 ) where
 
+-- import Data.Dynamic
 import Data.Time.Clock (UTCTime, getCurrentTime)
+-- import Data.Typeable
 import Control.Monad.State hiding (lift)
 
 import Tmi
@@ -56,18 +58,23 @@ modStringV = VConst $ hybrid1 modString_for modString_rev
 
 -- requests = map toRequest invitedUsersV
 -- duped = mapV modStringV invitedUsersV
+-- mapV :: V (R String -> R String) -> V [String] -> V [String]
+-- mapV :: V (R a -> R a) -> V [a] -> V [a]
+-- mapV :: V (R (a -> b) -> R [a] -> R [b])
+-- mapV = undefined
+
+map_for :: (String -> String) -> [String] -> [String]
+map_for = map
+map_rev :: R (String -> String) -> R [String] -> [String] -> Write
+map_rev = undefined
+map_hy :: R (String -> String) -> R [String] -> R [String]
+map_hy = hybrid2 map_for map_rev
 
 extMain = do
   (a, history') <- tmiRun history action
   msp a
   msp history'
+  -- msp $ typeOf map_hy
   msp "ext hi"
 
 -- $> :t invitedUsersV
---
-{- $>
-expr1
-expr2
-...
-exprN
-<$ -}

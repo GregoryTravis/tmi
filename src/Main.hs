@@ -116,8 +116,15 @@ _main = do
   msp a
   msp history'
   () <- persistentTmiRun "history.db" action
+  -- msp $ typeOf inc_hy
   msp "curry hi"
 
 -- $> :module +*Curry
 --
 -- $> :module +*Ext
+--
+-- $> :t inc_hy
+--
+-- $> :module +*Ext
+--
+-- $> main
