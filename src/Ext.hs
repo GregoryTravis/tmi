@@ -63,12 +63,34 @@ modStringV = VConst $ hybrid1 modString_for modString_rev
 -- mapV :: V (R (a -> b) -> R [a] -> R [b])
 -- mapV = undefined
 
+--hmm_for :: (String -> String) -> [String] -> [String]
+--hmm_for = undefined
+---- hmm_rev :: (R String -> String -> Write) -> R [String] -> [String] -> Write
+--hmm_rev :: (R String -> R String) -> R [String] -> [String] -> Write
+--hmm_rev = undefined
+----hmm :: (R String -> R String) -> R [String] -> R [String]
+--hmm = hybrid2 hmm_for hmm_rev
+
 map_for :: (String -> String) -> [String] -> [String]
 map_for = map
 map_rev :: R (String -> String) -> R [String] -> [String] -> Write
 map_rev = undefined
 map_hy :: R (String -> String) -> R [String] -> R [String]
 map_hy = hybrid2 map_for map_rev
+
+-- map_for :: (String -> String) -> [String] -> [String]
+-- map_for = map
+-- map_rev :: R (String -> String) -> R [String] -> [String] -> Write
+-- map_rev = undefined
+-- map_hy :: R (String -> String) -> R [String] -> R [String]
+-- map_hy = hybrid2 map_for map_rev
+
+-- gmap_for :: (a -> a) -> [a] -> [a]
+-- gmap_for = map
+-- gmap_rev :: R (a -> a) -> R [a] -> [a] -> Write
+-- gmap_rev = undefined
+-- gmap_hy :: R (a -> a) -> R [a] -> R [a]
+-- gmap_hy = hybrid2 gmap_for gmap_rev
 
 extMain = do
   (a, history') <- tmiRun history action

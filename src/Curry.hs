@@ -27,6 +27,7 @@ import Control.Monad.State.Lazy
 import Data.Dynamic
 import Data.Maybe
 import Data.Proxy
+import Unsafe.Coerce
 
 import Util
 
@@ -61,20 +62,20 @@ hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
         rz = Receiver "hybrid2" $ \x -> r ra rb x
 
 data V a where
-  VRoot :: Typeable a => V a
-  VConst :: (Show a, Typeable a) => a -> V a
-  VPartialApp :: (Show a, Typeable a) => V (R a -> rest) -> V a -> V rest
-  VApp :: (Typeable a, Typeable b, Show a, Show b) => V (R b -> R a) -> V b -> V a
-  VSeal :: (Show a, Typeable a) => V (R a) -> V a
+  VRoot :: V a
+  VConst :: (Show a) => a -> V a
+  VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
+  VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
+  VSeal :: (Show a) => V (R a) -> V a
 
 -- more succinct
-k :: (Show a, Typeable a) => a -> V a
+k :: (Show a) => a -> V a
 k = VConst
 infixl 4 <**>
-(<**>) :: (Show a, Typeable a) => V (R a -> rest) -> V a -> V rest
+(<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 (<**>) = VPartialApp
 infixl 4 <$$>
-(<$$>) :: (Typeable a, Typeable b, Show a, Show b) => V (R b -> R a) -> V b -> V a
+(<$$>) :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
 (<$$>) = VApp
 
 -- app2 :: V (R a -> R b -> R c) -> V a -> V (R b -> R c)
@@ -91,8 +92,8 @@ instance Show a => Show (V a) where
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
-sinfulCast :: (Typeable a, Typeable b) => a -> b
-sinfulCast = fromJust . fromDynamic . toDyn
+-- sinfulCast :: a -> b
+-- sinfulCast = fromJust . fromDynamic . toDyn
 
 -- Stored in reverse order
 data History w = History [w] [Listener]
@@ -100,34 +101,34 @@ data History w = History [w] [Listener]
 instance Show w => Show (History w) where
   show (History ws _) = show ws
 
-mkHistory :: Typeable w => w -> History w
+mkHistory :: w -> History w
 mkHistory w = History [w] []
 
-getRoot :: Typeable w => History w -> V w
+getRoot :: History w -> V w
 getRoot (History (w:_) _) = VRoot
 
-newGeneration :: Typeable w => History w -> w -> History w
+newGeneration :: History w -> w -> History w
 newGeneration (History ws ls) w = History (w:ws) ls
 
-addListener :: Typeable w => History w -> Listener -> History w
+addListener :: History w -> Listener -> History w
 addListener (History ws listeners) listener =
   History ws (listener:listeners)
 
-runListeners :: Typeable w => History w -> IO ()
+runListeners :: History w -> IO ()
 runListeners h@(History _ ls) = mapM_ runListener ls
   where runListener (Listener va action) = do
           let a = r h va
           action a
 
-toString :: (Show w, Typeable w) => History w -> String
+toString :: (Show w) => History w -> String
 toString (History ws _) = show ws
-fromString :: (Read w, Typeable w) => String -> History w
+fromString :: (Read w) => String -> History w
 fromString s = History ws []
   where ws = read s
 
-r :: Typeable w => History w -> V a -> a
+r :: History w -> V a -> a
 -- r :: W -> V a -> a
-r (History (w:_) _) VRoot = sinfulCast w
+r (History (w:_) _) VRoot = unsafeCoerce w
 r _ (VConst x) = x
 -- TODO not crazy about constructing receivers here
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
@@ -147,7 +148,7 @@ r h (VPartialApp vf va) = paf
         ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
         paf = f ra
 
-wr :: Typeable w => History w -> V a -> a -> Write
+wr :: History w -> V a -> a -> Write
 -- wr :: W -> V a -> a -> Write
 -- wr w VRoot _ = undefined "Can't write to root"
 wr h (VConst _) _ = undefined "Can't write to a const"
@@ -175,7 +176,7 @@ initTmiState h = TmiState emptyWrite h
 
 type TMI w a = StateT (TmiState w) IO a
 
-tmiRun :: (Typeable w) => History w -> TMI w a -> IO (a, History w)
+tmiRun :: History w -> TMI w a -> IO (a, History w)
 tmiRun history action = do
   let ts = initTmiState history
   -- TODO need to check that history hasn't changed here?
@@ -185,11 +186,11 @@ tmiRun history action = do
   liftIO $ runListeners history'
   return (a, history')
 
-propagateFully :: (Typeable w) => History w -> Write -> History w
+propagateFully :: History w -> Write -> History w
 propagateFully = propagateOneAtATime
 
 -- Propagate writes one at a time, all the way to the root. So it's sequential.
-propagateOneAtATime :: (Typeable w) => History w -> Write -> History w
+propagateOneAtATime :: History w -> Write -> History w
 propagateOneAtATime h (Write (w:ws)) =
   let w' = propagateOne h first
       h' = newGeneration h w'
@@ -198,8 +199,8 @@ propagateOneAtATime h (Write (w:ws)) =
    in propagateOneAtATime h' rest
 propagateOneAtATime h (Write []) = h
 
-propagateOne :: (Typeable w) => History w -> Write -> w
-propagateOne h (Write [Write1 VRoot w]) = sinfulCast w
+propagateOne :: History w -> Write -> w
+propagateOne h (Write [Write1 VRoot w]) = unsafeCoerce w
 propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
    in propagateOne h write'
@@ -208,7 +209,7 @@ propagateOne h (Write [Write1 va a]) =
 
 -- It is critical that history is not modified, only write
 infix 4 <---
-(<---) :: (Typeable w, Show a) => V a -> V a -> TMI w ()
+(<---) :: (Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
   TmiState write history <- get
   let rvalue = r history vrvalue
@@ -221,25 +222,25 @@ vlvalue <--- vrvalue = do
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
-listen :: Typeable w => V a -> (a -> IO ()) -> TMI w ()
+listen :: V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
   TmiState write history <- get
   let listener = Listener v action
       history' = addListener history listener
   put $ TmiState write history'
 
---tmiRun :: (Typeable w) => h w -> TMI h w a -> IO (a, h w)
-persistentTmiRun :: (Show w, Read w, Typeable w) => FilePath -> TMI w a -> IO a
+--tmiRun :: h w -> TMI h w a -> IO (a, h w)
+persistentTmiRun :: (Show w, Read w) => FilePath -> TMI w a -> IO a
 persistentTmiRun filename action = do
   history <- readHistory filename
   (a, history') <- tmiRun history action
   writeHistory filename history'
   return a
 
-readHistory :: (Typeable w, Read w) => FilePath -> IO (History w)
+readHistory :: (Read w) => FilePath -> IO (History w)
 readHistory filename = do
   s <- readFile' filename
   return $ fromString s
 
-writeHistory :: (Typeable w, Show w) => FilePath -> History w -> IO ()
+writeHistory :: (Show w) => FilePath -> History w -> IO ()
 writeHistory filename h = writeFile filename (toString h)
