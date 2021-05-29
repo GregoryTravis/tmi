@@ -20,6 +20,8 @@ module Curry
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
+-- TODO remove after moving listeners out of history
+, runListeners
 ) where
 
 import Control.Monad.Cont
@@ -180,7 +182,7 @@ tmiRun :: History w -> TMI w a -> IO (a, History w)
 tmiRun history action = do
   let ts = initTmiState history
   -- TODO need to check that history hasn't changed here?
-  (a, TmiState write _) <- runStateT action ts
+  (a, TmiState write history) <- runStateT action ts
   -- massert "action changed history" (history == history'')
   let history' = propagateFully history write
   liftIO $ runListeners history'

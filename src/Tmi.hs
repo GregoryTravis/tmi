@@ -18,6 +18,8 @@ module Tmi
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
+-- TODO remove after moving listeners out of history
+, runListeners
 ) where
 
 import Data.Dynamic

@@ -36,17 +36,11 @@ _invitedUsers = VConst __invitedUsers
                 ri = Receiver "_invitedUsers" $ \newI ->
                     rw <-- w { invitedUsers = newI }
 
+invitedUsersV :: V [String]
 invitedUsersV = _invitedUsers <$$> vw
 
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)
-
-action :: StateT (TmiState W) IO ()
-action = do
-  -- TODO we shouldn't change history in an action, and also it's ignored, so
-  -- this doesn't work
-  listen invitedUsersV listeny
-  invitedUsersV <--- VConst ["b"]
 
 modString_for :: String -> String
 modString_for = (++ "!")
@@ -63,40 +57,41 @@ modStringV = VConst $ hybrid1 modString_for modString_rev
 -- mapV :: V (R (a -> b) -> R [a] -> R [b])
 -- mapV = undefined
 
---hmm_for :: (String -> String) -> [String] -> [String]
---hmm_for = undefined
----- hmm_rev :: (R String -> String -> Write) -> R [String] -> [String] -> Write
---hmm_rev :: (R String -> R String) -> R [String] -> [String] -> Write
---hmm_rev = undefined
-----hmm :: (R String -> R String) -> R [String] -> R [String]
---hmm = hybrid2 hmm_for hmm_rev
+-- TODO this doesn't seem right
+hyGetFor1 :: (R a -> R b) -> (a -> b)
+hyGetFor1 rf a =
+  case rf (R a (error "whoopsie hyGetFor1")) of
+    R b _ -> b
+hyGetRev1 :: (R a -> R b) -> (R a -> b -> Write)
+hyGetRev1 = undefined
 
-map_for :: (String -> String) -> [String] -> [String]
-map_for = map
-map_rev :: R (String -> String) -> R [String] -> [String] -> Write
-map_rev = undefined
-map_hy :: R (String -> String) -> R [String] -> R [String]
-map_hy = hybrid2 map_for map_rev
+map_for :: (R a -> R b) -> [a] -> [b]
+map_for rf as = map (hyGetFor1 rf) as
+map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
+map_rev rf oas bs = undefined -- map (zipWith 
+mapHy :: R (R a -> R b) -> R [a] -> R [b]
+mapHy = hybrid2 map_for map_rev
+mapV :: V (R (R a -> R b) -> R [a] -> R [b])
+mapV = VConst mapHy
 
--- map_for :: (String -> String) -> [String] -> [String]
--- map_for = map
--- map_rev :: R (String -> String) -> R [String] -> [String] -> Write
--- map_rev = undefined
--- map_hy :: R (String -> String) -> R [String] -> R [String]
--- map_hy = hybrid2 map_for map_rev
+-- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
+modded = mapV <**> modStringV <$$> invitedUsersV
 
--- gmap_for :: (a -> a) -> [a] -> [a]
--- gmap_for = map
--- gmap_rev :: R (a -> a) -> R [a] -> [a] -> Write
--- gmap_rev = undefined
--- gmap_hy :: R (a -> a) -> R [a] -> R [a]
--- gmap_hy = hybrid2 gmap_for gmap_rev
+action :: StateT (TmiState W) IO ()
+action = do
+  -- TODO we shouldn't change history in an action, and also it's ignored, so
+  -- this doesn't work
+  listen invitedUsersV listeny
+  listen modded listeny
+  invitedUsersV <--- VConst ["b", "heyo"]
+  -- modded <--- VConst ["c!", "deyo!"]
 
 extMain = do
   (a, history') <- tmiRun history action
   msp a
   msp history'
-  -- msp $ typeOf map_hy
+  runListeners history'
+  msp $ case history' of History _ listeners -> length listeners
   msp "ext hi"
 
 -- $> :t invitedUsersV
