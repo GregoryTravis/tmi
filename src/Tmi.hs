@@ -1,6 +1,7 @@
 module Tmi
 ( R(..)
-, Write
+, Write(..)
+, Write1(..)
 , emptyWrite
 , V(..)
 , Receiver(..)

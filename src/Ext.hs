@@ -82,6 +82,19 @@ map_rev (R rf _) (R oas (Receiver _ ras)) bs =
             rec a' = ras $ upd oas i a'
          in rev r b
    in foldr (<>) emptyWrite writes
+-- map_rev (R rf _) (R oas ras) bs =
+--   let ize = [0 .. length bs - 1]
+--       rev = hyGetRev1 rf
+--       nas = map wr ize
+--       wr i =
+--         let r = R oa (Receiver "map_rev" rec)
+--             rec a = Write [Write1 (VConst undefined) a]
+--             wrt = rev r b
+--             na = case wrt of Write [Write1 _ na] -> na
+--             oa = oas !! i
+--             b = bs !! i
+--          in na
+--    in ras <-- nas
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
@@ -97,7 +110,7 @@ action = do
   listen invitedUsersV listeny
   listen modded listeny
   invitedUsersV <--- VConst ["b", "heyo", "hippo"]
-  modded <--- VConst ["c!", "deyo!", "lippo!"]
+  -- modded <--- VConst ["c!", "deyo!", "lippo!"]
 
 extMain = do
   (a, history') <- tmiRun history action

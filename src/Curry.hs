@@ -2,7 +2,8 @@
 
 module Curry
 ( R(..)
-, Write
+, Write(..)
+, Write1(..)
 , emptyWrite
 , V(..)
 , Receiver(..)
