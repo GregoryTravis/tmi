@@ -63,12 +63,25 @@ hyGetFor1 rf a =
   case rf (R a (error "whoopsie hyGetFor1")) of
     R b _ -> b
 hyGetRev1 :: (R a -> R b) -> (R a -> b -> Write)
-hyGetRev1 = undefined
+hyGetRev1 rf ra =
+  let (R _ (Receiver _ rb)) = rf ra
+   in rb
 
 map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf as = map (hyGetFor1 rf) as
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
-map_rev rf oas bs = undefined -- map (zipWith 
+map_rev (R rf _) (R oas (Receiver _ ras)) bs =
+  let ize = [0 .. length bs - 1]
+      rev = hyGetRev1 rf
+      writes = map wr ize
+      wr i =
+        let b = bs !! i
+            oa = oas !! i
+            r = R oa (Receiver "map_rev" rec)
+            -- rec :: a -> Write
+            rec a' = ras $ upd oas i a'
+         in rev r b
+   in foldr (<>) emptyWrite writes
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
@@ -83,8 +96,8 @@ action = do
   -- this doesn't work
   listen invitedUsersV listeny
   listen modded listeny
-  invitedUsersV <--- VConst ["b", "heyo"]
-  -- modded <--- VConst ["c!", "deyo!"]
+  invitedUsersV <--- VConst ["b", "heyo", "hippo"]
+  modded <--- VConst ["c!", "deyo!", "lippo!"]
 
 extMain = do
   (a, history') <- tmiRun history action

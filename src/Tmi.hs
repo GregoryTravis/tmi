@@ -1,6 +1,7 @@
 module Tmi
 ( R(..)
 , Write
+, emptyWrite
 , V(..)
 , Receiver(..)
 , hybrid1

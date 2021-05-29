@@ -3,6 +3,7 @@
 module Curry
 ( R(..)
 , Write
+, emptyWrite
 , V(..)
 , Receiver(..)
 , hybrid1
@@ -206,6 +207,7 @@ propagateOne h (Write [Write1 VRoot w]) = unsafeCoerce w
 propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
    in propagateOne h write'
+propagateOne h (Write writes) = error ("Non-singular write (" ++ (show (length writes)) ++ ")")
 
   -- wr :: h w -> V a -> a -> Write
 
