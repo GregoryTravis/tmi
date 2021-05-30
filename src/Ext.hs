@@ -71,30 +71,16 @@ map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf as = map (hyGetFor1 rf) as
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
 map_rev (R rf _) (R oas (Receiver _ ras)) bs =
-  let ize = [0 .. length bs - 1]
+  let -- foo :: [a] -> [b] -> Write
+      -- TODO not have to reverse this?
+      foo nas [] [] = ras (reverse nas)
+      foo nas (oa:oas) (b:bs) =
+        let ra = R oa (Receiver "map_rev" cont)
+            cont na = foo (na:nas) oas bs
+         in rev ra b
+      -- rev :: R a -> b -> Write
       rev = hyGetRev1 rf
-      writes = map wr ize
-      wr i =
-        let b = bs !! i
-            oa = oas !! i
-            r = R oa (Receiver "map_rev" rec)
-            -- rec :: a -> Write
-            rec a' = ras $ upd oas i a'
-         in rev r b
-   in foldr (<>) emptyWrite writes
--- map_rev (R rf _) (R oas ras) bs =
---   let ize = [0 .. length bs - 1]
---       rev = hyGetRev1 rf
---       nas = map wr ize
---       wr i =
---         let r = R oa (Receiver "map_rev" rec)
---             rec a = Write [Write1 (VConst undefined) a]
---             wrt = rev r b
---             na = case wrt of Write [Write1 _ na] -> na
---             oa = oas !! i
---             b = bs !! i
---          in na
---    in ras <-- nas
+   in foo [] oas bs
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
@@ -110,7 +96,7 @@ action = do
   listen invitedUsersV listeny
   listen modded listeny
   invitedUsersV <--- VConst ["b", "heyo", "hippo"]
-  -- modded <--- VConst ["c!", "deyo!", "lippo!"]
+  modded <--- VConst ["c!", "deyo!", "lippo!"]
 
 extMain = do
   (a, history') <- tmiRun history action
