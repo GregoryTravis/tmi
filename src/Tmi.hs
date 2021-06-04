@@ -7,6 +7,7 @@ module Tmi
 , Receiver(..)
 , hybrid1
 , hybrid2
+, hybrid3
 , (<--)
 , (<**>)
 , (<$$>)
