@@ -106,15 +106,23 @@ mapV = VConst mapHy
 --     then []
 --     else (f (head xs)) : (map f (tail xs))
 
--- -- External
--- mapVE :: V (a -> b) -> V [a] -> V [b]
--- mapVE vf vas =
---   ifV <**> (
+-- External
+mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
+mapVE vf vas =
+  ifV <**> (nullV <$$> vas)
+      <**> (VConst [])
+      <$$> (consV <**> (vf <$$> (headV <$$> vas))
+                  <$$> (mapVE vf
+                         (tailV <$$> vas)))
 
 ifV_for :: Bool -> a -> a -> a
 ifV_for b t e = if b then t else e
 ifV_rev :: R Bool -> R a -> R a -> a -> Write
-ifV_rev = undefined
+-- ifV_rev = error "ifV_rev"
+-- ifV_rev _ _  _ _ = emptyWrite
+ifV_rev (R b _rb) (R t rt) (R e re) x =
+  let Receiver _ rec = if b then rt else re
+   in rec x
 ifV :: V (R Bool -> R a -> R a -> R a)
 ifV = VConst $ hybrid3 ifV_for ifV_rev
 
@@ -136,6 +144,7 @@ consR :: R a -> R [a] -> R [a]
 consR (R a ra) (R as ras) = R as' ras'
   where as' = a:as
         ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> (ras <-- as')
+consV :: V (R a -> R [a] -> R [a])
 consV = VConst consR
 
 nullR :: R [a] -> R Bool
@@ -147,35 +156,46 @@ nullV = VConst nullR
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
 
+inc_hy :: R Int -> R Int
+inc_hy (R x rx) = R x' rx'
+  where x' = x + 1
+        rx' = Receiver "inc_hy" $ \x ->
+          rx <-- (x - 1)
+incV :: V (R Int -> R Int)
+incV = VConst inc_hy
+
 action :: StateT (TmiState W) IO ()
 action = do
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
   listen invitedUsersV listeny
   listen modded listeny
-  listen (ifV <**> VConst True <**> VConst 2 <$$> VConst 3) listeny
-  listen (ifV <**> VConst False <**> VConst 2 <$$> VConst 3) listeny
-  listen (headV <$$> VConst [3, 4, 5]) listeny
-  listen (tailV <$$> VConst [3, 4, 5]) listeny
+  -- listen (ifV <**> VConst True <**> VConst 2 <$$> VConst 3) listeny
+  -- listen (ifV <**> VConst False <**> VConst 2 <$$> VConst 3) listeny
+  -- listen (headV <$$> VConst [3, 4, 5]) listeny
+  -- listen (tailV <$$> VConst [3, 4, 5]) listeny
   listen (_aList <$$> vw) listeny
-  listen (headV <$$> (_aList <$$> vw)) listeny
-  listen (tailV <$$> (_aList <$$> vw)) listeny
-  listen (consV <**> (headV <$$> (_aList <$$> vw))
-                <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
+  -- listen (headV <$$> (_aList <$$> vw)) listeny
+  -- listen (tailV <$$> (_aList <$$> vw)) listeny
+  -- listen (consV <**> (headV <$$> (_aList <$$> vw))
+  --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
+  let mapped = mapVE incV (_aList <$$> vw)
+  listen mapped listeny
   invitedUsersV <--- VConst ["b", "heyo", "hippo"]
   modded <--- VConst ["c!", "deyo!", "lippo!"]
-  (headV <$$> (_aList <$$> vw)) <--- VConst 31
-  (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
+  -- mapped <--- VConst [302, 402, 502]
+  -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
+  -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
   -- Non-singular write
   -- (consV <**> (headV <$$> (_aList <$$> vw))
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) <--- VConst [310, 520]
 
 extMain = do
   (a, history') <- tmiRun history action
-  msp a
-  msp history'
-  runListeners history'
-  msp $ case history' of History _ listeners -> length listeners
+  msp $ "result " ++ show a
+  -- msp history'
+  -- runListeners history'
+  -- msp $ case history' of History _ listeners -> length listeners
   -- msp $ map (+1) [3, 4, 5]
   -- msp $ mapE (+1) [3, 4, 5]
   -- msp $ mapE' (+1) [3, 4, 5]

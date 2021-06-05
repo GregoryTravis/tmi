@@ -210,11 +210,12 @@ propagateOneAtATime h (Write (w:ws)) =
 propagateOneAtATime h (Write []) = h
 
 propagateOne :: History w -> Write -> w
+propagateOne h (Write []) = r h VRoot
 propagateOne h (Write [Write1 VRoot w]) = unsafeCoerce w
 propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
    in propagateOne h write'
-propagateOne h (Write writes) = error ("Non-singular write (" ++ (show (length writes)) ++ ")")
+propagateOne h (Write writes) = error ("Non-singular write (" ++ (show writes) ++ ")")
 
   -- wr :: h w -> V a -> a -> Write
 
