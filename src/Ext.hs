@@ -32,14 +32,14 @@ vw :: V W
 vw = getRoot history
 
 _invitedUsers :: V (R W -> R [String])
-_invitedUsers = VConst __invitedUsers
+_invitedUsers = VConst "__invitedUsers" __invitedUsers
   where __invitedUsers (R w rw) = (R i ri)
           where i = invitedUsers w
                 ri = Receiver "_invitedUsers" $ \newI ->
                     rw <-- w { invitedUsers = newI }
 
 _aList :: V (R W -> R [Int])
-_aList = VConst __aList
+_aList = VConst "__aList" __aList
   where __aList (R w rw) = (R i ri)
           where i = aList w
                 ri = Receiver "_aList" $ \newI ->
@@ -57,7 +57,7 @@ modString_rev :: R String -> String -> Write
 modString_rev (R _ rs) newS =
   rs <-- init newS
 modStringV :: V (R String -> R String)
-modStringV = VConst $ hybrid1 modString_for modString_rev
+modStringV = VConst "modStringV" $ hybrid1 modString_for modString_rev
 
 -- requests = map toRequest invitedUsersV
 -- duped = mapV modStringV invitedUsersV
@@ -93,7 +93,7 @@ map_rev (R rf _) (R oas (Receiver _ ras)) bs =
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
-mapV = VConst mapHy
+mapV = VConst "mapV" mapHy
 
 -- -- External map
 -- -- Just writing it in regular and primitive forms
@@ -110,7 +110,7 @@ mapV = VConst mapHy
 mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
 mapVE vf vas =
   ifV <**> (nullV <$$> vas)
-      <**> (VConst [])
+      <**> (VConst "[]" [])
       <$$> (consV <**> (vf <$$> (headV <$$> vas))
                   <$$> (mapVE vf
                          (tailV <$$> vas)))
@@ -124,34 +124,34 @@ ifV_rev (R b _rb) (R t rt) (R e re) x =
   let Receiver _ rec = if b then rt else re
    in rec x
 ifV :: V (R Bool -> R a -> R a -> R a)
-ifV = VConst $ hybrid3 ifV_for ifV_rev
+ifV = VConst "ifV" $ hybrid3 ifV_for ifV_rev
 
 headR :: R [a] -> R a
 headR (R as (Receiver _ ras)) = R a ra
   where a = head as
         ra = Receiver "headR" $ \a -> ras (a : tail as)
 headV :: V (R [a] -> R a)
-headV = VConst headR
+headV = VConst "headV" headR
 
 tailR :: R [a] -> R [a]
 tailR (R as (Receiver _ ras)) = R as' ras'
   where as' = tail as
         ras' = Receiver "tailR" $ \as' -> ras (head as : as')
 tailV :: V (R [a] -> R [a])
-tailV = VConst tailR
+tailV = VConst "tailV" tailR
 
 consR :: R a -> R [a] -> R [a]
 consR (R a ra) (R as ras) = R as' ras'
   where as' = a:as
         ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> (ras <-- as')
 consV :: V (R a -> R [a] -> R [a])
-consV = VConst consR
+consV = VConst "consV" consR
 
 nullR :: R [a] -> R Bool
 nullR = hybrid1 null undefined
 
 nullV :: V (R [a] -> R Bool)
-nullV = VConst nullR
+nullV = VConst "nullV" nullR
 
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
@@ -162,7 +162,7 @@ inc_hy (R x rx) = R x' rx'
         rx' = Receiver "inc_hy" $ \x ->
           rx <-- (x - 1)
 incV :: V (R Int -> R Int)
-incV = VConst inc_hy
+incV = VConst "incV" inc_hy
 
 action :: StateT (TmiState W) IO ()
 action = do
@@ -181,8 +181,8 @@ action = do
   --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
   let mapped = mapVE incV (_aList <$$> vw)
   listen mapped listeny
-  invitedUsersV <--- VConst ["b", "heyo", "hippo"]
-  modded <--- VConst ["c!", "deyo!", "lippo!"]
+  invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
+  modded <--- VConst "" ["c!", "deyo!", "lippo!"]
   -- mapped <--- VConst [302, 402, 502]
   -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
   -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]

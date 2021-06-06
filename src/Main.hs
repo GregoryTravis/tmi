@@ -49,14 +49,14 @@ plus_hy' :: R Int -> R Int -> R Int
 plus_hy' = hybrid2 plus_for plus_rev
 
 _anInt :: V (R W -> R Int)
-_anInt = VConst __anInt
+_anInt = VConst "__anInt" __anInt
   where __anInt (R w rw) = (R i ri)
           where i = anInt w
                 ri = Receiver "_anInt" $ \newI ->
                     rw <-- w { anInt = newI }
 
 _anotherInt :: V (R W -> R Int)
-_anotherInt = VConst __anotherInt
+_anotherInt = VConst "__anotherInt" __anotherInt
   where __anotherInt (R w rw) = (R i ri)
           where i = anotherInt w
                 ri = Receiver "_anotherInt" $ \newI ->
@@ -64,13 +64,13 @@ _anotherInt = VConst __anotherInt
 
 -- TODO maybe tf for this?
 incV :: V (R Int -> R Int)
-incV = VConst inc_hy
+incV = VConst "inc_hy" inc_hy
 
 plus :: V (R Int -> R Int -> R Int)
-plus = VConst plus_hy
+plus = VConst "plus_hy" plus_hy
 
 split :: V (R Int -> R (Int, Int))
-split = VConst $ hybrid1 for rev
+split = VConst "split" $ hybrid1 for rev
   where for x = (x', x'')
           where x' = x `div` 2
                 x'' = x - x'
@@ -81,7 +81,7 @@ splitted :: V (Int, Int)
 splitted = split <$$> inced
 
 idV :: Typeable a => V (R a -> R a)
-idV = VConst $ hybrid1 for rev
+idV = VConst "idV" $ hybrid1 for rev
   where for x = x
         rev (R _ rx) x = rx <-- x
 
@@ -106,8 +106,8 @@ action :: StateT (TmiState W) IO ()
 action = do
   listen splitted listeny
   listen anIntV listeny
-  splitted <--- VConst (80, 90)
-  anotherIntV <--- VConst 200
+  splitted <--- VConst "" (80, 90)
+  anotherIntV <--- VConst "" 200
 
 main = extMain
 _main = do

@@ -73,13 +73,13 @@ hybrid3 f r ra@(R x rx) rb@(R y ry) rc@(R z rz) = R w rw
 
 data V a where
   VRoot :: V a
-  VConst :: (Show a) => a -> V a
+  VConst :: (Show a) => String -> a -> V a
   VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
   VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
   VSeal :: (Show a) => V (R a) -> V a
 
 -- more succinct
-k :: (Show a) => a -> V a
+k :: (Show a) => String -> a -> V a
 k = VConst
 infixl 4 <**>
 (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
@@ -97,7 +97,7 @@ instance Show (a -> b) where
 
 instance Show a => Show (V a) where
   show VRoot = "[root]"
-  show (VConst a) = show a
+  show (VConst s a) = "(VConst " ++ s ++ " " ++ show a ++ ")"
   show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
   show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
@@ -139,7 +139,7 @@ fromString s = History ws []
 r :: History w -> V a -> a
 -- r :: W -> V a -> a
 r (History (w:_) _) VRoot = unsafeCoerce w
-r _ (VConst x) = x
+r _ (VConst _ x) = x
 -- TODO not crazy about constructing receivers here
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
 -- r w (VApp vf va) = b
@@ -161,7 +161,7 @@ r h (VPartialApp vf va) = paf
 wr :: History w -> V a -> a -> Write
 -- wr :: W -> V a -> a -> Write
 -- wr w VRoot _ = undefined "Can't write to root"
-wr h (VConst _) _ = undefined "Can't write to a const"
+wr h (VConst s _) _ = error $ "Can't write to a const: " ++ s
 wr h (VApp vfbfa vb) b = wr h (VSeal (VPartialApp vfbfa vb)) b
   --where -- write = Write [Write1 vb b']
   --      write = reca a
