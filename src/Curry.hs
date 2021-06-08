@@ -98,8 +98,10 @@ instance Show (a -> b) where
 instance Show a => Show (V a) where
   show VRoot = "[root]"
   show (VConst s a) = "(VConst " ++ s ++ " " ++ show a ++ ")"
-  show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
-  show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
+  -- show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
+  -- show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
+  show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ "arg" ++ ")"
+  show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ "arg" ++ ")"
   show (VSeal va) = "(seal " ++ (show va) ++ ")"
 
 -- sinfulCast :: a -> b
@@ -216,6 +218,21 @@ propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
    in propagateOne h write'
 propagateOne h (Write writes) = error ("Non-singular write (" ++ (show writes) ++ ")")
+
+-- -- Propagate a write to as many worlds as it wants, then return the original state.
+-- -- Log the many worlds.
+-- propagateFreelyThenDrop :: History w -> Write -> History w
+-- propagateFreelyThenDrop h write =
+--   let worlds = propagateToMany h write
+--    in eesp ("worlds", worlds) h
+
+-- propagateToMany :: History w -> Write -> [w]
+-- propagateToMany h (Write [Write1 VRoot w]) = [unsafeCoerce w]
+-- propagateToMany h (Write wrs) = mconcat (map (propagateToMany . Write . applyOne) wrs)
+--   where applyOne :: Write1 -> Write
+--         applyOne (Write1 va a) =
+--           let write' = wr h va a
+--            in write'
 
   -- wr :: h w -> V a -> a -> Write
 

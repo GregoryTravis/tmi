@@ -183,7 +183,7 @@ action = do
   listen mapped listeny
   invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
   modded <--- VConst "" ["c!", "deyo!", "lippo!"]
-  -- mapped <--- VConst [302, 402, 502]
+  mapped <--- VConst "" [302, 402, 502]
   -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
   -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
   -- Non-singular write
