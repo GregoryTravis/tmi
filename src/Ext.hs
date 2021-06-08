@@ -141,9 +141,13 @@ tailV :: V (R [a] -> R [a])
 tailV = VConst "tailV" tailR
 
 consR :: R a -> R [a] -> R [a]
-consR (R a ra) (R as ras) = R as' ras'
-  where as' = a:as
-        ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> (ras <-- as')
+consR (R a ra) (R as ras) = R newAs ras'
+  where newAs = a:as
+        ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> tailIf as'
+        tailIf as' =
+          if null as && null as'
+            then emptyWrite
+            else ras <-- as'
 consV :: V (R a -> R [a] -> R [a])
 consV = VConst "consV" consR
 
