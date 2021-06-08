@@ -17,12 +17,16 @@ data Request a = Request (IO a)
 data W = W
   { invitedUsers :: [String]
   , aList :: [Int]
+  , anotherList :: [Int]
+  , zero :: Int
   }
   deriving Show
 
 world = W
   { invitedUsers = []
   , aList = [30, 40, 50]
+  , anotherList = [2, 3, 4]
+  , zero = 0
   }
 
 history :: History W
@@ -44,6 +48,20 @@ _aList = VConst "__aList" __aList
           where i = aList w
                 ri = Receiver "_aList" $ \newI ->
                     rw <-- w { aList = newI }
+
+_anotherList :: V (R W -> R [Int])
+_anotherList = VConst "__anotherList" __anotherList
+  where __anotherList (R w rw) = (R i ri)
+          where i = anotherList w
+                ri = Receiver "_anotherList" $ \newI ->
+                    rw <-- w { anotherList = newI }
+
+_zero :: V (R W -> R Int)
+_zero = VConst "__zero" __zero
+  where __zero (R w rw) = (R i ri)
+          where i = zero w
+                ri = Receiver "_zero" $ \newI ->
+                    rw <-- w { zero = newI }
 
 invitedUsersV :: V [String]
 invitedUsersV = _invitedUsers <$$> vw
@@ -115,6 +133,32 @@ mapVE vf vas =
                   <$$> (mapVE vf
                          (tailV <$$> vas)))
 
+-- foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+fyold :: (a -> b -> b) -> b -> [a] -> b
+fyold f b (a:as) = fyold f (f a b) as
+fyold f b [] = b
+fyold' f b as =
+  if null as
+    then b
+    else fyold' f (f (head as) b) (tail as)
+
+foldrVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
+foldrVE vf vb vas =
+  ifV <**> (nullV <$$> vas)
+      <**> vb
+      <$$> (foldrVE vf
+                    (vf <**> (headV <$$> vas) <$$> vb)
+                    (tailV <$$> vas))
+
+shiftNAdd :: R Int -> R Int -> R Int
+shiftNAdd (R x rx) (R y ry) = R z rz
+  where z = y * 10 + x
+        rz = Receiver "shiftNAdd" $ \z' -> let x' = z' `mod` 10
+                                               y' = z' `div` 10
+                                            in (rx <-- x') <> (ry <-- y')
+shiftNAddV :: V (R Int -> R Int -> R Int)
+shiftNAddV = VConst "shiftNAddV" shiftNAdd
+
 ifV_for :: Bool -> a -> a -> a
 ifV_for b t e = if b then t else e
 ifV_rev :: R Bool -> R a -> R a -> a -> Write
@@ -179,15 +223,21 @@ action = do
   -- listen (headV <$$> VConst [3, 4, 5]) listeny
   -- listen (tailV <$$> VConst [3, 4, 5]) listeny
   listen (_aList <$$> vw) listeny
+  listen (_anotherList <$$> vw) listeny
+  listen (_zero <$$> vw) listeny
   -- listen (headV <$$> (_aList <$$> vw)) listeny
   -- listen (tailV <$$> (_aList <$$> vw)) listeny
   -- listen (consV <**> (headV <$$> (_aList <$$> vw))
   --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
   let mapped = mapVE incV (_aList <$$> vw)
+  let aFold :: V Int
+      aFold = foldrVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
   listen mapped listeny
+  listen aFold listeny
   invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
   modded <--- VConst "" ["c!", "deyo!", "lippo!"]
   mapped <--- VConst "" [302, 402, 502]
+  aFold <--- VConst "" (456::Int)
   -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
   -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
   -- Non-singular write
@@ -196,6 +246,8 @@ action = do
 
 extMain = do
   (a, history') <- tmiRun history action
+  -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  -- msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   msp $ "result " ++ show a
   -- msp history'
   -- runListeners history'

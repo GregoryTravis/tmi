@@ -163,7 +163,7 @@ r h (VPartialApp vf va) = paf
 wr :: History w -> V a -> a -> Write
 -- wr :: W -> V a -> a -> Write
 -- wr w VRoot _ = undefined "Can't write to root"
-wr h (VConst s _) _ = error $ "Can't write to a const: " ++ s
+wr h v@(VConst s _) _ = error $ "Can't write to a const: " ++ s ++ " " ++ (show v)
 -- This was just to ignore what I figured was a equi-const write
 -- wr h (VConst s _) _ = emptyWrite
 -- Can't
