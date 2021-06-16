@@ -87,6 +87,9 @@ infixl 4 <**>
 infixl 4 <$$>
 (<$$>) :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
 (<$$>) = VApp
+-- infixl 4 <$$$>
+-- (<$$$>) :: (Show a, Show b) => V (R a -> R b -> R c) -> V a -> V (R b -> R c)
+-- (<$$$>) = undefined
 
 -- app2 :: V (R a -> R b -> R c) -> V a -> V (R b -> R c)
 -- partialApp :: V (R a -> rest) -> V a -> V rest
@@ -142,8 +145,8 @@ r :: History w -> V a -> a
 -- r :: W -> V a -> a
 r (History (w:_) _) VRoot = unsafeCoerce w
 r _ (VConst _ x) = x
--- TODO not crazy about constructing receivers here
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
+-- TODO not crazy about constructing receivers here
 -- r w (VApp vf va) = b
 --   where f = r w vf
 --         a = r w va

@@ -63,6 +63,9 @@ _zero = VConst "__zero" __zero
                 ri = Receiver "_zero" $ \newI ->
                     rw <-- w { zero = newI }
 
+no_rev :: String -> a
+no_rev s = error $ "No reverse for " ++ s
+
 invitedUsersV :: V [String]
 invitedUsersV = _invitedUsers <$$> vw
 
@@ -113,6 +116,13 @@ mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
 mapV = VConst "mapV" mapHy
 
+compose_for :: (R b -> R c) -> (R a -> R b) -> (R a -> R c)
+compose_for = (.)
+composeHy :: R (R b -> R c) -> R (R a -> R b) -> R (R a -> R c)
+composeHy = hybrid2 compose_for (no_rev "composeV")
+composeV :: V (R (R b -> R c) -> R (R a -> R b) -> R (R a -> R c))
+composeV = VConst "composeV" composeHy
+
 -- -- External map
 -- -- Just writing it in regular and primitive forms
 -- mapE :: (a -> b) -> [a] -> [b]
@@ -133,6 +143,15 @@ mapVE vf vas =
                   <$$> (mapVE vf
                          (tailV <$$> vas)))
 
+mapVE' :: (Show a, Show b) => V (R a -> b) -> V [a] -> V [b]
+mapVE' vf vas =
+  ifV <**> (nullV <$$> vas)
+      <**> (VConst "[]" [])
+      <$$> (consV <**> (vf <**> (headV <$$> vas))
+                  <$$> (mapVE' vf
+                         (tailV <$$> vas)))
+  -- consV <**> (vf <**> (headV <$$> vas)) <$$> (VConst "[]" [])
+
 -- foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 fyold :: (a -> b -> b) -> b -> [a] -> b
 fyold f b (a:as) = fyold f (f a b) as
@@ -149,6 +168,38 @@ foldrVE vf vb vas =
       <$$> (foldrVE vf
                     (vf <**> (headV <$$> vas) <$$> vb)
                     (tailV <$$> vas))
+
+composo :: [a -> a] -> (a -> a)
+composo [] = id
+composo (f : fs) = composo fs . f
+
+composo_for :: [R a -> R a] -> (R a -> R a)
+composo_for = composo
+composoHy :: R [R a -> R a] -> R (R a -> R a)
+composoHy = hybrid1 composo_for (no_rev "composoV")
+composoV :: V (R [R a -> R a] -> R (R a -> R a))
+composoV = VConst "composoV" composoHy
+
+-- • Couldn't match type ‘R Int -> R Int’ with ‘R b’
+--   Expected type: V (R Int -> R b)
+--     Actual type: V (R Int -> R Int -> R Int)
+foo = mapVE' shiftNAddV (VConst "" [2, 3])
+bar = (composoV <$$> foo)
+
+foldoVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
+foldoVE vf vb vas =
+  (composoV <$$> (mapVE' vf vas)) <$$> vb
+
+foldo :: (a -> b -> b) -> b -> [a] -> b
+foldo f b as = composo (map f as) b
+
+-- foldoV vf vb vas = composoV (mapVE (vf <$$>)  vas) <$$> vb
+
+-- composeRs :: V (R b -> R c) -> V (R a -> R b) -> V (R a -> R c)
+
+-- foldoVC :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
+-- foldoVC vf vb vas =
+--   composoV (reverseV $ mapVE vf vas) vb
 
 shiftNAdd :: R Int -> R Int -> R Int
 shiftNAdd (R x rx) (R y ry) = R z rz
@@ -204,13 +255,22 @@ nullV = VConst "nullV" nullR
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
 
-inc_hy :: R Int -> R Int
-inc_hy (R x rx) = R x' rx'
-  where x' = x + 1
+add_hy :: Int -> R Int -> R Int
+add_hy n (R x rx) = R x' rx'
+  where x' = x + n
         rx' = Receiver "inc_hy" $ \x ->
-          rx <-- (x - 1)
-incV :: V (R Int -> R Int)
-incV = VConst "incV" inc_hy
+          rx <-- (x - n)
+addV :: Int -> V (R Int -> R Int)
+addV n = VConst "addV" $ add_hy n
+
+-- inc_hy :: R Int -> R Int
+-- inc_hy (R x rx) = R x' rx'
+--   where x' = x + 1
+--         rx' = Receiver "inc_hy" $ \x ->
+--           rx <-- (x - 1)
+-- incV :: V (R Int -> R Int)
+-- incV = VConst "incV" inc_hy
+incV = addV 1
 
 action :: StateT (TmiState W) IO ()
 action = do
@@ -229,15 +289,22 @@ action = do
   -- listen (tailV <$$> (_aList <$$> vw)) listeny
   -- listen (consV <**> (headV <$$> (_aList <$$> vw))
   --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
-  let mapped = mapVE incV (_aList <$$> vw)
+  -- let mappuh = composeV <**> incV <$$> (addV 4) -- works
+  let mappuh = composoV <$$> incers
+      incers = consV <**> incV <$$> (consV <**> (addV 5) <$$> (VConst "[]" []))
+  let mapped = mapVE mappuh (_aList <$$> vw)
   let aFold :: V Int
       aFold = foldrVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
   listen mapped listeny
   listen aFold listeny
+  let aFoldo :: V Int
+      aFoldo = foldoVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
+  listen aFoldo listeny
   invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
   modded <--- VConst "" ["c!", "deyo!", "lippo!"]
   mapped <--- VConst "" [302, 402, 502]
-  aFold <--- VConst "" (456::Int)
+  -- aFold <--- VConst "" (456::Int)
+  aFoldo <--- VConst "" (789::Int)
   -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
   -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
   -- Non-singular write
@@ -246,8 +313,9 @@ action = do
 
 extMain = do
   (a, history') <- tmiRun history action
-  -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
-  -- msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   msp $ "result " ++ show a
   -- msp history'
   -- runListeners history'
