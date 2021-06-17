@@ -18,6 +18,8 @@ data W = W
   { invitedUsers :: [String]
   , aList :: [Int]
   , anotherList :: [Int]
+  , aThirdList :: [Int]
+  , anEmptyList :: [Int]
   , zero :: Int
   }
   deriving Show
@@ -26,6 +28,8 @@ world = W
   { invitedUsers = []
   , aList = [30, 40, 50]
   , anotherList = [2, 3, 4]
+  , aThirdList = [12, 13, 14, 15]
+  , anEmptyList = []
   , zero = 0
   }
 
@@ -55,6 +59,20 @@ _anotherList = VConst "__anotherList" __anotherList
           where i = anotherList w
                 ri = Receiver "_anotherList" $ \newI ->
                     rw <-- w { anotherList = newI }
+
+_aThirdList :: V (R W -> R [Int])
+_aThirdList = VConst "__aThirdList" __aThirdList
+  where __aThirdList (R w rw) = (R i ri)
+          where i = aThirdList w
+                ri = Receiver "_aThirdList" $ \newI ->
+                    rw <-- w { aThirdList = newI }
+
+_anEmptyList :: V (R W -> R [Int])
+_anEmptyList = VConst "__anEmptyList" __anEmptyList
+  where __anEmptyList (R w rw) = (R i ri)
+          where i = anEmptyList w
+                ri = Receiver "_anEmptyList" $ \newI ->
+                    rw <-- w { anEmptyList = newI }
 
 _zero :: V (R W -> R Int)
 _zero = VConst "__zero" __zero
@@ -180,26 +198,91 @@ composoHy = hybrid1 composo_for (no_rev "composoV")
 composoV :: V (R [R a -> R a] -> R (R a -> R a))
 composoV = VConst "composoV" composoHy
 
--- • Couldn't match type ‘R Int -> R Int’ with ‘R b’
---   Expected type: V (R Int -> R b)
---     Actual type: V (R Int -> R Int -> R Int)
-foo = mapVE' shiftNAddV (VConst "" [2, 3])
-bar = (composoV <$$> foo)
-
+-- TODO: why is reverseV needed here??
 foldoVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
 foldoVE vf vb vas =
-  (composoV <$$> (mapVE' vf vas)) <$$> vb
+  (composoV <$$> (reverseV <$$> (mapVE' vf vas))) <$$> vb
 
 foldo :: (a -> b -> b) -> b -> [a] -> b
 foldo f b as = composo (map f as) b
 
--- foldoV vf vb vas = composoV (mapVE (vf <$$>)  vas) <$$> vb
+mapViaFold :: (a -> b) -> [a] -> [b]
+--mapViaFold f as = foldr (\a bs -> f a : bs) [] as
+mapViaFold f as = foldr ((:) . f) [] as
 
--- composeRs :: V (R b -> R c) -> V (R a -> R b) -> V (R a -> R c)
+mapViaFoldVE vf vas =
+  let fooo = composeVE consV vf
+   in foldoVE (VUnPartialApp fooo) (VCheckConst "mapViaFoldVE nil" []) vas
 
--- foldoVC :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
--- foldoVC vf vb vas =
---   composoV (reverseV $ mapVE vf vas) vb
+reverse_for :: [a] -> [a]
+reverse_for = reverse
+reverse_rev :: R [a] -> [a] -> Write
+reverse_rev (R _ ra) as = ra <-- (reverse as)
+reverseV :: V (R [a] -> R [a])
+reverseV = VConst "reverseV" $ hybrid1 reverse_for reverse_rev
+
+reverseVE :: (Eq a, Show a) => V [a] -> V [a]
+reverseVE vas =
+  ifV <**> (nullV <$$> vas)
+      <**> (VConst "[]" [])
+      <$$> (appendV <**> (reverseVE (tailV <$$> vas))
+                    <$$> (consV <**> (headV <$$> vas)
+                                <$$> (VCheckConst "reverseVE" [])))
+
+reverseAcc :: [a] -> [a]
+reverseAcc xs = reverseAcc' xs []
+  where reverseAcc' [] xs' = xs'
+        reverseAcc' (x:xs) xs' = reverseAcc' xs (x:xs')
+
+reverseAccVE :: (Eq a, Show a) => V [a] -> V [a]
+reverseAccVE xs = reverseAccVE' xs (VConst "reverseAccVE" [])
+  where reverseAccVE' xs xs' =
+          ifV <**> (nullV <$$> xs)
+              <**> xs'
+              <$$> (reverseAccVE' (tailV <$$> xs)
+                                  (consV <**> (headV <$$> xs) <$$> xs'))
+
+-- Matches sizes in reverse, so array cannot change length
+append_for :: [a] -> [a] -> [a]
+append_for = (++)
+append_rev :: R [a] -> R [a] -> [a] -> Write
+append_rev (R xs rxs) (R ys rys) zs = ((rxs <-- xs') <> (rys <-- ys'))
+  where (xs', ys') = splitAs (length xs) (length ys) zs
+        splitAs len0 len1 xs = assertM "appendV: length mismatch" ok (xs', xs'')
+          where xs' = take len0 xs
+                xs'' = drop len0 xs
+                ok = length xs' + length xs'' == length xs
+appendV :: V (R [a] -> R [a] -> R [a])
+appendV = VConst "appendV" $ hybrid2 append_for append_rev
+
+-- mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
+-- reverseVE :: Show a => V [a] -> V [a]
+-- reverseVE vas =
+--   ifV <**> (nullV <$$> vas)
+--       <**> (VConst "[]" [])
+--       <$$> (consV <**> (vf <$$> (headV <$$> vas))
+--                   <$$> (mapVE vf
+--                          (tailV <$$> vas)))
+
+-- -- mapViaFoldVE vf vas =
+-- -- foo = composoV consV (shiftNAddV <$$> 10)
+-- -- • Couldn't match type ‘R [b] -> R [b]’ with ‘R c’
+-- --   Expected type: V (R b -> R c)
+-- --     Actual type: V (R b -> R [b] -> R [b])
+
+-- -- works
+-- foo = composeVE consV (shiftNAddV <**> VConst "" 4)
+-- bar = (composeVE consV (shiftNAddV <**> VConst "" 4) (VConst "" 12)) <**> VConst "" []
+-- -- baz = foldoVE <**> (composeVE consV (shiftNAddV <**> VConst "" 4))
+-- baz = foldoVE (VUnPartialApp foo) (VConst "" []) -- <**> (VConst "" [3, 4])
+
+-- -- qqq :: V (R Int) -> V (R [Int]) -> V (R [Int])
+-- -- qqq = \x -> (((foo . VSeal) x) <**>) . VSeal
+
+-- composeVE vfbc vfab va = vfbc <$$> (vfab <$$> va)
+-- composeVE vfbc vfab va = vfbc <**> (vfab <**> va)
+composeVE :: (Show a, Show b) => V (R a -> rest) -> V (R b -> R a) -> V b -> V rest
+composeVE vfbc vfab va = vfbc <**> (vfab <$$> va)
 
 shiftNAdd :: R Int -> R Int -> R Int
 shiftNAdd (R x rx) (R y ry) = R z rz
@@ -300,11 +383,37 @@ action = do
   let aFoldo :: V Int
       aFoldo = foldoVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
   listen aFoldo listeny
+  -- let fooo = composeVE consV (shiftNAddV <**> VConst "" 4)
+  --     mappedViaFold = foldoVE (VUnPartialApp fooo) (VConst "" []) (_aList <$$> vw)
+  let mappedViaFold = mapViaFoldVE incV (_aList <$$> vw)
+  listen mappedViaFold listeny
+  let reverseMVF = reverseV <$$> mappedViaFold
+  listen reverseMVF listeny
+  let reverseVEMVF = reverseVE mappedViaFold
+  listen reverseVEMVF listeny
+  let reverseAccVEMVF = reverseAccVE mappedViaFold
+  listen reverseAccVEMVF listeny
+  let doubleReverseMVF = reverseV <$$> reverseMVF
+  listen doubleReverseMVF listeny
+  let doubleReverseVEMVF = reverseV <$$> reverseVEMVF
+  listen doubleReverseVEMVF listeny
+  listen (_aThirdList <$$> vw) listeny
+  listen (_anEmptyList <$$> vw) listeny
+  let appended = appendV <**> (_anotherList <$$> vw) <$$> (_aThirdList <$$> vw)
+  listen appended listeny
+  let appended2 = appendV <**> (_aThirdList <$$> vw) <$$> (_anEmptyList <$$> vw)
+  listen appended2 listeny
+  -- Writes
+  -- appended <--- VConst "" [12,3,4,12,513,14,15] -- works
+  -- appended <--- VConst "" [0, 1, 2, 3, 4, 5, 6] -- works
+  -- appended2 <--- VConst "" [12,513,14,15] -- works
   invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
   modded <--- VConst "" ["c!", "deyo!", "lippo!"]
-  mapped <--- VConst "" [302, 402, 502]
-  -- aFold <--- VConst "" (456::Int)
-  aFoldo <--- VConst "" (789::Int)
+  -- mapped <--- VConst "" [302, 402, 502] -- works
+  -- mappedViaFold <--- VConst "" [5964,6964,7964] -- works
+  -- reverseMVF <--- VConst "" [7964,6964,5964]
+  -- aFold <--- VConst "" (456::Int) -- Works
+  -- aFoldo <--- VConst "" (789::Int) -- Works
   -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
   -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
   -- Non-singular write
@@ -316,6 +425,8 @@ extMain = do
   msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  -- msp $ mapViaFold (+1) [4, 5, 6]
+  -- msp $ reverseAcc [5, 6, 7]
   msp $ "result " ++ show a
   -- msp history'
   -- runListeners history'

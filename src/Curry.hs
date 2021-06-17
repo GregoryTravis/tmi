@@ -74,9 +74,12 @@ hybrid3 f r ra@(R x rx) rb@(R y ry) rc@(R z rz) = R w rw
 data V a where
   VRoot :: V a
   VConst :: (Show a) => String -> a -> V a
+  VCheckConst :: (Show a, Eq a) => String -> a -> V a
   VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
+  VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
   VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
   VSeal :: (Show a) => V (R a) -> V a
+  -- VUnSeal :: (Show a) => V a -> V (R a)
 
 -- more succinct
 k :: (Show a) => String -> a -> V a
@@ -101,6 +104,8 @@ instance Show (a -> b) where
 instance Show a => Show (V a) where
   show VRoot = "[root]"
   show (VConst s a) = "(VConst " ++ s ++ " " ++ show a ++ ")"
+  -- TODO: Replace VConst with this, and add Eq to everything
+  show (VCheckConst s a) = "(VCheckConst " ++ s ++ " " ++ show a ++ ")"
   -- show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
   -- show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ "arg" ++ ")"
@@ -145,6 +150,7 @@ r :: History w -> V a -> a
 -- r :: W -> V a -> a
 r (History (w:_) _) VRoot = unsafeCoerce w
 r _ (VConst _ x) = x
+r _ (VCheckConst _ x) = x
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
 -- TODO not crazy about constructing receivers here
 -- r w (VApp vf va) = b
@@ -162,11 +168,22 @@ r h (VPartialApp vf va) = paf
         a = r h va
         ra = R a (Receiver "r VPartialApp" $ \a' -> Write [Write1 va a'])
         paf = f ra
+-- VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
+-- must return (R a -> rest)
+r h (VUnPartialApp vvf) = \ra -> ((r h (vvf (VSeal (VConst "uh" ra)))))
+-- r h (VUnPartialApp vvf) = \ra ->     -- ra = -- :: rest
+--   let va = VConst "VUnPartialApp" ra
+--       vRest = vvf va
+--       rest = r h vRest
+--    in rest
 
 wr :: History w -> V a -> a -> Write
 -- wr :: W -> V a -> a -> Write
 -- wr w VRoot _ = undefined "Can't write to root"
 wr h v@(VConst s _) _ = error $ "Can't write to a const: " ++ s ++ " " ++ (show v)
+wr h v@(VCheckConst s x) x'
+  | x == x' = emptyWrite
+  | otherwise = error $ "VCheckConst: unequal: " ++ show v ++ " <-- " ++ show x'
 -- This was just to ignore what I figured was a equi-const write
 -- wr h (VConst s _) _ = emptyWrite
 -- Can't
