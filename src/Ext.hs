@@ -170,6 +170,16 @@ mapVE' vf vas =
                          (tailV <$$> vas)))
   -- consV <**> (vf <**> (headV <$$> vas)) <$$> (VConst "[]" [])
 
+zipWithV ::
+  (Show a, Show b, Show c, Eq a, Eq b, Eq c) =>
+  V (R a -> R b -> R c) -> V [a] -> V [b] -> V [c]
+zipWithV vf vas vbs =
+  ifV <**> (orV <**> (nullV <$$> vas)
+                <$$> (nullV <$$> vbs))
+      <**> (VCheckConst "zipWith" [])
+      <$$> (consV <**> (vf <**> (headV <$$> vas) <$$> (headV <$$> vbs))
+                  <$$> (zipWithV vf (tailV <$$> vas) (tailV <$$> vbs)))
+
 -- foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 fyold :: (a -> b -> b) -> b -> [a] -> b
 fyold f b (a:as) = fyold f (f a b) as
@@ -335,6 +345,23 @@ nullR = hybrid1 null undefined
 nullV :: V (R [a] -> R Bool)
 nullV = VConst "nullV" nullR
 
+uni2 :: String -> (a -> b -> c) -> V (R a -> R b -> R c)
+uni2 n f = VConst n (hybrid2 f (no_rev n))
+
+bi2 :: String -> (a -> b -> c) -> (c -> (a, b)) -> V (R a -> R b -> R c)
+bi2 name for rev = VConst name $ hybrid2 for rev'
+  where rev' (R _ ra) (R _ rb) c =
+          let (a, b) = rev c
+           in (ra <-- a) <> (rb <-- b)
+
+orV :: V (R Bool -> R Bool -> R Bool)
+orV = uni2 "orV" (||)
+-- orV = VConst "orV" (hybrid2 (||) (no_rev "orV"))
+
+tup2 :: V (R a -> R b -> R (a, b))
+-- tup2 = uni2 "tup2" (,)
+tup2 = bi2 "tup2" (,) id
+
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
 
@@ -354,6 +381,18 @@ addV n = VConst "addV" $ add_hy n
 -- incV :: V (R Int -> R Int)
 -- incV = VConst "incV" inc_hy
 incV = addV 1
+
+plus_for :: Int -> Int -> Int
+plus_for = (+)
+plus_rev :: R Int -> R Int -> Int -> Write
+plus_rev (R x rx) (R y ry) newZ =
+  (rx <-- x') <>
+  (ry <-- y')
+  where x' = newZ `div` 2
+        y' = newZ - x'
+plus_hy' :: R Int -> R Int -> R Int
+plus_hy' = hybrid2 plus_for plus_rev
+plusV = VConst "plusV" plus_hy'
 
 action :: StateT (TmiState W) IO ()
 action = do
@@ -403,7 +442,13 @@ action = do
   listen appended listeny
   let appended2 = appendV <**> (_aThirdList <$$> vw) <$$> (_anEmptyList <$$> vw)
   listen appended2 listeny
+  let zippie = zipWithV plusV (_aList <$$> vw) (_anotherList <$$> vw)
+  listen zippie listeny
+  let zippie2 = zipWithV tup2 (_aList <$$> vw) (_anotherList <$$> vw)
+  listen zippie2 listeny
   -- Writes
+  zippie2 <--- VConst "" [(30,20), (40, 30), (50, 40)]
+  zippie <--- VConst "" [51, 61, 71] -- works
   -- appended <--- VConst "" [12,3,4,12,513,14,15] -- works
   -- appended <--- VConst "" [0, 1, 2, 3, 4, 5, 6] -- works
   -- appended2 <--- VConst "" [12,513,14,15] -- works
