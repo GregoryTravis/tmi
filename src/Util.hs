@@ -363,7 +363,7 @@ upd as i a
   | otherwise = (take i as) ++ [a] ++ (drop (i+1) as)
 
 (!!-) :: [a] -> Int -> (a -> [a])
-as !!- i = \a' -> upd as i a'
+(!!-) = upd
 
 -- Transfer values from source list to destination list.
 -- At each iteration, find those that are ready to transfer and transfer them.
