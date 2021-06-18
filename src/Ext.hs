@@ -362,6 +362,8 @@ tup2 :: V (R a -> R b -> R (a, b))
 -- tup2 = uni2 "tup2" (,)
 tup2 = bi2 "tup2" (,) id
 
+zipV = zipWithV tup2
+
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
 
@@ -444,11 +446,11 @@ action = do
   listen appended2 listeny
   let zippie = zipWithV plusV (_aList <$$> vw) (_anotherList <$$> vw)
   listen zippie listeny
-  let zippie2 = zipWithV tup2 (_aList <$$> vw) (_anotherList <$$> vw)
+  let zippie2 = zipV (_aList <$$> vw) (_anotherList <$$> vw)
   listen zippie2 listeny
   -- Writes
   zippie2 <--- VConst "" [(30,20), (40, 30), (50, 40)]
-  zippie <--- VConst "" [51, 61, 71] -- works
+  -- zippie <--- VConst "" [51, 61, 71] -- works
   -- appended <--- VConst "" [12,3,4,12,513,14,15] -- works
   -- appended <--- VConst "" [0, 1, 2, 3, 4, 5, 6] -- works
   -- appended2 <--- VConst "" [12,513,14,15] -- works
