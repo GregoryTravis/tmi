@@ -270,6 +270,16 @@ inxV = VConst "inxV" $ hybrid2 for rev
   where for = (!!)
         rev (R as ras) (R i _) a' = ras <-- ((as !!- i) a')
 
+fstV :: V (R (a, b) -> R a)
+fstV = VConst "fstV" $ hybrid1 for rev
+  where for = fst
+        rev (R (a, b) rab) a' = rab <-- (a', b)
+
+sndV :: V (R (a, b) -> R b)
+sndV = VConst "sndV" $ hybrid1 for rev
+  where for = snd
+        rev (R (a, b) rab) b' = rab <-- (a, b')
+
 -- mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
 -- reverseVE :: Show a => V [a] -> V [a]
 -- reverseVE vas =
@@ -455,8 +465,15 @@ action = do
   listen zippie2 listeny
   let inxed = inxV <**> (_aList <$$> vw) <$$> (VConst "" 1)
   listen inxed listeny
+  let firsty = fstV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
+  listen firsty listeny
+  let secondy = sndV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
+  listen secondy listeny
   -- Writes
-  inxed <--- VConst "" 400
+  secondy <--- VConst "" 333 -- works
+  -- firsty <--- VConst "" 4444 -- works
+  -- inxed <--- VConst "" 400 -- works
+  -- (inxV <**> zippie2 <$$> (VCheckConst "" 1)) <--- VConst "" (400, 3000) -- works
   -- zippie2 <--- VConst "" [(30,20), (40, 30), (50, 40)]
   -- zippie <--- VConst "" [51, 61, 71] -- works
   -- appended <--- VConst "" [12,3,4,12,513,14,15] -- works
