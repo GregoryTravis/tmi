@@ -57,6 +57,7 @@ module Util
 , prefixes
 , cascade
 , upd
+, (!!-)
 , transfer
 , readFile'
 ) where
@@ -360,6 +361,9 @@ upd :: [a] -> Int -> a -> [a]
 upd as i a
   | i < 0 || i >= length as = error ("upd out of range: " ++ (show i) ++ " vs " ++ (show (length as)))
   | otherwise = (take i as) ++ [a] ++ (drop (i+1) as)
+
+(!!-) :: [a] -> Int -> (a -> [a])
+as !!- i = \a' -> upd as i a'
 
 -- Transfer values from source list to destination list.
 -- At each iteration, find those that are ready to transfer and transfer them.
