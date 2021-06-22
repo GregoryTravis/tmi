@@ -14,6 +14,8 @@ import Util
 
 data Request a = Request (IO a)
 
+newtype Appendo a = Appendo [a] deriving Show
+
 data W = W
   { invitedUsers :: [String]
   , aList :: [Int]
@@ -21,6 +23,7 @@ data W = W
   , aThirdList :: [Int]
   , anEmptyList :: [Int]
   , zero :: Int
+  , anAppendo :: Appendo Int
   }
   deriving Show
 
@@ -31,6 +34,7 @@ world = W
   , aThirdList = [12, 13, 14, 15]
   , anEmptyList = []
   , zero = 0
+  , anAppendo = Appendo [1]
   }
 
 history :: History W
@@ -39,47 +43,24 @@ history = mkHistory world
 vw :: V W
 vw = getRoot history
 
-_invitedUsers :: V (R W -> R [String])
-_invitedUsers = VConst "__invitedUsers" __invitedUsers
-  where __invitedUsers (R w rw) = (R i ri)
-          where i = invitedUsers w
-                ri = Receiver "_invitedUsers" $ \newI ->
-                    rw <-- w { invitedUsers = newI }
+_invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
 
-_aList :: V (R W -> R [Int])
-_aList = VConst "__aList" __aList
-  where __aList (R w rw) = (R i ri)
-          where i = aList w
-                ri = Receiver "_aList" $ \newI ->
-                    rw <-- w { aList = newI }
+_aList = mkFielder "_aList" aList $ \w a -> w { aList = a }
 
-_anotherList :: V (R W -> R [Int])
-_anotherList = VConst "__anotherList" __anotherList
-  where __anotherList (R w rw) = (R i ri)
-          where i = anotherList w
-                ri = Receiver "_anotherList" $ \newI ->
-                    rw <-- w { anotherList = newI }
+_anotherList = mkFielder "_anotherList" anotherList $ \w a -> w { anotherList = a }
 
-_aThirdList :: V (R W -> R [Int])
-_aThirdList = VConst "__aThirdList" __aThirdList
-  where __aThirdList (R w rw) = (R i ri)
-          where i = aThirdList w
-                ri = Receiver "_aThirdList" $ \newI ->
-                    rw <-- w { aThirdList = newI }
+_aThirdList = mkFielder "_aThirdList" aThirdList $ \w a -> w { aThirdList = a }
 
-_anEmptyList :: V (R W -> R [Int])
-_anEmptyList = VConst "__anEmptyList" __anEmptyList
-  where __anEmptyList (R w rw) = (R i ri)
-          where i = anEmptyList w
-                ri = Receiver "_anEmptyList" $ \newI ->
-                    rw <-- w { anEmptyList = newI }
+_anEmptyList = mkFielder "_anEmptyList" anEmptyList $ \w a -> w { anEmptyList = a }
 
-_zero :: V (R W -> R Int)
-_zero = VConst "__zero" __zero
-  where __zero (R w rw) = (R i ri)
-          where i = zero w
-                ri = Receiver "_zero" $ \newI ->
-                    rw <-- w { zero = newI }
+_zero = mkFielder "_zero" zero $ \w a -> w { zero = a }
+
+mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
+mkFielder s fieldFor fieldRev = VConst s __acc
+  where __acc (R r rr) = (R a ra)
+          where a = fieldFor r
+                ra = Receiver s $ \newA ->
+                  rr <-- fieldRev r newA
 
 no_rev :: String -> a
 no_rev s = error $ "No reverse for " ++ s
