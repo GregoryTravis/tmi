@@ -15,6 +15,24 @@ import Util
 data Request a = Request (IO a)
 
 newtype Appendo a = Appendo [a] deriving Show
+appendo_1 :: V (R (Appendo a) -> R [a])
+appendo_1 = VConst "appendo_1" __app
+  where __app (R ap rap) = (R as ras)
+          where as = case ap of Appendo as -> as
+                ras = Receiver "appendo_1" $ \newAs ->
+                  rap <-- Appendo newAs
+
+-- mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
+-- mkFielder s fieldFor fieldRev = VConst s __acc
+  -- where __acc (R r rr) = (R a ra)
+  --         where a = fieldFor r
+  --               ra = Receiver s $ \newA ->
+  --                 rr <-- fieldRev r newA
+
+appendo :: (Eq a, Show a) => V (Appendo a) -> V a -> TMI W ()
+appendo vapp va =
+  let vas = appendo_1 <$$> vapp
+   in vas <--- (appendV <**> vas <$$> (consV <**> va <$$> (VCheckConst "appendo" [])))
 
 data W = W
   { invitedUsers :: [String]
@@ -44,16 +62,12 @@ vw :: V W
 vw = getRoot history
 
 _invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
-
 _aList = mkFielder "_aList" aList $ \w a -> w { aList = a }
-
 _anotherList = mkFielder "_anotherList" anotherList $ \w a -> w { anotherList = a }
-
 _aThirdList = mkFielder "_aThirdList" aThirdList $ \w a -> w { aThirdList = a }
-
 _anEmptyList = mkFielder "_anEmptyList" anEmptyList $ \w a -> w { anEmptyList = a }
-
 _zero = mkFielder "_zero" zero $ \w a -> w { zero = a }
+_anAppendo = mkFielder "_anAppendo" anAppendo $ \w a -> w { anAppendo = a }
 
 mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
 mkFielder s fieldFor fieldRev = VConst s __acc
@@ -450,8 +464,11 @@ action = do
   listen firsty listeny
   let secondy = sndV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
   listen secondy listeny
+  let appo = _anAppendo <$$> vw
+  listen appo listeny
+  appendo appo $ VConst "" 2
   -- Writes
-  secondy <--- VConst "" 333 -- works
+  -- secondy <--- VConst "" 333 -- works
   -- firsty <--- VConst "" 4444 -- works
   -- inxed <--- VConst "" 400 -- works
   -- (inxV <**> zippie2 <$$> (VCheckConst "" 1)) <--- VConst "" (400, 3000) -- works
