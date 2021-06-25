@@ -17,12 +17,14 @@ module Tmi
 , getRoot
 , TMI
 , tmiRun
+, tmiRunIO
 , persistentTmiRun
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history
 , runListeners
+, ExecId
 ) where
 
 import Data.Dynamic

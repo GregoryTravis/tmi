@@ -32,7 +32,7 @@ appendo_1 = VConst "appendo_1" __app
 appendo :: (Eq a, Show a) => V (Appendo a) -> V a -> TMI W ()
 appendo vapp va =
   let vas = appendo_1 <$$> vapp
-   in vas <--- (appendV <**> vas <$$> (consV <**> va <$$> (VCheckConst "appendo" [])))
+   in vas <--- appendV <**> vas <$$> (consV <**> va <$$> (VCheckConst "appendo" []))
 
 data W = W
   { invitedUsers :: [String]
@@ -42,6 +42,7 @@ data W = W
   , anEmptyList :: [Int]
   , zero :: Int
   , anAppendo :: Appendo Int
+  , rpc :: Rpc
   }
   deriving Show
 
@@ -53,6 +54,7 @@ world = W
   , anEmptyList = []
   , zero = 0
   , anAppendo = Appendo [1]
+  , rpc = initRpc
   }
 
 history :: History W
@@ -68,6 +70,7 @@ _aThirdList = mkFielder "_aThirdList" aThirdList $ \w a -> w { aThirdList = a }
 _anEmptyList = mkFielder "_anEmptyList" anEmptyList $ \w a -> w { anEmptyList = a }
 _zero = mkFielder "_zero" zero $ \w a -> w { zero = a }
 _anAppendo = mkFielder "_anAppendo" anAppendo $ \w a -> w { anAppendo = a }
+_rpc = mkFielder "_rpc" rpc $ \w a -> w { rpc = a }
 
 mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
 mkFielder s fieldFor fieldRev = VConst s __acc
@@ -222,7 +225,7 @@ mapViaFoldVE vf vas =
 reverse_for :: [a] -> [a]
 reverse_for = reverse
 reverse_rev :: R [a] -> [a] -> Write
-reverse_rev (R _ ra) as = ra <-- (reverse as)
+reverse_rev (R _ ra) as = ra <-- reverse as
 reverseV :: V (R [a] -> R [a])
 reverseV = VConst "reverseV" $ hybrid1 reverse_for reverse_rev
 
@@ -263,7 +266,7 @@ appendV = VConst "appendV" $ hybrid2 append_for append_rev
 inxV :: V (R [a] -> R Int -> R a)
 inxV = VConst "inxV" $ hybrid2 for rev
   where for = (!!)
-        rev (R as ras) (R i _) a' = ras <-- ((as !!- i) a')
+        rev (R as ras) (R i _) a' = ras <-- (as !!- i) a'
 
 fstV :: V (R (a, b) -> R a)
 fstV = VConst "fstV" $ hybrid1 for rev
@@ -381,7 +384,7 @@ add_hy :: Int -> R Int -> R Int
 add_hy n (R x rx) = R x' rx'
   where x' = x + n
         rx' = Receiver "inc_hy" $ \x ->
-          rx <-- (x - n)
+          rx <-- x - n
 addV :: Int -> V (R Int -> R Int)
 addV n = VConst "addV" $ add_hy n
 
@@ -389,7 +392,7 @@ addV n = VConst "addV" $ add_hy n
 -- inc_hy (R x rx) = R x' rx'
 --   where x' = x + 1
 --         rx' = Receiver "inc_hy" $ \x ->
---           rx <-- (x - 1)
+--           rx <-- x - 1
 -- incV :: V (R Int -> R Int)
 -- incV = VConst "incV" inc_hy
 incV = addV 1
@@ -405,6 +408,65 @@ plus_rev (R x rx) (R y ry) newZ =
 plus_hy' :: R Int -> R Int -> R Int
 plus_hy' = hybrid2 plus_for plus_rev
 plusV = VConst "plusV" plus_hy'
+
+newtype Ext a = Ext (IO a)
+
+data Initiation = Initiation ExecId deriving Show
+
+data Req = Req String deriving Show
+data Resp = Resp String deriving Show
+
+data Rpc = Rpc
+  { calls :: [Call]
+  , toExt :: Req -> Ext Resp
+  , toTmi :: Resp -> TMI W ()
+  }
+_calls = mkFielder "_calls" calls $ \w a -> w { calls = a }
+
+instance Show Rpc where
+  -- TODO do not love this
+  show rpc = "RPC " ++ show (calls rpc)
+
+initRpc :: Rpc
+initRpc = Rpc [] toExt toTmi
+  where toExt (Req s) = Ext io
+          where io = do
+                  msp $ "Running ext: " ++ s
+                  return $ Resp $ s ++ "!"
+        toTmi (Resp s) = do
+          liftIO $ msp $ "Consequence: " ++ s
+
+data Call = Call
+  { req :: Req
+  , intitiation :: Maybe Initiation
+  , resp :: Maybe Resp
+  , consquenceEnacted :: Bool
+  } deriving Show
+
+initCall :: Req -> Call
+initCall req = Call req Nothing Nothing False
+
+refreshRpcs :: W -> IO W
+refreshRpcs w = do
+  -- Clear out stale initiations
+  -- Get requests that need initiation
+  -- Initiate them
+  -- Write initiations to table
+  return w
+
+eventLoop :: History W -> IO ()
+eventLoop h = do
+  h' <- tmiRunIO h refreshRpcs
+  msp $ h'
+  return ()
+
+extAction :: StateT (TmiState W) IO ()
+extAction = do
+  listen (_aList <$$> vw) listeny
+  let rpc = _rpc <$$> vw
+      calls = _calls <$$> rpc
+  let call = initCall (Req "hey")
+  calls <--- appendV <**> calls <$$> VConst "" [call]
 
 action :: StateT (TmiState W) IO ()
 action = do
@@ -491,10 +553,14 @@ action = do
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) <--- VConst [310, 520]
 
 extMain = do
-  (a, history') <- tmiRun history action
-  msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
-  msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
-  msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  -- (a, history') <- tmiRun history action
+  (a, history') <- tmiRun history extAction
+  eventLoop history'
+  -- history'' <- tmiRunIO history' refresh
+
+  -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  -- msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
+  -- msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ mapViaFold (+1) [4, 5, 6]
   -- msp $ reverseAcc [5, 6, 7]
   msp $ "result " ++ show a

@@ -28,7 +28,9 @@ executable tmi
                        cryptohash-md5,
                        mtl,
                        pretty-simple,
+                       --process,
                        random,
                        text,
                        time,
+                       unix,
                        utf8-string

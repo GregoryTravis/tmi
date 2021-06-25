@@ -14,17 +14,20 @@ module Curry
 , (<**>)
 , (<$$>)
 , History(..)
+  -- TODO don't export this
 , TmiState(..)
 , mkHistory
 , getRoot
 , TMI
 , tmiRun
+, tmiRunIO
 , persistentTmiRun
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history
 , runListeners
+, ExecId
 ) where
 
 import Control.Monad.Cont
@@ -32,6 +35,9 @@ import Control.Monad.State.Lazy
 import Data.Dynamic
 import Data.Maybe
 import Data.Proxy
+-- import System.Process (Pid)
+import System.Posix.Process (getProcessID)
+import System.Posix.Types (ProcessID)
 import Unsafe.Coerce
 
 import Util
@@ -124,6 +130,10 @@ instance Show w => Show (History w) where
 mkHistory :: w -> History w
 mkHistory w = History [w] []
 
+latestState :: History w -> w
+latestState (History [] _) = error "latestState:: empty"
+latestState (History (w:_) _) = w
+
 getRoot :: History w -> V w
 getRoot (History (w:_) _) = VRoot
 
@@ -208,21 +218,31 @@ wr h (VSeal vra) a = write
 
 -- Monad!
 
-data TmiState w = TmiState Write (History w)
-initTmiState :: History w -> TmiState w
-initTmiState h = TmiState emptyWrite h
+data TmiState w = TmiState Write ExecId (History w)
+initTmiState :: History w -> IO (TmiState w)
+initTmiState h = do
+  execId <- currentExecId
+  return $ TmiState emptyWrite execId h
 
 type TMI w a = StateT (TmiState w) IO a
 
 tmiRun :: Show w => History w -> TMI w a -> IO (a, History w)
 tmiRun history action = do
-  let ts = initTmiState history
+  ts <- initTmiState history
   -- TODO need to check that history hasn't changed here?
-  (a, TmiState write history) <- runStateT action ts
+  (a, TmiState write _ history) <- runStateT action ts
   -- massert "action changed history" (history == history'')
   let history' = propagateFully history write
+  -- Is liftIO needed here?
   liftIO $ runListeners history'
   return (a, history')
+
+-- This is for implementing runtime features, eg rpc
+tmiRunIO :: History w -> (w -> IO w) -> IO (History w)
+tmiRunIO h action = do
+  let w = latestState h
+  w' <- action w
+  return $ newGeneration h w'
 
 propagateFully :: Show w => History w -> Write -> History w
 -- propagateFully = propagateOneAtATime
@@ -297,15 +317,15 @@ propagateNonSingularAndIgnore h write =
   -- wr :: h w -> V a -> a -> Write
 
 -- It is critical that history is not modified, only write
-infix 4 <---
+infixl 2 <---
 (<---) :: (Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
-  TmiState write history <- get
+  TmiState write execId history <- get
   let rvalue = r history vrvalue
       write' = Write [Write1 vlvalue rvalue]
       -- w' = propagateFully history write
       -- history' = newGeneration history w'
-  put $ TmiState (write <> write') history
+  put $ TmiState (write <> write') execId history
   -- liftIO $ runListeners history'
   return ()
 
@@ -313,10 +333,10 @@ data Listener = forall a. Listener (V a) (a -> IO ())
 
 listen :: V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
-  TmiState write history <- get
+  TmiState write execId history <- get
   let listener = Listener v action
       history' = addListener history listener
-  put $ TmiState write history'
+  put $ TmiState write execId history'
 
 --tmiRun :: h w -> TMI h w a -> IO (a, h w)
 persistentTmiRun :: (Show w, Read w) => FilePath -> TMI w a -> IO a
@@ -333,3 +353,11 @@ readHistory filename = do
 
 writeHistory :: (Show w) => FilePath -> History w -> IO ()
 writeHistory filename h = writeFile filename (toString h)
+
+-- TODO should have a timestamp too
+newtype ExecId = ExecId ProcessID deriving Show
+
+currentExecId :: IO ExecId
+currentExecId = do
+  pid <- getProcessID
+  return $ ExecId pid
