@@ -15,18 +15,17 @@ module Curry
 , (<$$>)
 , History(..)
   -- TODO don't export this
-, TmiState(..)
 , mkHistory
 , getRoot
 , TMI
 , tmiRun
-, tmiRunIO
+-- , tmiRunIO
 , persistentTmiRun
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history
-, runListeners
+-- , runListeners
 , ExecId
 ) where
 
@@ -122,43 +121,45 @@ instance Show a => Show (V a) where
 -- sinfulCast = fromJust . fromDynamic . toDyn
 
 -- Stored in reverse order
-data History w = History [w] [Listener]
+data History w = History [w]
+-- TODO Foldable
+histlen :: History w -> Int
+histlen (History ws) = length ws
 
 instance Show w => Show (History w) where
-  show (History ws _) = show ws
+  show (History ws) = show ws
 
 mkHistory :: w -> History w
-mkHistory w = History [w] []
+mkHistory w = History [w]
 
 latestState :: History w -> w
-latestState (History [] _) = error "latestState:: empty"
-latestState (History (w:_) _) = w
+latestState (History []) = error "latestState:: empty"
+latestState (History (w:_)) = w
 
 getRoot :: History w -> V w
-getRoot (History (w:_) _) = VRoot
+getRoot (History (w:_)) = VRoot
 
 newGeneration :: History w -> w -> History w
-newGeneration (History ws ls) w = History (w:ws) ls
+newGeneration (History ws) w = History (w:ws)
 
-addListener :: History w -> Listener -> History w
-addListener (History ws listeners) listener =
-  History ws (listener:listeners)
+-- addListener :: History w -> Listener -> History w
+-- addListener (History ws listeners) listener =
+--   History ws (listener:listeners)
 
-runListeners :: History w -> IO ()
-runListeners h@(History _ ls) = mapM_ runListener ls
+runListeners :: TmiState w -> IO ()
+runListeners ts = mapM_ runListener (listeners ts)
   where runListener (Listener va action) = do
-          let a = r h va
+          let a = r (history ts) va
           action a
 
 toString :: (Show w) => History w -> String
-toString (History ws _) = show ws
+toString (History ws) = show ws
 fromString :: (Read w) => String -> History w
-fromString s = History ws []
-  where ws = read s
+fromString s = History (read s)
 
 r :: History w -> V a -> a
 -- r :: W -> V a -> a
-r (History (w:_) _) VRoot = unsafeCoerce w
+r (History (w:_)) VRoot = unsafeCoerce w
 r _ (VConst _ x) = x
 r _ (VCheckConst _ x) = x
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))
@@ -218,31 +219,41 @@ wr h (VSeal vra) a = write
 
 -- Monad!
 
-data TmiState w = TmiState Write ExecId (History w)
+data TmiState w = TmiState
+  { writes :: Write
+  , execId :: ExecId
+  , listeners :: [Listener]
+  , history :: History w
+  }
 initTmiState :: History w -> IO (TmiState w)
 initTmiState h = do
-  execId <- currentExecId
-  return $ TmiState emptyWrite execId h
+  eid <- currentExecId
+  return $ TmiState { writes = emptyWrite, execId = eid, listeners = [], history = h }
 
+-- TODO do we need to return a value? Or can 'a' be ()?
 type TMI w a = StateT (TmiState w) IO a
 
 tmiRun :: Show w => History w -> TMI w a -> IO (a, History w)
-tmiRun history action = do
-  ts <- initTmiState history
-  -- TODO need to check that history hasn't changed here?
-  (a, TmiState write _ history) <- runStateT action ts
-  -- massert "action changed history" (history == history'')
-  let history' = propagateFully history write
+tmiRun h action = do
+  ts <- initTmiState h
+  let beforeLength = case (history ts) of History ws -> length ws
+  (a, ts') <- runStateT action ts
+  let afterLength = case (history ts') of History ws -> length ws
+  massert "history changed by action" (beforeLength == afterLength)
+  msp ("asdf", histlen $ history ts, histlen $ history ts', length $ listeners ts,
+        length $ listeners ts')
+  let h' = propagateFully (history ts') (writes ts')
+      ts'' = ts' { history = h' }
   -- Is liftIO needed here?
-  liftIO $ runListeners history'
-  return (a, history')
+  liftIO $ runListeners ts''
+  return (a, h')
 
--- This is for implementing runtime features, eg rpc
-tmiRunIO :: History w -> (w -> IO w) -> IO (History w)
-tmiRunIO h action = do
-  let w = latestState h
-  w' <- action w
-  return $ newGeneration h w'
+-- -- This is for implementing runtime features, eg rpc
+-- tmiRunIO :: History w -> (w -> IO w) -> IO (History w)
+-- tmiRunIO h action = do
+--   let w = latestState h
+--   w' <- action w
+--   return $ newGeneration h w'
 
 propagateFully :: Show w => History w -> Write -> History w
 -- propagateFully = propagateOneAtATime
@@ -320,12 +331,10 @@ propagateNonSingularAndIgnore h write =
 infixl 2 <---
 (<---) :: (Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
-  TmiState write execId history <- get
-  let rvalue = r history vrvalue
+  ts <- get
+  let rvalue = r (history ts) vrvalue
       write' = Write [Write1 vlvalue rvalue]
-      -- w' = propagateFully history write
-      -- history' = newGeneration history w'
-  put $ TmiState (write <> write') execId history
+  put $ ts { writes = (writes ts <> write') }
   -- liftIO $ runListeners history'
   return ()
 
@@ -333,10 +342,10 @@ data Listener = forall a. Listener (V a) (a -> IO ())
 
 listen :: V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
-  TmiState write execId history <- get
+  ts <- get
   let listener = Listener v action
-      history' = addListener history listener
-  put $ TmiState write execId history'
+      -- history' = addListener (history ts) listener
+  put $ ts { listeners = listener:(listeners ts) }
 
 --tmiRun :: h w -> TMI h w a -> IO (a, h w)
 persistentTmiRun :: (Show w, Read w) => FilePath -> TMI w a -> IO a

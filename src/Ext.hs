@@ -454,13 +454,13 @@ refreshRpcs w = do
   -- Write initiations to table
   return w
 
-eventLoop :: History W -> IO ()
-eventLoop h = do
-  h' <- tmiRunIO h refreshRpcs
-  msp $ h'
-  return ()
+-- eventLoop :: History W -> IO ()
+-- eventLoop h = do
+--   h' <- tmiRunIO h refreshRpcs
+--   msp $ h'
+--   return ()
 
-extAction :: StateT (TmiState W) IO ()
+extAction :: TMI W ()
 extAction = do
   listen (_aList <$$> vw) listeny
   let rpc = _rpc <$$> vw
@@ -468,7 +468,7 @@ extAction = do
   let call = initCall (Req "hey")
   calls <--- appendV <**> calls <$$> VConst "" [call]
 
-action :: StateT (TmiState W) IO ()
+action :: TMI W ()
 action = do
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
@@ -553,9 +553,9 @@ action = do
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) <--- VConst [310, 520]
 
 extMain = do
-  -- (a, history') <- tmiRun history action
-  (a, history') <- tmiRun history extAction
-  eventLoop history'
+  (a, history') <- tmiRun history action
+  -- (a, history') <- tmiRun history extAction
+  -- eventLoop history'
   -- history'' <- tmiRunIO history' refresh
 
   -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]

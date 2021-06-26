@@ -12,18 +12,17 @@ module Tmi
 , (<**>)
 , (<$$>)
 , History(..)
-, TmiState(..)
 , mkHistory
 , getRoot
 , TMI
 , tmiRun
-, tmiRunIO
+-- , tmiRunIO
 , persistentTmiRun
 , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history
-, runListeners
+-- , runListeners
 , ExecId
 ) where
 
