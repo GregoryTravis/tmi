@@ -18,10 +18,13 @@ module Curry
 , mkHistory
 , getRoot
 , TMI
-, tmiRun
+, ExecState(listeners) -- TODO remove, for debugging
+, StepState(execState) -- TODO remove, for debugging
+-- , tmiRun
+, tmiMain
 -- , tmiRunIO
-, persistentTmiRun
-, writeHistory -- TODO remove, only for setting up
+-- , persistentTmiRun
+-- , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history
@@ -29,8 +32,9 @@ module Curry
 , ExecId
 ) where
 
+-- import Control.Concurrent.Chan
 import Control.Monad.Cont
-import Control.Monad.State.Lazy
+import Control.Monad.State.Lazy hiding (execState)
 import Data.Dynamic
 import Data.Maybe
 import Data.Proxy
@@ -146,10 +150,10 @@ newGeneration (History ws) w = History (w:ws)
 -- addListener (History ws listeners) listener =
 --   History ws (listener:listeners)
 
-runListeners :: TmiState w -> IO ()
-runListeners ts = mapM_ runListener (listeners ts)
+runListeners :: ExecState w -> IO ()
+runListeners es = mapM_ runListener (listeners es)
   where runListener (Listener va action) = do
-          let a = r (history ts) va
+          let a = r (history es) va
           action a
 
 toString :: (Show w) => History w -> String
@@ -217,6 +221,94 @@ wr h (VSeal vra) a = write
         R _ (Receiver s reca) = ra
         ra = r h vra
 
+-- Rewrite!
+
+-- State carried through an entire TMI program.
+data ExecState w = ExecState
+  { execId :: ExecId
+  , listeners :: [Listener]
+  , history :: History w
+  }
+
+-- Runs the action, commits the change, and then listens to the event stream?
+tmiMain :: Show w => IO (History w) -> TMI w () -> IO ()
+tmiMain hio action = do
+  h <- hio
+  -- ch <- (newChan :: Chan TMI w ())
+  eid <- currentExecId
+  let es = ExecState { execId = eid, listeners = [], history = h }
+  ((), es') <- runStateT (runTMI action) es
+  runListeners es'
+  return ()
+
+--runStateT :: s -> m (a, s)
+
+tmiMainFile :: FilePath -> TMI w () -> IO ()
+tmiMainFile = undefined -- calls tmiMain
+-- etc
+
+data StepState w = StepState
+  { execState :: ExecState w
+  , writes :: Write
+  , serial :: Int
+  }
+
+type TMIE w a = StateT (ExecState w) IO a
+type TMI w a = StateT (StepState w) IO a
+-- runStateT :: s -> m (a, s)	
+
+-- TODO: this should be in another state thread?
+-- Initialiaze a StepState, run the action, apply the writes, commit the new
+-- world to history.
+-- runTMI :: ExecState w -> TMI w () -> ExecState w
+-- runTMI es action = do
+--   let stepState = StepState { execState = es, writes = emptyWrite, serial = 0 }
+--   ((), stepState') <- runStateT action stepState
+--   let history' = propagateFully (history (execState es)) (writes stepState')
+--   let es' = es { history = history' }
+--   return es'
+
+runTMI :: Show w => TMI w () -> TMIE w ()
+-- runTMI :: TMI w () -> IO ()
+runTMI action = do
+  es <- get
+  let stepState = StepState { execState = es, writes = emptyWrite, serial = 0 }
+  ((), stepState') <- liftIO $ runStateT action stepState
+  let es' = execState stepState'
+  let history' = propagateFully (history es') (writes stepState')
+  let es'' = es' { history = history' }
+  put es''
+
+listen :: V a -> (a -> IO ()) -> TMI w ()
+listen va ioAction = do
+  stepState <- get
+  let ls = listeners (execState stepState)
+  let listener = Listener va ioAction
+      ls' = ls ++ [listener]
+      stepState' = stepState { execState = (execState stepState) { listeners = ls' } }
+  put stepState'
+
+data UniqueId = UniqueId (Int, Int)
+uniqueId :: TMI w UniqueId
+uniqueId = do
+  ss <- get
+  genId <- getGenId
+  let nextSerial = serial ss
+      ss' = ss { serial = nextSerial + 1 }
+  put ss'
+  return $ UniqueId (genId, nextSerial)
+
+getGenId :: TMI w Int
+getGenId = do
+  ss <- get
+  return $ histlen (history (execState ss))
+
+getExecId :: TMI w ExecId
+getExecId = do
+  ss <- get
+  return $ execId (execState ss)
+
+{-
 -- Monad!
 
 data TmiState w = TmiState
@@ -247,6 +339,7 @@ tmiRun h action = do
   -- Is liftIO needed here?
   liftIO $ runListeners ts''
   return (a, h')
+-}
 
 -- -- This is for implementing runtime features, eg rpc
 -- tmiRunIO :: History w -> (w -> IO w) -> IO (History w)
@@ -331,15 +424,16 @@ propagateNonSingularAndIgnore h write =
 infixl 2 <---
 (<---) :: (Show a) => V a -> V a -> TMI w ()
 vlvalue <--- vrvalue = do
-  ts <- get
-  let rvalue = r (history ts) vrvalue
+  ss <- get
+  let rvalue = r (history (execState ss)) vrvalue
       write' = Write [Write1 vlvalue rvalue]
-  put $ ts { writes = (writes ts <> write') }
+  put $ ss { writes = (writes ss <> write') }
   -- liftIO $ runListeners history'
   return ()
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
+{-
 listen :: V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
   ts <- get
@@ -362,6 +456,8 @@ readHistory filename = do
 
 writeHistory :: (Show w) => FilePath -> History w -> IO ()
 writeHistory filename h = writeFile filename (toString h)
+
+-}
 
 -- TODO should have a timestamp too
 newtype ExecId = ExecId ProcessID deriving Show

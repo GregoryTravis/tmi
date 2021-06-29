@@ -15,10 +15,13 @@ module Tmi
 , mkHistory
 , getRoot
 , TMI
-, tmiRun
+, ExecState(listeners) -- TODO remove, for debugging
+, StepState(execState) -- TODO remove, for debugging
+-- , tmiRun
+, tmiMain
 -- , tmiRunIO
-, persistentTmiRun
-, writeHistory -- TODO remove, only for setting up
+-- , persistentTmiRun
+-- , writeHistory -- TODO remove, only for setting up
 , (<---)
 , listen
 -- TODO remove after moving listeners out of history

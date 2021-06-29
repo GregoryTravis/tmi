@@ -7,7 +7,7 @@ module Ext
 -- import Data.Dynamic
 import Data.Time.Clock (UTCTime, getCurrentTime)
 -- import Data.Typeable
-import Control.Monad.State hiding (lift)
+import Control.Monad.State hiding (lift, execState)
 
 import Tmi
 import Util
@@ -358,6 +358,12 @@ nullR = hybrid1 null undefined
 nullV :: V (R [a] -> R Bool)
 nullV = VConst "nullV" nullR
 
+lengthV :: V (R [a] -> R Int)
+lengthV = uni1 "lengthV" length
+
+uni1 :: String -> (a -> b) -> V (R a -> R b)
+uni1 n f = VConst n (hybrid1 f (no_rev n))
+
 uni2 :: String -> (a -> b -> c) -> V (R a -> R b -> R c)
 uni2 n f = VConst n (hybrid2 f (no_rev n))
 
@@ -465,11 +471,15 @@ extAction = do
   listen (_aList <$$> vw) listeny
   let rpc = _rpc <$$> vw
       calls = _calls <$$> rpc
+  listen calls listeny
+  listen (lengthV <$$> calls) listeny
   let call = initCall (Req "hey")
   calls <--- appendV <**> calls <$$> VConst "" [call]
+  -- return ()
 
 action :: TMI W ()
 action = do
+  liftIO $ msp $ "yooo"
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
   listen invitedUsersV listeny
@@ -541,6 +551,8 @@ action = do
   -- appended2 <--- VConst "" [12,513,14,15] -- works
   invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
   modded <--- VConst "" ["c!", "deyo!", "lippo!"]
+  -- uhh <- get
+  -- liftIO $ msp ("num listeners", (length (listeners (execState uhh))))
   -- mapped <--- VConst "" [302, 402, 502] -- works
   -- mappedViaFold <--- VConst "" [5964,6964,7964] -- works
   -- reverseMVF <--- VConst "" [7964,6964,5964]
@@ -553,8 +565,8 @@ action = do
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) <--- VConst [310, 520]
 
 extMain = do
-  (a, history') <- tmiRun history action
-  -- (a, history') <- tmiRun history extAction
+  -- () <- tmiMain (return history) action
+  () <- tmiMain (return history) extAction
   -- eventLoop history'
   -- history'' <- tmiRunIO history' refresh
 
@@ -563,7 +575,7 @@ extMain = do
   -- msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ mapViaFold (+1) [4, 5, 6]
   -- msp $ reverseAcc [5, 6, 7]
-  msp $ "result " ++ show a
+  -- msp $ "result " ++ show a
   -- msp history'
   -- runListeners history'
   -- msp $ case history' of History _ listeners -> length listeners
