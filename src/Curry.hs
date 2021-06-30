@@ -30,6 +30,8 @@ module Curry
 -- TODO remove after moving listeners out of history
 -- , runListeners
 , ExecId
+, UniqueId
+, uniqueId
 ) where
 
 -- import Control.Concurrent.Chan
@@ -288,7 +290,7 @@ listen va ioAction = do
       stepState' = stepState { execState = (execState stepState) { listeners = ls' } }
   put stepState'
 
-data UniqueId = UniqueId (Int, Int)
+data UniqueId = UniqueId (Int, Int) deriving (Eq, Show)
 uniqueId :: TMI w UniqueId
 uniqueId = do
   ss <- get
@@ -460,7 +462,7 @@ writeHistory filename h = writeFile filename (toString h)
 -}
 
 -- TODO should have a timestamp too
-newtype ExecId = ExecId ProcessID deriving Show
+newtype ExecId = ExecId ProcessID deriving (Eq, Show)
 
 currentExecId :: IO ExecId
 currentExecId = do

@@ -27,6 +27,8 @@ module Tmi
 -- TODO remove after moving listeners out of history
 -- , runListeners
 , ExecId
+, UniqueId
+, uniqueId
 ) where
 
 import Data.Dynamic

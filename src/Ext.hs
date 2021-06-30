@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, NumericUnderscores #-}
+{-# LANGUAGE ExistentialQuantification, NumericUnderscores, RecordWildCards #-}
 
 module Ext
 ( extMain
@@ -417,7 +417,7 @@ plusV = VConst "plusV" plus_hy'
 
 newtype Ext a = Ext (IO a)
 
-data Initiation = Initiation ExecId deriving Show
+data Initiation = Initiation ExecId deriving (Eq, Show)
 
 data Req = Req String deriving Show
 data Resp = Resp String deriving Show
@@ -443,28 +443,39 @@ initRpc = Rpc [] toExt toTmi
           liftIO $ msp $ "Consequence: " ++ s
 
 data Call = Call
-  { req :: Req
-  , intitiation :: Maybe Initiation
+  { callUniqueId :: UniqueId
+  , req :: Req
+  , initiation :: Maybe Initiation
   , resp :: Maybe Resp
   , consquenceEnacted :: Bool
   } deriving Show
 
-initCall :: Req -> Call
-initCall req = Call req Nothing Nothing False
+initCall :: Req -> TMI W Call
+initCall req = do
+  uid <- uniqueId
+  return $ Call uid req Nothing Nothing False
 
-refreshRpcs :: W -> IO W
-refreshRpcs w = do
+requestsThatNeedInitiation :: [Call] -> [Call]
+requestsThatNeedInitiation = filter needInitiation
+  where needInitiation call = initiation call == Nothing
+
+refreshRpcs :: Rpc -> IO Rpc
+refreshRpcs rpc@(Rpc {..})  = do
   -- Clear out stale initiations
   -- Get requests that need initiation
+  let needInit = requestsThatNeedInitiation calls
+  lmsp "need initiation" $ map callUniqueId needInit
   -- Initiate them
   -- Write initiations to table
-  return w
+  return rpc
 
 -- eventLoop :: History W -> IO ()
 -- eventLoop h = do
 --   h' <- tmiRunIO h refreshRpcs
 --   msp $ h'
 --   return ()
+
+-- updateExt :: 
 
 extAction :: TMI W ()
 extAction = do
@@ -473,7 +484,7 @@ extAction = do
       calls = _calls <$$> rpc
   listen calls listeny
   listen (lengthV <$$> calls) listeny
-  let call = initCall (Req "hey")
+  call <- initCall (Req "hey")
   calls <--- appendV <**> calls <$$> VConst "" [call]
   -- return ()
 

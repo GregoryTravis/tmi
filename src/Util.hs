@@ -17,6 +17,7 @@ module Util
 , feesp
 , sp
 , msp
+, lmsp
 , tsp
 , ttsp
 , tesp
@@ -143,6 +144,9 @@ sp x = unpack $ toStrict $ pShowNoColor $ x
 
 msp :: Show a => a -> IO ()
 msp x = putStrLn $ evalString $ sp x
+
+lmsp :: Show a => String -> a -> IO ()
+lmsp label x = putStrLn $ label ++ ": " ++ (evalString $ sp x)
 
 tsp x = putStrLn $ (sp x) ++ " :: " ++ (sp (typeOf x))
 ttsp x = putStrLn $ "_ :: " ++ (sp (typeOf x))
