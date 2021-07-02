@@ -29,12 +29,19 @@ appendo_1 = VConst "appendo_1" __app
   --               ra = Receiver s $ \newA ->
   --                 rr <-- fieldRev r newA
 
-appendo :: (Eq a, Show a) => V (Appendo a) -> V a -> TMI W ()
+appendo :: (Eq a, Show a) => V (Appendo a) -> V a -> TMI WW ()
 appendo vapp va =
   let vas = appendo_1 <$$> vapp
    in vas <--- appendV <**> vas <$$> (consV <**> va <$$> (VCheckConst "appendo" []))
 
-data W = W
+data W d = W
+  { db :: d
+  , rpc :: Rpc }
+  deriving Show
+_db = mkFielder "_db" db $ \w a -> w { db = a }
+_rpc = mkFielder "_rpc" rpc $ \w a -> w { rpc = a }
+
+data DB = DB
   { invitedUsers :: [String]
   , aList :: [Int]
   , anotherList :: [Int]
@@ -42,25 +49,28 @@ data W = W
   , anEmptyList :: [Int]
   , zero :: Int
   , anAppendo :: Appendo Int
-  , rpc :: Rpc
   }
   deriving Show
 
+type WW = W DB
+
 world = W
-  { invitedUsers = []
-  , aList = [30, 40, 50]
-  , anotherList = [2, 3, 4]
-  , aThirdList = [12, 13, 14, 15]
-  , anEmptyList = []
-  , zero = 0
-  , anAppendo = Appendo [1]
+  { db = DB
+      { invitedUsers = []
+      , aList = [30, 40, 50]
+      , anotherList = [2, 3, 4]
+      , aThirdList = [12, 13, 14, 15]
+      , anEmptyList = []
+      , zero = 0
+      , anAppendo = Appendo [1]
+      }
   , rpc = initRpc
   }
 
-history :: History W
+history :: History WW
 history = mkHistory world
 
-vw :: V W
+vw :: V WW
 vw = getRoot history
 
 _invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
@@ -70,7 +80,6 @@ _aThirdList = mkFielder "_aThirdList" aThirdList $ \w a -> w { aThirdList = a }
 _anEmptyList = mkFielder "_anEmptyList" anEmptyList $ \w a -> w { anEmptyList = a }
 _zero = mkFielder "_zero" zero $ \w a -> w { zero = a }
 _anAppendo = mkFielder "_anAppendo" anAppendo $ \w a -> w { anAppendo = a }
-_rpc = mkFielder "_rpc" rpc $ \w a -> w { rpc = a }
 
 mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
 mkFielder s fieldFor fieldRev = VConst s __acc
@@ -83,7 +92,7 @@ no_rev :: String -> a
 no_rev s = error $ "No reverse for " ++ s
 
 invitedUsersV :: V [String]
-invitedUsersV = _invitedUsers <$$> vw
+invitedUsersV = _invitedUsers <$$> (_db <$$> vw)
 
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)
@@ -425,7 +434,7 @@ data Resp = Resp String deriving Show
 data Rpc = Rpc
   { calls :: [Call]
   , toExt :: Req -> Ext Resp
-  , toTmi :: Resp -> TMI W ()
+  , toTmi :: Resp -> TMI WW ()
   }
 _calls = mkFielder "_calls" calls $ \w a -> w { calls = a }
 
@@ -450,7 +459,7 @@ data Call = Call
   , consquenceEnacted :: Bool
   } deriving Show
 
-initCall :: Req -> TMI W Call
+initCall :: Req -> TMI WW Call
 initCall req = do
   uid <- uniqueId
   return $ Call uid req Nothing Nothing False
@@ -477,9 +486,10 @@ refreshRpcs rpc@(Rpc {..})  = do
 
 -- updateExt :: 
 
-extAction :: TMI W ()
+extAction :: TMI WW ()
 extAction = do
-  listen (_aList <$$> vw) listeny
+  let db = _db <$$> vw
+  listen (_aList <$$> db) listeny
   let rpc = _rpc <$$> vw
       calls = _calls <$$> rpc
   listen calls listeny
@@ -488,8 +498,9 @@ extAction = do
   calls <--- appendV <**> calls <$$> VConst "" [call]
   -- return ()
 
-action :: TMI W ()
+action :: TMI WW ()
 action = do
+  let db = _db <$$> vw
   liftIO $ msp $ "yooo"
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
@@ -499,27 +510,27 @@ action = do
   -- listen (ifV <**> VConst False <**> VConst 2 <$$> VConst 3) listeny
   -- listen (headV <$$> VConst [3, 4, 5]) listeny
   -- listen (tailV <$$> VConst [3, 4, 5]) listeny
-  listen (_aList <$$> vw) listeny
-  listen (_anotherList <$$> vw) listeny
-  listen (_zero <$$> vw) listeny
-  -- listen (headV <$$> (_aList <$$> vw)) listeny
-  -- listen (tailV <$$> (_aList <$$> vw)) listeny
-  -- listen (consV <**> (headV <$$> (_aList <$$> vw))
-  --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) listeny
+  listen (_aList <$$> db) listeny
+  listen (_anotherList <$$> db) listeny
+  listen (_zero <$$> db) listeny
+  -- listen (headV <$$> (_aList <$$> db)) listeny
+  -- listen (tailV <$$> (_aList <$$> db)) listeny
+  -- listen (consV <**> (headV <$$> (_aList <$$> db))
+  --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) listeny
   -- let mappuh = composeV <**> incV <$$> (addV 4) -- works
   let mappuh = composoV <$$> incers
       incers = consV <**> incV <$$> (consV <**> (addV 5) <$$> (VConst "[]" []))
-  let mapped = mapVE mappuh (_aList <$$> vw)
+  let mapped = mapVE mappuh (_aList <$$> db)
   let aFold :: V Int
-      aFold = foldrVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
+      aFold = foldrVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
   listen mapped listeny
   listen aFold listeny
   let aFoldo :: V Int
-      aFoldo = foldoVE shiftNAddV (_zero <$$> vw) (_anotherList <$$> vw)
+      aFoldo = foldoVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
   listen aFoldo listeny
   -- let fooo = composeVE consV (shiftNAddV <**> VConst "" 4)
-  --     mappedViaFold = foldoVE (VUnPartialApp fooo) (VConst "" []) (_aList <$$> vw)
-  let mappedViaFold = mapViaFoldVE incV (_aList <$$> vw)
+  --     mappedViaFold = foldoVE (VUnPartialApp fooo) (VConst "" []) (_aList <$$> db)
+  let mappedViaFold = mapViaFoldVE incV (_aList <$$> db)
   listen mappedViaFold listeny
   let reverseMVF = reverseV <$$> mappedViaFold
   listen reverseMVF listeny
@@ -531,23 +542,23 @@ action = do
   listen doubleReverseMVF listeny
   let doubleReverseVEMVF = reverseV <$$> reverseVEMVF
   listen doubleReverseVEMVF listeny
-  listen (_aThirdList <$$> vw) listeny
-  listen (_anEmptyList <$$> vw) listeny
-  let appended = appendV <**> (_anotherList <$$> vw) <$$> (_aThirdList <$$> vw)
+  listen (_aThirdList <$$> db) listeny
+  listen (_anEmptyList <$$> db) listeny
+  let appended = appendV <**> (_anotherList <$$> db) <$$> (_aThirdList <$$> db)
   listen appended listeny
-  let appended2 = appendV <**> (_aThirdList <$$> vw) <$$> (_anEmptyList <$$> vw)
+  let appended2 = appendV <**> (_aThirdList <$$> db) <$$> (_anEmptyList <$$> db)
   listen appended2 listeny
-  let zippie = zipWithV plusV (_aList <$$> vw) (_anotherList <$$> vw)
+  let zippie = zipWithV plusV (_aList <$$> db) (_anotherList <$$> db)
   listen zippie listeny
-  let zippie2 = zipV (_aList <$$> vw) (_anotherList <$$> vw)
+  let zippie2 = zipV (_aList <$$> db) (_anotherList <$$> db)
   listen zippie2 listeny
-  let inxed = inxV <**> (_aList <$$> vw) <$$> (VConst "" 1)
+  let inxed = inxV <**> (_aList <$$> db) <$$> (VConst "" 1)
   listen inxed listeny
   let firsty = fstV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
   listen firsty listeny
   let secondy = sndV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
   listen secondy listeny
-  let appo = _anAppendo <$$> vw
+  let appo = _anAppendo <$$> db
   listen appo listeny
   appendo appo $ VConst "" 2
   -- Writes
@@ -569,11 +580,11 @@ action = do
   -- reverseMVF <--- VConst "" [7964,6964,5964]
   -- aFold <--- VConst "" (456::Int) -- Works
   -- aFoldo <--- VConst "" (789::Int) -- Works
-  -- (headV <$$> (_aList <$$> vw)) <--- VConst 31
-  -- (tailV <$$> (_aList <$$> vw)) <--- VConst [42, 52]
+  -- (headV <$$> (_aList <$$> db)) <--- VConst 31
+  -- (tailV <$$> (_aList <$$> db)) <--- VConst [42, 52]
   -- Non-singular write
-  -- (consV <**> (headV <$$> (_aList <$$> vw))
-  --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) vw))) <--- VConst [310, 520]
+  -- (consV <**> (headV <$$> (_aList <$$> db))
+  --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) <--- VConst [310, 520]
 
 extMain = do
   -- () <- tmiMain (return history) action
