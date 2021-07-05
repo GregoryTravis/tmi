@@ -7,7 +7,8 @@ module Dyno
 ( Dyno
 , getit
 , getTypeRep
---, getit'
+, getit'
+, Typeable
 , mkDyno ) where
 
 import Data.Typeable

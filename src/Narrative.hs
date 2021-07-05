@@ -8,53 +8,51 @@ module Narrative
 
 import Control.Monad
 import Control.Monad.State.Lazy
-import qualified Data.Dynamic as D
 import Data.Maybe
 import Data.Time.Clock.System (getSystemTime)
 import qualified Data.Map.Strict as M
 import System.Directory (getDirectoryContents)
 
+import Dyno
 import Util
-
--- data Dyn = forall a. Show a => Dyn D.Dynamic
--- instance Show Dyn where
---   show (Dyn d) = show (fromJust $ D.fromDynamic d)
-
--- fromDyn :: Dyn -> a
--- fromDyn (Dyn a) = a
-
 type Serial = Int
-type Memo = M.Map Serial D.Dynamic
-data Blah = Blah Serial Memo
+type Memo = M.Map Serial Dyno
+data Blah = Blah Serial Memo deriving Show
 emptyBlah :: Blah
 emptyBlah = Blah 0 M.empty
 type Narrative a = StateT Blah IO a
 
-foo :: D.Typeable a => IO a -> Narrative a
+foo :: (Show a, Eq a, Typeable a) => IO a -> Narrative a
 foo action = do
   Blah i memo <- get
   case memo M.!? i of
     Just dyn -> do
       put $ Blah (i + 1) memo
+      liftIO $ msp "hit"
       report
-      return $ fromJust $ D.fromDynamic dyn
+      return $ getit' dyn
     Nothing -> do
+      liftIO $ msp "miss"
       a <- liftIO action
       let memo' = M.insert i da memo
-          da = D.toDyn a
+          da = mkDyno a
       put $ Blah (i + 1) memo'
       report
       return a
 
 report :: Narrative ()
 report = do
-  Blah i memo <- get
-  liftIO $ msp ("Blah", i, M.keys memo)
+  blah <- get
+  liftIO $ msp ("Blah", blah)
 
 bar :: Narrative ()
 bar = do
   t <- foo getSystemTime
   liftIO $ msp t
+  t' <- foo getSystemTime
+  liftIO $ msp t'
+  files <- foo $ getDirectoryContents "."
+  liftIO $ msp files
   return ()
 
 -- bar = do
