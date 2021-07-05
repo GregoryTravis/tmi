@@ -6,6 +6,7 @@ module Narrative
 ( narrativeMain
 ) where
 
+import Control.Concurrent (threadDelay)
 import Control.Monad
 import Control.Monad.State.Lazy
 -- import Data.Dynamic
@@ -74,6 +75,13 @@ bar = do
     else foo $ msp "didn't find it"
   return ()
 
+baz :: Narrative ()
+baz = go 0
+  where go i = do
+          foo $ threadDelay (1 * 1000000)
+          liftIO $ msp ("hey", i)
+          go (i + 1)
+
 --loadAndRun :: Narrative a -> a
 loadAndRun action = do
   memo <- liftIO $ readFile "save.txt"
@@ -82,9 +90,10 @@ loadAndRun action = do
   runStateT action blah
 
 narrativeMain = do
-  -- ((), Blah _ memo) <- runStateT bar emptyBlah
-  -- ((), blah') <- runStateT bar (Blah 0 memo)
-  ((), blah'') <- loadAndRun bar
+  let action = baz
+  -- ((), Blah _ memo) <- runStateT action emptyBlah
+  -- ((), blah') <- runStateT action (Blah 0 memo)
+  ((), blah'') <- loadAndRun action
   msp "Narrative hi"
 
 -- data Narrative = Narrative Serial Memo
