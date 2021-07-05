@@ -8,8 +8,10 @@ module Narrative
 
 import Control.Monad
 import Control.Monad.State.Lazy
+-- import Data.Dynamic
 import Data.Maybe
 import Data.Time.Clock.System (getSystemTime)
+-- import Data.Typeable
 import qualified Data.Map.Strict as M
 import System.Directory (getDirectoryContents)
 
@@ -53,6 +55,9 @@ bar = do
   liftIO $ msp t'
   files <- foo $ getDirectoryContents "."
   liftIO $ msp files
+  if "out" `elem` files
+    then foo $ msp "found it"
+    else foo $ msp "didn't find it"
   return ()
 
 -- bar = do
@@ -62,7 +67,8 @@ bar = do
 --   msp ("ho", files)
 
 narrativeMain = do
-  ((), memo) <- runStateT bar emptyBlah
+  ((), Blah _ memo) <- runStateT bar emptyBlah
+  ((), blah') <- runStateT bar (Blah 0 memo)
   msp "Narrative hi"
 
 -- data Narrative = Narrative Serial Memo
