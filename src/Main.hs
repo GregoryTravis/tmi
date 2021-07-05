@@ -4,7 +4,8 @@ import Control.Monad.State hiding (lift)
 import Data.Dynamic
 
 import Ext
+import Narrative
 import Tmi
 import Util
 
-main = extMain
+main = narrativeMain
