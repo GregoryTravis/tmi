@@ -33,6 +33,7 @@ foo action = do
       put $ Blah (i + 1) memo
       liftIO $ msp "hit"
       report
+      save
       return $ read dyn
     Nothing -> do
       liftIO $ msp "miss"
@@ -41,6 +42,7 @@ foo action = do
           da = show a
       put $ Blah (i + 1) memo'
       report
+      save
       return a
 
 timey :: IO UTCTime
@@ -52,6 +54,12 @@ report :: Narrative ()
 report = do
   blah <- get
   liftIO $ msp ("Blah", blah)
+
+save :: Narrative ()
+save = do
+  Blah _ memo <- get
+  let memo' = show memo
+  liftIO $ writeFile "save.txt" memo'
 
 bar :: Narrative ()
 bar = do
@@ -66,15 +74,17 @@ bar = do
     else foo $ msp "didn't find it"
   return ()
 
--- bar = do
---   t <- foo getSystemTime
---   msp ("ha", t)
---   files <- foo getDirectoryContents "."
---   msp ("ho", files)
+--loadAndRun :: Narrative a -> a
+loadAndRun action = do
+  memo <- liftIO $ readFile "save.txt"
+  let memo' = read memo
+      blah = Blah 0 memo'
+  runStateT action blah
 
 narrativeMain = do
-  ((), Blah _ memo) <- runStateT bar emptyBlah
-  ((), blah') <- runStateT bar (Blah 0 memo)
+  -- ((), Blah _ memo) <- runStateT bar emptyBlah
+  -- ((), blah') <- runStateT bar (Blah 0 memo)
+  ((), blah'') <- loadAndRun bar
   msp "Narrative hi"
 
 -- data Narrative = Narrative Serial Memo
