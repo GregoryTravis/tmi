@@ -10,21 +10,22 @@ import Control.Monad
 import Control.Monad.State.Lazy
 -- import Data.Dynamic
 import Data.Maybe
-import Data.Time.Clock.System (getSystemTime)
--- import Data.Typeable
+import Data.Time.Clock.System
+import Data.Time.Clock
 import qualified Data.Map.Strict as M
 import System.Directory (getDirectoryContents)
 
-import Dyno
+-- import Dyno
 import Util
+
 type Serial = Int
-type Memo = M.Map Serial Dyno
+type Memo = M.Map Serial String
 data Blah = Blah Serial Memo deriving Show
 emptyBlah :: Blah
 emptyBlah = Blah 0 M.empty
 type Narrative a = StateT Blah IO a
 
-foo :: (Show a, Eq a, Typeable a) => IO a -> Narrative a
+foo :: (Read a, Show a, Eq a) => IO a -> Narrative a
 foo action = do
   Blah i memo <- get
   case memo M.!? i of
@@ -32,15 +33,20 @@ foo action = do
       put $ Blah (i + 1) memo
       liftIO $ msp "hit"
       report
-      return $ getit' dyn
+      return $ read dyn
     Nothing -> do
       liftIO $ msp "miss"
       a <- liftIO action
       let memo' = M.insert i da memo
-          da = mkDyno a
+          da = show a
       put $ Blah (i + 1) memo'
       report
       return a
+
+timey :: IO UTCTime
+timey = do
+  t <- getSystemTime
+  return $  systemToUTCTime t
 
 report :: Narrative ()
 report = do
@@ -49,9 +55,9 @@ report = do
 
 bar :: Narrative ()
 bar = do
-  t <- foo getSystemTime
+  t <- foo timey
   liftIO $ msp t
-  t' <- foo getSystemTime
+  t' <- foo timey
   liftIO $ msp t'
   files <- foo $ getDirectoryContents "."
   liftIO $ msp files
