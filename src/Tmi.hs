@@ -4,6 +4,9 @@ module Tmi
 , Write1(..)
 , emptyWrite
 , V(..)
+, W(..)
+, _db
+, _rpc
 , Receiver(..)
 , hybrid1
 , hybrid2
@@ -26,9 +29,10 @@ module Tmi
 , listen
 -- TODO remove after moving listeners out of history
 -- , runListeners
-, ExecId
-, UniqueId
+-- , ExecId
+-- , UniqueId
 , uniqueId
+, mkFielder
 ) where
 
 import Data.Dynamic

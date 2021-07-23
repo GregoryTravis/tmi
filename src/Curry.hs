@@ -1,4 +1,8 @@
-{-# LANGUAGE ExistentialQuantification, GADTs, StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification,
+             GADTs,
+             NamedFieldPuns,
+             RecordWildCards,
+             StandaloneDeriving #-}
 
 module Curry
 ( R(..)
@@ -6,6 +10,9 @@ module Curry
 , Write1(..)
 , emptyWrite
 , V(..)
+, W(..)
+, _db
+, _rpc
 , Receiver(..)
 , hybrid1
 , hybrid2
@@ -29,9 +36,8 @@ module Curry
 , listen
 -- TODO remove after moving listeners out of history
 -- , runListeners
-, ExecId
-, UniqueId
 , uniqueId
+, mkFielder
 ) where
 
 -- import Control.Concurrent.Chan
@@ -40,12 +46,19 @@ import Control.Monad.State.Lazy hiding (execState)
 import Data.Dynamic
 import Data.Maybe
 import Data.Proxy
--- import System.Process (Pid)
-import System.Posix.Process (getProcessID)
-import System.Posix.Types (ProcessID)
 import Unsafe.Coerce
 
+import ExecId
+import Rpc
+import UniqueId
 import Util
+
+data W d = W
+  { db :: d
+  , rpc :: Rpc }
+  deriving Show
+_db = mkFielder "_db" db $ \w a -> w { db = a }
+_rpc = mkFielder "_rpc" rpc $ \w a -> w { rpc = a }
 
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
@@ -232,15 +245,29 @@ data ExecState w = ExecState
   , history :: History w
   }
 
+-- launchIOs :: [IO ()] -> IO ()
+-- launchIOs ios = do
+
+updateRpc :: ExecState (W ww) -> IO (ExecState (W ww))
+updateRpc es@(ExecState {..}) = do
+  let w = latestState history
+      --Rpc { rpc } = rpc w
+  rpc' <- refreshRpcs execId (rpc w)
+  let w' = w { rpc = rpc' }
+      h' = newGeneration h' w'
+      es' = es { history = h' }
+  return es
+
 -- Runs the action, commits the change, and then listens to the event stream?
-tmiMain :: Show w => IO (History w) -> TMI w () -> IO ()
+tmiMain :: Show db => IO (History (W db)) -> TMI (W db) () -> IO ()
 tmiMain hio action = do
   h <- hio
   -- ch <- (newChan :: Chan TMI w ())
   eid <- currentExecId
   let es = ExecState { execId = eid, listeners = [], history = h }
   ((), es') <- runStateT (runTMI action) es
-  runListeners es'
+  es'' <- updateRpc es'
+  runListeners es''
   return ()
 
 --runStateT :: s -> m (a, s)
@@ -290,7 +317,6 @@ listen va ioAction = do
       stepState' = stepState { execState = (execState stepState) { listeners = ls' } }
   put stepState'
 
-data UniqueId = UniqueId (Int, Int) deriving (Eq, Show)
 uniqueId :: TMI w UniqueId
 uniqueId = do
   ss <- get
@@ -435,6 +461,13 @@ vlvalue <--- vrvalue = do
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
+mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
+mkFielder s fieldFor fieldRev = VConst s __acc
+  where __acc (R r rr) = (R a ra)
+          where a = fieldFor r
+                ra = Receiver s $ \newA ->
+                  rr <-- fieldRev r newA
+
 {-
 listen :: V a -> (a -> IO ()) -> TMI w ()
 listen v action = do
@@ -460,11 +493,3 @@ writeHistory :: (Show w) => FilePath -> History w -> IO ()
 writeHistory filename h = writeFile filename (toString h)
 
 -}
-
--- TODO should have a timestamp too
-newtype ExecId = ExecId ProcessID deriving (Eq, Show)
-
-currentExecId :: IO ExecId
-currentExecId = do
-  pid <- getProcessID
-  return $ ExecId pid

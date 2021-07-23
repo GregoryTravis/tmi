@@ -9,4 +9,4 @@ import Narrative
 import Tmi
 import Util
 
-main = moniesMain
+main = extMain

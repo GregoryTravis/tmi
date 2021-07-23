@@ -10,17 +10,11 @@ import Data.Time.Clock (UTCTime, getCurrentTime)
 import Control.Monad.State hiding (lift, execState)
 
 import Lib
+import Rpc
 import Tmi
 import Util
 
 data Request a = Request (IO a)
-
-data W d = W
-  { db :: d
-  , rpc :: Rpc }
-  deriving Show
-_db = mkFielder "_db" db $ \w a -> w { db = a }
-_rpc = mkFielder "_rpc" rpc $ \w a -> w { rpc = a }
 
 appendo :: (Eq a, Show a) => V (Appendo a) -> V a -> TMI WW ()
 appendo vapp va =
@@ -59,6 +53,8 @@ history = mkHistory world
 vw :: V WW
 vw = getRoot history
 
+_calls = mkFielder "_calls" calls $ \w a -> w { calls = a }
+
 _invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
 _aList = mkFielder "_aList" aList $ \w a -> w { aList = a }
 _anotherList = mkFielder "_anotherList" anotherList $ \w a -> w { anotherList = a }
@@ -66,13 +62,6 @@ _aThirdList = mkFielder "_aThirdList" aThirdList $ \w a -> w { aThirdList = a }
 _anEmptyList = mkFielder "_anEmptyList" anEmptyList $ \w a -> w { anEmptyList = a }
 _zero = mkFielder "_zero" zero $ \w a -> w { zero = a }
 _anAppendo = mkFielder "_anAppendo" anAppendo $ \w a -> w { anAppendo = a }
-
-mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
-mkFielder s fieldFor fieldRev = VConst s __acc
-  where __acc (R r rr) = (R a ra)
-          where a = fieldFor r
-                ra = Receiver s $ \newA ->
-                  rr <-- fieldRev r newA
 
 invitedUsersV :: V [String]
 invitedUsersV = _invitedUsers <$$> (_db <$$> vw)
@@ -92,79 +81,31 @@ shiftNAddV = VConst "shiftNAddV" shiftNAdd
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
 
-newtype Ext a = Ext (IO a)
-
-data Initiation = Initiation ExecId deriving (Eq, Show)
-
-data Req = Req String deriving Show
-data Resp = Resp String deriving Show
-
-data Rpc = Rpc
-  { calls :: [Call]
-  , toExt :: Req -> Ext Resp
-  , toTmi :: Resp -> TMI WW ()
-  }
-_calls = mkFielder "_calls" calls $ \w a -> w { calls = a }
-
-instance Show Rpc where
-  -- TODO do not love this
-  show rpc = "RPC " ++ show (calls rpc)
-
-initRpc :: Rpc
-initRpc = Rpc [] toExt toTmi
-  where toExt (Req s) = Ext io
-          where io = do
-                  msp $ "Running ext: " ++ s
-                  return $ Resp $ s ++ "!"
-        toTmi (Resp s) = do
-          liftIO $ msp $ "Consequence: " ++ s
-
-data Call = Call
-  { callUniqueId :: UniqueId
-  , req :: Req
-  , initiation :: Maybe Initiation
-  , resp :: Maybe Resp
-  , consquenceEnacted :: Bool
-  } deriving Show
-
 initCall :: Req -> TMI WW Call
 initCall req = do
   uid <- uniqueId
   return $ Call uid req Nothing Nothing False
 
-requestsThatNeedInitiation :: [Call] -> [Call]
-requestsThatNeedInitiation = filter needInitiation
-  where needInitiation call = initiation call == Nothing
-
-refreshRpcs :: Rpc -> IO Rpc
-refreshRpcs rpc@(Rpc {..})  = do
-  -- Clear out stale initiations
-  -- Get requests that need initiation
-  let needInit = requestsThatNeedInitiation calls
-  lmsp "need initiation" $ map callUniqueId needInit
-  -- Initiate them
-  -- Write initiations to table
-  return rpc
-
--- eventLoop :: History W -> IO ()
--- eventLoop h = do
---   h' <- tmiRunIO h refreshRpcs
---   msp $ h'
---   return ()
-
--- updateExt :: 
-
 extAction :: TMI WW ()
 extAction = do
   let db = _db <$$> vw
   listen (_aList <$$> db) listeny
-  let rpc = _rpc <$$> vw
+  let rpc = (_rpc <$$> vw :: V Rpc)
       calls = _calls <$$> rpc
   listen calls listeny
   listen (lengthV <$$> calls) listeny
-  call <- initCall (Req "hey")
-  calls <--- appendV <**> calls <$$> VConst "" [call]
+  call <- initCall (Req 1 "hey")
+  call2 <- initCall (Req 2 "hey")
+  call3 <- initCall (Req 3 "hey")
+  calls <--- appendV <**> calls <$$> VConst "" [call, call2, call3]
   -- return ()
+
+extMain = do
+  -- () <- tmiMain (return history) action
+  () <- tmiMain (return history) extAction
+  -- eventLoop history'
+  -- history'' <- tmiRunIO history' refresh
+  msp "ext hi"
 
 action :: TMI WW ()
 action = do
@@ -254,12 +195,7 @@ action = do
   -- (consV <**> (headV <$$> (_aList <$$> db))
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) <--- VConst [310, 520]
 
-extMain = do
-  -- () <- tmiMain (return history) action
-  () <- tmiMain (return history) extAction
-  -- eventLoop history'
-  -- history'' <- tmiRunIO history' refresh
-
+_extMain = do
   -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
