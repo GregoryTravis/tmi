@@ -171,10 +171,10 @@ runListeners es = mapM_ runListener (listeners es)
           let a = r (history es) va
           action a
 
-toString :: (Show w) => History w -> String
-toString (History ws) = show ws
-fromString :: (Read w) => String -> History w
-fromString s = History (read s)
+-- toString :: (Show w) => History w -> String
+-- toString (History ws) = show ws
+-- fromString :: (Read w) => String -> History w
+-- fromString s = History (read s)
 
 r :: History w -> V a -> a
 -- r :: W -> V a -> a
