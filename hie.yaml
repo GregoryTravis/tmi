@@ -1,0 +1,25 @@
+cradle:
+  stack:
+    - path: "./src/Main.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Util.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Tmi.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Curry.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Ext.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Lib.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Narrative.hs"
+      component: "tmi:exe:tmi"
+
+    - path: "./src/Monies.hs"
+      component: "tmi:exe:tmi"
