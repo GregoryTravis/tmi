@@ -9,4 +9,8 @@ import Narrative
 import Tmi
 import Util
 
+-- TODO do not swat me
+instance Show (a -> b) where
+  show _ = "fn"
+
 main = extMain

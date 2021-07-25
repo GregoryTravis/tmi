@@ -1,43 +1,9 @@
-{-# LANGUAGE NamedFieldPuns, NumericUnderscores, RecordWildCards #-}
+module Trace where
 
-module Rpc
-( Ext(..)
-, Req(..)
-, Resp(..)
-, Rpc(..)
-, Call(..)
-, initRpc
-, refreshRpcs ) where
-
-import Control.Concurrent (forkIO, threadDelay)
-
-import ExecId
-import UniqueId
-import Util
-
-newtype Ext a = Ext (IO a)
-
-data Initiation = Initiation ExecId deriving (Eq, Show)
-
-data Req = Req Float String deriving Show
-data Resp = Resp String deriving Show
-
--- -- Sample one
--- reqToIO :: String -> Req -> IO Req
--- reqToIO extry (Req secs s) = do
---   threadDelay (floor $ s * 1_000_000)
---   putStrLn s
---   return $ s ++ " after " ++ (show s) ++ extry
-
-data Rpc = Rpc
-  { calls :: [Call]
-  , toExt :: Req -> IO Resp
-  -- , toTmi :: Resp -> TMI WW ()
-  }
-
-instance Show Rpc where
-  -- TODO do not love this
-  show rpc = "RPC " ++ show (calls rpc)
+initCall :: Req -> TMI WW Call
+initCall req = do
+  uid <- uniqueId
+  return $ Call uid req Nothing Nothing False
 
 initRpc :: Rpc
 initRpc = Rpc [] toExt -- toTmi
@@ -48,14 +14,6 @@ initRpc = Rpc [] toExt -- toTmi
                   return $ Resp $ s ++ "!"
         -- toTmi (Resp s) = do
         --   liftIO $ msp $ "Consequence: " ++ s
-
-data Call = Call
-  { callUniqueId :: UniqueId
-  , req :: Req
-  , initiation :: Maybe Initiation
-  , resp :: Maybe Resp
-  , consquenceEnacted :: Bool
-  } deriving Show
 
 clearOutStaleInitiations :: ExecId -> [Call] -> [Call]
 clearOutStaleInitiations execId calls = map (clearOutStaleInitiation execId) calls
