@@ -1,4 +1,17 @@
+{-# LANGUAGE ExistentialQuantification, RecordWildCards #-}
+
 module State where
+
+import Control.Monad.State.Lazy hiding (execState)
+
+import ExecId
+import Ext
+import History
+import Propagate
+import Trace
+import UniqueId
+import V
+import W
 
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ (show x)

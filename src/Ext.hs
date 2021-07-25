@@ -1,7 +1,11 @@
 {-# LANGUAGE ExistentialQuantification, NumericUnderscores, RecordWildCards #-}
 
 module Ext
-( extMain
+( Rpc(..)
+, Req(..)
+, Resp(..)
+, Call(..)
+, Initiation(..)
 ) where
 
 -- import Data.Dynamic
@@ -9,9 +13,11 @@ import Data.Time.Clock (UTCTime, getCurrentTime)
 -- import Data.Typeable
 import Control.Monad.State hiding (lift, execState)
 
-import Lib
-import Rpc
-import Tmi
+import ExecId
+-- import Lib
+-- import Rpc
+-- import Tmi
+import UniqueId
 import Util
 
 -- data Request a = Request (IO a)
@@ -40,4 +46,3 @@ data Call = Call
   , resp :: Maybe Resp
   , consquenceEnacted :: Bool
   } deriving Show
-

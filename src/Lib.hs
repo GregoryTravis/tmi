@@ -1,23 +1,8 @@
 module Lib where
 
-import Curry
-import Tmi
+import Lift
 import Util
-
-newtype Appendo a = Appendo [a] deriving Show
-appendo_1 :: V (R (Appendo a) -> R [a])
-appendo_1 = VConst "appendo_1" __app
-  where __app (R ap rap) = (R as ras)
-          where as = case ap of Appendo as -> as
-                ras = Receiver "appendo_1" $ \newAs ->
-                  rap <-- Appendo newAs
-
--- mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
--- mkFielder s fieldFor fieldRev = VConst s __acc
-  -- where __acc (R r rr) = (R a ra)
-  --         where a = fieldFor r
-  --               ra = Receiver s $ \newA ->
-  --                 rr <-- fieldRev r newA
+import V
 
 no_rev :: String -> a
 no_rev s = error $ "No reverse for " ++ s

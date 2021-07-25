@@ -1,6 +1,10 @@
 module Test
 ( testMain ) where
 
+import Appendo
+import Ext
+import Tmi
+
 data DB = DB
   { invitedUsers :: [String]
   , aList :: [Int]
@@ -72,7 +76,7 @@ extAction = do
   calls <--- appendV <**> calls <$$> VConst "" [call, call2, call3]
   -- return ()
 
-extMain = do
+textMain = do
   -- () <- tmiMain (return history) action
   () <- tmiMain (return history) extAction
   -- eventLoop history'

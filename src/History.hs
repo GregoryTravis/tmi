@@ -1,4 +1,6 @@
-module History
+module History where
+
+import V
 
 -- Stored in reverse order
 data History w = History [w]
@@ -21,4 +23,3 @@ getRoot (History (w:_)) = VRoot
 
 newGeneration :: History w -> w -> History w
 newGeneration (History ws) w = History (w:ws)
-

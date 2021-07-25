@@ -1,5 +1,7 @@
 module Lift where
 
+import V
+
 hybrid1 :: (a -> b) -> (R a -> b -> Write) -> (R a -> R b)
 hybrid1 f r ra@(R x rx) = R x' rx'
   where x' = f x
@@ -14,4 +16,3 @@ hybrid3 :: (a -> b -> c -> d) -> (R a -> R b -> R c -> d -> Write) -> (R a -> R 
 hybrid3 f r ra@(R x rx) rb@(R y ry) rc@(R z rz) = R w rw
   where w = f x y z
         rw = Receiver "hybrid2" $ \x -> r ra rb rc x
-

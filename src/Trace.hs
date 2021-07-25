@@ -1,9 +1,17 @@
+{-# LANGUAGE NumericUnderscores, RecordWildCards #-}
+
 module Trace where
 
-initCall :: Req -> TMI WW Call
-initCall req = do
-  uid <- uniqueId
-  return $ Call uid req Nothing Nothing False
+import Control.Concurrent (forkIO, threadDelay)
+
+import ExecId
+import Ext
+import Util
+
+-- initCall :: Req -> TMI WW Call
+-- initCall req = do
+--   uid <- uniqueId
+--   return $ Call uid req Nothing Nothing False
 
 initRpc :: Rpc
 initRpc = Rpc [] toExt -- toTmi

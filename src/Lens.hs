@@ -1,6 +1,7 @@
 module Lens
-
 ( mkFielder ) where
+
+import V
 
 mkFielder :: String -> (r -> a) -> (r -> a -> r) -> V (R r -> R a)
 mkFielder s fieldFor fieldRev = VConst s __acc
