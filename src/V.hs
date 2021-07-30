@@ -5,7 +5,7 @@ module V where
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
 deriving instance Show Write1
-data Write = Write [Write1] deriving Show
+newtype Write = Write [Write1] deriving Show
 emptyWrite :: Write
 emptyWrite = Write []
 instance Semigroup Write where
@@ -53,6 +53,7 @@ instance Show a => Show (V a) where
   show (VCheckConst s a) = "(VCheckConst " ++ s ++ " " ++ show a ++ ")"
   -- show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
   -- show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
-  show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ "arg" ++ ")"
-  show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ "arg" ++ ")"
-  show (VSeal va) = "(seal " ++ (show va) ++ ")"
+  show (VApp vfba vfb) = "(" ++ show vfba ++ " " ++ "arg" ++ ")"
+  show (VPartialApp vf va) = "(VPartialApp " ++ show vf ++ " " ++ "arg" ++ ")"
+  show (VUnPartialApp pa) = "(VUnPartialApp " ++ show pa ++ ")"
+  show (VSeal va) = "(seal " ++ show va ++ ")"

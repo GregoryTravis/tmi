@@ -19,8 +19,7 @@ latestState (History []) = error "latestState:: empty"
 latestState (History (w:_)) = w
 
 getRoot :: History w -> V w
-getRoot (History (w:_)) = VRoot
-getRoot _ = error "Can't get root from empty history"
+getRoot _ = VRoot
 
 newGeneration :: History w -> w -> History w
 newGeneration (History ws) w = History (w:ws)
