@@ -6,6 +6,7 @@ import Control.Concurrent (forkIO, threadDelay)
 
 import ExecId
 import Ext
+import Lens
 import Util
 
 initRpc :: Rpc
@@ -60,3 +61,5 @@ refreshRpcs execId rpc@(Rpc {..})  = do
 
 launchIOs :: [IO ()] -> IO ()
 launchIOs ios = mapM_ forkIO ios
+
+_calls = mkFielder "_calls" calls $ \w a -> w { calls = a }

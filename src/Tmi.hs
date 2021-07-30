@@ -36,6 +36,9 @@ module Tmi
 , initRpc
 , listeny
 , initCall
+, Rpc
+, _calls
+, Req(..)
 ) where
 
 import Data.Dynamic

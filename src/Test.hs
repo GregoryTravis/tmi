@@ -4,7 +4,6 @@ module Test
 import Control.Monad.IO.Class (liftIO)
 
 import Appendo
-import Ext
 import Lens
 import Lib
 import Tmi
@@ -41,8 +40,6 @@ history = mkHistory world
 
 vw :: V WW
 vw = getRoot history
-
-_calls = mkFielder "_calls" calls $ \w a -> w { calls = a }
 
 _invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
 _aList = mkFielder "_aList" aList $ \w a -> w { aList = a }
