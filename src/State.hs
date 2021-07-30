@@ -14,7 +14,7 @@ import V
 import W
 
 listeny :: Show a => a -> IO ()
-listeny x = putStrLn $ "Listeny: " ++ (show x)
+listeny x = putStrLn $ "Listeny: " ++ show x
 
 runListeners :: ExecState w -> IO ()
 runListeners es = mapM_ runListener (listeners es)
@@ -30,7 +30,7 @@ data ExecState w = ExecState
   }
 
 updateRpc :: ExecState (W ww) -> IO (ExecState (W ww))
-updateRpc es@(ExecState {..}) = do
+updateRpc es@ExecState {..} = do
   let w = latestState history
       --Rpc { rpc } = rpc w
   rpc' <- refreshRpcs execId (rpc w)
@@ -91,14 +91,10 @@ uniqueId = do
   return $ UniqueId (genId, nextSerial)
 
 getGenId :: TMI w Int
-getGenId = do
-  ss <- get
-  return $ histlen (history (execState ss))
+getGenId = do histlen . history . execState <$> get
 
 getExecId :: TMI w ExecId
-getExecId = do
-  ss <- get
-  return $ execId (execState ss)
+getExecId = do execId . execState <$> get
 
 -- It is critical that history is not modified, only write
 infixl 2 <---
@@ -107,7 +103,7 @@ vlvalue <--- vrvalue = do
   ss <- get
   let rvalue = r (history (execState ss)) vrvalue
       write' = Write [Write1 vlvalue rvalue]
-  put $ ss { writes = (writes ss <> write') }
+  put $ ss { writes = writes ss <> write' }
   -- liftIO $ runListeners history'
   return ()
 

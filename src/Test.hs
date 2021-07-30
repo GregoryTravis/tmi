@@ -88,7 +88,7 @@ testMain = do
 action :: TMI WW ()
 action = do
   let db = _db <$$> vw
-  liftIO $ msp $ "yooo"
+  liftIO $ msp "yooo"
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
   listen invitedUsersV listeny
@@ -106,7 +106,7 @@ action = do
   --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) listeny
   -- let mappuh = composeV <**> incV <$$> (addV 4) -- works
   let mappuh = composoV <$$> incers
-      incers = consV <**> incV <$$> (consV <**> (addV 5) <$$> (VConst "[]" []))
+      incers = consV <**> incV <$$> (consV <**> addV 5 <$$> VConst "[]" [])
   let mapped = mapVE mappuh (_aList <$$> db)
   let aFold :: V Int
       aFold = foldrVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
@@ -139,7 +139,7 @@ action = do
   listen zippie listeny
   let zippie2 = zipV (_aList <$$> db) (_anotherList <$$> db)
   listen zippie2 listeny
-  let inxed = inxV <**> (_aList <$$> db) <$$> (VConst "" 1)
+  let inxed = inxV <**> (_aList <$$> db) <$$> VConst "" 1
   listen inxed listeny
   let firsty = fstV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
   listen firsty listeny

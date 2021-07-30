@@ -4,6 +4,7 @@ import Lift
 import Util
 import V
 
+{-# ANN module "HLint: ignore Use camelCase" #-}
 no_rev :: String -> a
 no_rev s = error $ "No reverse for " ++ s
 
@@ -33,7 +34,7 @@ hyGetRev1 rf ra =
    in rb
 
 map_for :: (R a -> R b) -> [a] -> [b]
-map_for rf as = map (hyGetFor1 rf) as
+map_for rf = map (hyGetFor1 rf)
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
 map_rev (R rf _) (R oas (Receiver _ ras)) bs =
   let -- foo :: [a] -> [b] -> Write
@@ -43,6 +44,7 @@ map_rev (R rf _) (R oas (Receiver _ ras)) bs =
         let ra = R oa (Receiver "map_rev" cont)
             cont na = foo (na:nas) oas bs
          in rev ra b
+      foo _ _ _ = error "unhandled in map_rev"
       -- rev :: R a -> b -> Write
       rev = hyGetRev1 rf
    in foo [] oas bs
@@ -73,18 +75,18 @@ composeV = VConst "composeV" composeHy
 mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
 mapVE vf vas =
   ifV <**> (nullV <$$> vas)
-      <**> (VConst "[]" [])
+      <**> VConst "[]" []
       <$$> (consV <**> (vf <$$> (headV <$$> vas))
-                  <$$> (mapVE vf
-                         (tailV <$$> vas)))
+          <$$> mapVE vf
+          (tailV <$$> vas))
 
 mapVE' :: (Show a, Show b) => V (R a -> b) -> V [a] -> V [b]
 mapVE' vf vas =
   ifV <**> (nullV <$$> vas)
-      <**> (VConst "[]" [])
+      <**> VConst "[]" []
       <$$> (consV <**> (vf <**> (headV <$$> vas))
-                  <$$> (mapVE' vf
-                         (tailV <$$> vas)))
+          <$$> mapVE' vf
+          (tailV <$$> vas))
   -- consV <**> (vf <**> (headV <$$> vas)) <$$> (VConst "[]" [])
 
 zipWithV ::
@@ -93,9 +95,9 @@ zipWithV ::
 zipWithV vf vas vbs =
   ifV <**> (orV <**> (nullV <$$> vas)
                 <$$> (nullV <$$> vbs))
-      <**> (VCheckConst "zipWith" [])
+      <**> VCheckConst "zipWith" []
       <$$> (consV <**> (vf <**> (headV <$$> vas) <$$> (headV <$$> vbs))
-                  <$$> (zipWithV vf (tailV <$$> vas) (tailV <$$> vbs)))
+                  <$$> zipWithV vf (tailV <$$> vas) (tailV <$$> vbs))
 
 -- foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 fyold :: (a -> b -> b) -> b -> [a] -> b
@@ -110,9 +112,9 @@ foldrVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
 foldrVE vf vb vas =
   ifV <**> (nullV <$$> vas)
       <**> vb
-      <$$> (foldrVE vf
-                    (vf <**> (headV <$$> vas) <$$> vb)
-                    (tailV <$$> vas))
+      <$$> foldrVE vf
+                   (vf <**> (headV <$$> vas) <$$> vb)
+                   (tailV <$$> vas)
 
 composo :: [a -> a] -> (a -> a)
 composo [] = id
@@ -128,14 +130,14 @@ composoV = VConst "composoV" composoHy
 -- TODO: why is reverseV needed here??
 foldoVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
 foldoVE vf vb vas =
-  (composoV <$$> (reverseV <$$> (mapVE' vf vas))) <$$> vb
+  (composoV <$$> (reverseV <$$> mapVE' vf vas)) <$$> vb
 
 foldo :: (a -> b -> b) -> b -> [a] -> b
 foldo f b as = composo (map f as) b
 
 mapViaFold :: (a -> b) -> [a] -> [b]
 --mapViaFold f as = foldr (\a bs -> f a : bs) [] as
-mapViaFold f as = foldr ((:) . f) [] as
+mapViaFold f = foldr ((:) . f) []
 
 mapViaFoldVE vf vas =
   let fooo = composeVE consV vf
@@ -151,10 +153,10 @@ reverseV = VConst "reverseV" $ hybrid1 reverse_for reverse_rev
 reverseVE :: (Eq a, Show a) => V [a] -> V [a]
 reverseVE vas =
   ifV <**> (nullV <$$> vas)
-      <**> (VConst "[]" [])
-      <$$> (appendV <**> (reverseVE (tailV <$$> vas))
+      <**> VConst "[]" []
+      <$$> (appendV <**> reverseVE (tailV <$$> vas)
                     <$$> (consV <**> (headV <$$> vas)
-                                <$$> (VCheckConst "reverseVE" [])))
+                                <$$> VCheckConst "reverseVE" []))
 
 reverseAcc :: [a] -> [a]
 reverseAcc xs = reverseAcc' xs []
@@ -166,14 +168,14 @@ reverseAccVE xs = reverseAccVE' xs (VConst "reverseAccVE" [])
   where reverseAccVE' xs xs' =
           ifV <**> (nullV <$$> xs)
               <**> xs'
-              <$$> (reverseAccVE' (tailV <$$> xs)
-                                  (consV <**> (headV <$$> xs) <$$> xs'))
+              <$$> reverseAccVE' (tailV <$$> xs)
+              (consV <**> (headV <$$> xs) <$$> xs')
 
 -- Matches sizes in reverse, so array cannot change length
 append_for :: [a] -> [a] -> [a]
 append_for = (++)
 append_rev :: R [a] -> R [a] -> [a] -> Write
-append_rev (R xs rxs) (R ys rys) zs = ((rxs <-- xs') <> (rys <-- ys'))
+append_rev (R xs rxs) (R ys rys) zs = (rxs <-- xs') <> (rys <-- ys')
   where (xs', ys') = splitAs (length xs) (length ys) zs
         splitAs len0 len1 xs = assertM "appendV: length mismatch" ok (xs', xs'')
           where xs' = take len0 xs

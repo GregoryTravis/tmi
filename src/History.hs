@@ -3,7 +3,7 @@ module History where
 import V
 
 -- Stored in reverse order
-data History w = History [w]
+newtype History w = History [w]
 -- TODO Foldable
 histlen :: History w -> Int
 histlen (History ws) = length ws
@@ -20,6 +20,7 @@ latestState (History (w:_)) = w
 
 getRoot :: History w -> V w
 getRoot (History (w:_)) = VRoot
+getRoot _ = error "Can't get root from empty history"
 
 newGeneration :: History w -> w -> History w
 newGeneration (History ws) w = History (w:ws)

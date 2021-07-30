@@ -24,10 +24,10 @@ import Util
 
 newtype Ext a = Ext (IO a)
 
-data Initiation = Initiation ExecId deriving (Eq, Show)
+newtype Initiation = Initiation ExecId deriving (Eq, Show)
 
 data Req = Req Float String deriving Show
-data Resp = Resp String deriving Show
+newtype Resp = Resp String deriving Show
 
 data Rpc = Rpc
   { calls :: [Call]

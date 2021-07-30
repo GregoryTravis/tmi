@@ -10,6 +10,4 @@ import System.Posix.Types (ProcessID)
 newtype ExecId = ExecId ProcessID deriving (Eq, Show)
 
 currentExecId :: IO ExecId
-currentExecId = do
-  pid <- getProcessID
-  return $ ExecId pid
+currentExecId = do ExecId <$> getProcessID

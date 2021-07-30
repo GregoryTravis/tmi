@@ -28,7 +28,7 @@ propagateOne h (Write [Write1 VRoot w]) = unsafeCoerce w
 propagateOne h (Write [Write1 va a]) =
   let write' = wr h va a
    in propagateOne h write'
-propagateOne h (Write writes) = error ("Non-singular write (" ++ (show writes) ++ ")")
+propagateOne h (Write writes) = error ("Non-singular write (" ++ show writes ++ ")")
 
 propagateBranching :: History w -> Write -> [w]
 propagateBranching h (Write []) = []
