@@ -8,11 +8,6 @@ import ExecId
 import Ext
 import Util
 
--- initCall :: Req -> TMI WW Call
--- initCall req = do
---   uid <- uniqueId
---   return $ Call uid req Nothing Nothing False
-
 initRpc :: Rpc
 initRpc = Rpc [] toExt -- toTmi
   where toExt r@(Req secs s) = io

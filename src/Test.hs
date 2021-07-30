@@ -1,9 +1,14 @@
 module Test
 ( testMain ) where
 
+import Control.Monad.IO.Class (liftIO)
+
 import Appendo
 import Ext
+import Lens
+import Lib
 import Tmi
+import Util
 
 data DB = DB
   { invitedUsers :: [String]
@@ -76,7 +81,7 @@ extAction = do
   calls <--- appendV <**> calls <$$> VConst "" [call, call2, call3]
   -- return ()
 
-textMain = do
+testMain = do
   -- () <- tmiMain (return history) action
   () <- tmiMain (return history) extAction
   -- eventLoop history'

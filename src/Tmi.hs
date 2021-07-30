@@ -33,6 +33,9 @@ module Tmi
 -- , UniqueId
 , uniqueId
 -- , mkFielder
+, initRpc
+, listeny
+, initCall
 ) where
 
 import Data.Dynamic
@@ -41,5 +44,6 @@ import Ext
 import History
 import Lift
 import State
+import Trace
 import V
 import W

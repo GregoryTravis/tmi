@@ -113,3 +113,7 @@ vlvalue <--- vrvalue = do
 
 data Listener = forall a. Listener (V a) (a -> IO ())
 
+initCall :: Req -> TMI w Call
+initCall req = do
+  uid <- uniqueId
+  return $ Call uid req Nothing Nothing False
