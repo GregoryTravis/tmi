@@ -59,7 +59,7 @@ shiftNAdd (R x rx) (R y ry) = R z rz
                                                y' = z' `div` 10
                                             in (rx <-- x') <> (ry <-- y')
 shiftNAddV :: V (R Int -> R Int -> R Int)
-shiftNAddV = VConst "shiftNAddV" shiftNAdd
+shiftNAddV = vconst "shiftNAddV" shiftNAdd
 
 -- (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 modded = mapV <**> modStringV <$$> invitedUsersV
@@ -75,7 +75,7 @@ extAction = do
   call <- initCall (Req 1 "hey")
   call2 <- initCall (Req 2 "hey")
   call3 <- initCall (Req 3 "hey")
-  calls <--- appendV <**> calls <$$> VConst "" [call, call2, call3]
+  calls <--- appendV <**> calls <$$> vconst "" [call, call2, call3]
   -- return ()
 
 testMain = do
@@ -93,10 +93,10 @@ action = do
   -- this doesn't work
   listen invitedUsersV listeny
   listen modded listeny
-  -- listen (ifV <**> VConst True <**> VConst 2 <$$> VConst 3) listeny
-  -- listen (ifV <**> VConst False <**> VConst 2 <$$> VConst 3) listeny
-  -- listen (headV <$$> VConst [3, 4, 5]) listeny
-  -- listen (tailV <$$> VConst [3, 4, 5]) listeny
+  -- listen (ifV <**> vconst True <**> vconst 2 <$$> vconst 3) listeny
+  -- listen (ifV <**> vconst False <**> vconst 2 <$$> vconst 3) listeny
+  -- listen (headV <$$> vconst [3, 4, 5]) listeny
+  -- listen (tailV <$$> vconst [3, 4, 5]) listeny
   listen (_aList <$$> db) listeny
   listen (_anotherList <$$> db) listeny
   listen (_zero <$$> db) listeny
@@ -106,7 +106,7 @@ action = do
   --               <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) listeny
   -- let mappuh = composeV <**> incV <$$> (addV 4) -- works
   let mappuh = composoV <$$> incers
-      incers = consV <**> incV <$$> (consV <**> addV 5 <$$> VConst "[]" [])
+      incers = consV <**> incV <$$> (consV <**> addV 5 <$$> vconst "[]" [])
   let mapped = mapVE mappuh (_aList <$$> db)
   let aFold :: V Int
       aFold = foldrVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
@@ -115,8 +115,8 @@ action = do
   let aFoldo :: V Int
       aFoldo = foldoVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
   listen aFoldo listeny
-  -- let fooo = composeVE consV (shiftNAddV <**> VConst "" 4)
-  --     mappedViaFold = foldoVE (VUnPartialApp fooo) (VConst "" []) (_aList <$$> db)
+  -- let fooo = composeVE consV (shiftNAddV <**> vconst "" 4)
+  --     mappedViaFold = foldoVE (VUnPartialApp fooo) (vconst "" []) (_aList <$$> db)
   let mappedViaFold = mapViaFoldVE incV (_aList <$$> db)
   listen mappedViaFold listeny
   let reverseMVF = reverseV <$$> mappedViaFold
@@ -139,39 +139,39 @@ action = do
   listen zippie listeny
   let zippie2 = zipV (_aList <$$> db) (_anotherList <$$> db)
   listen zippie2 listeny
-  let inxed = inxV <**> (_aList <$$> db) <$$> VConst "" 1
+  let inxed = inxV <**> (_aList <$$> db) <$$> vconst "" 1
   listen inxed listeny
-  let firsty = fstV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
+  let firsty = fstV <$$> (inxV <**> zippie2 <$$> vconst "" 1) 
   listen firsty listeny
-  let secondy = sndV <$$> (inxV <**> zippie2 <$$> VConst "" 1) 
+  let secondy = sndV <$$> (inxV <**> zippie2 <$$> vconst "" 1) 
   listen secondy listeny
   let appo = _anAppendo <$$> db
   listen appo listeny
-  appendo appo $ VConst "" 2
+  appendo appo $ vconst "" 2
   -- Writes
-  -- secondy <--- VConst "" 333 -- works
-  -- firsty <--- VConst "" 4444 -- works
-  -- inxed <--- VConst "" 400 -- works
-  -- (inxV <**> zippie2 <$$> (VCheckConst "" 1)) <--- VConst "" (400, 3000) -- works
-  -- zippie2 <--- VConst "" [(30,20), (40, 30), (50, 40)]
-  -- zippie <--- VConst "" [51, 61, 71] -- works
-  -- appended <--- VConst "" [12,3,4,12,513,14,15] -- works
-  -- appended <--- VConst "" [0, 1, 2, 3, 4, 5, 6] -- works
-  -- appended2 <--- VConst "" [12,513,14,15] -- works
-  invitedUsersV <--- VConst "" ["b", "heyo", "hippo"]
-  modded <--- VConst "" ["c!", "deyo!", "lippo!"]
+  -- secondy <--- vconst "" 333 -- works
+  -- firsty <--- vconst "" 4444 -- works
+  -- inxed <--- vconst "" 400 -- works
+  -- (inxV <**> zippie2 <$$> (VCheckConst "" 1)) <--- vconst "" (400, 3000) -- works
+  -- zippie2 <--- vconst "" [(30,20), (40, 30), (50, 40)]
+  -- zippie <--- vconst "" [51, 61, 71] -- works
+  -- appended <--- vconst "" [12,3,4,12,513,14,15] -- works
+  -- appended <--- vconst "" [0, 1, 2, 3, 4, 5, 6] -- works
+  -- appended2 <--- vconst "" [12,513,14,15] -- works
+  invitedUsersV <--- vconst "" ["b", "heyo", "hippo"]
+  modded <--- vconst "" ["c!", "deyo!", "lippo!"]
   -- uhh <- get
   -- liftIO $ msp ("num listeners", (length (listeners (execState uhh))))
-  -- mapped <--- VConst "" [302, 402, 502] -- works
-  -- mappedViaFold <--- VConst "" [5964,6964,7964] -- works
-  -- reverseMVF <--- VConst "" [7964,6964,5964]
-  -- aFold <--- VConst "" (456::Int) -- Works
-  -- aFoldo <--- VConst "" (789::Int) -- Works
-  -- (headV <$$> (_aList <$$> db)) <--- VConst 31
-  -- (tailV <$$> (_aList <$$> db)) <--- VConst [42, 52]
+  -- mapped <--- vconst "" [302, 402, 502] -- works
+  -- mappedViaFold <--- vconst "" [5964,6964,7964] -- works
+  -- reverseMVF <--- vconst "" [7964,6964,5964]
+  -- aFold <--- vconst "" (456::Int) -- Works
+  -- aFoldo <--- vconst "" (789::Int) -- Works
+  -- (headV <$$> (_aList <$$> db)) <--- vconst 31
+  -- (tailV <$$> (_aList <$$> db)) <--- vconst [42, 52]
   -- Non-singular write
   -- (consV <**> (headV <$$> (_aList <$$> db))
-  --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) <--- VConst [310, 520]
+  --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) <--- vconst [310, 520]
 
 _extMain = do
   -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]

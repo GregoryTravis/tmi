@@ -1,9 +1,12 @@
 module Tmi
 ( R(..)
-, Write(..)
-, Write1(..)
+, Write
+, Write1
 , emptyWrite
-, V(..)
+, V
+, vconst
+, vcheckconst
+, vunapp
 , W(..)
 , _db
 , _rpc

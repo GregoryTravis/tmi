@@ -1,8 +1,7 @@
 module Lib where
 
-import Lift
+import Tmi
 import Util
-import V
 
 {-# ANN module "HLint: ignore Use camelCase" #-}
 no_rev :: String -> a
@@ -14,7 +13,7 @@ modString_rev :: R String -> String -> Write
 modString_rev (R _ rs) newS =
   rs <-- init newS
 modStringV :: V (R String -> R String)
-modStringV = VConst "modStringV" $ hybrid1 modString_for modString_rev
+modStringV = vconst "modStringV" $ hybrid1 modString_for modString_rev
 
 -- requests = map toRequest invitedUsersV
 -- duped = mapV modStringV invitedUsersV
@@ -51,14 +50,14 @@ map_rev (R rf _) (R oas (Receiver _ ras)) bs =
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
-mapV = VConst "mapV" mapHy
+mapV = vconst "mapV" mapHy
 
 compose_for :: (R b -> R c) -> (R a -> R b) -> (R a -> R c)
 compose_for = (.)
 composeHy :: R (R b -> R c) -> R (R a -> R b) -> R (R a -> R c)
 composeHy = hybrid2 compose_for (no_rev "composeV")
 composeV :: V (R (R b -> R c) -> R (R a -> R b) -> R (R a -> R c))
-composeV = VConst "composeV" composeHy
+composeV = vconst "composeV" composeHy
 
 -- -- External map
 -- -- Just writing it in regular and primitive forms
@@ -75,7 +74,7 @@ composeV = VConst "composeV" composeHy
 mapVE :: (Show a, Show b) => V (R a -> R b) -> V [a] -> V [b]
 mapVE vf vas =
   ifV <**> (nullV <$$> vas)
-      <**> VConst "[]" []
+      <**> vconst "[]" []
       <$$> (consV <**> (vf <$$> (headV <$$> vas))
           <$$> mapVE vf
           (tailV <$$> vas))
@@ -83,11 +82,11 @@ mapVE vf vas =
 mapVE' :: (Show a, Show b) => V (R a -> b) -> V [a] -> V [b]
 mapVE' vf vas =
   ifV <**> (nullV <$$> vas)
-      <**> VConst "[]" []
+      <**> vconst "[]" []
       <$$> (consV <**> (vf <**> (headV <$$> vas))
           <$$> mapVE' vf
           (tailV <$$> vas))
-  -- consV <**> (vf <**> (headV <$$> vas)) <$$> (VConst "[]" [])
+  -- consV <**> (vf <**> (headV <$$> vas)) <$$> (vconst "[]" [])
 
 zipWithV ::
   (Show a, Show b, Show c, Eq a, Eq b, Eq c) =>
@@ -95,7 +94,7 @@ zipWithV ::
 zipWithV vf vas vbs =
   ifV <**> (orV <**> (nullV <$$> vas)
                 <$$> (nullV <$$> vbs))
-      <**> VCheckConst "zipWith" []
+      <**> vcheckconst "zipWith" []
       <$$> (consV <**> (vf <**> (headV <$$> vas) <$$> (headV <$$> vbs))
                   <$$> zipWithV vf (tailV <$$> vas) (tailV <$$> vbs))
 
@@ -125,7 +124,7 @@ composo_for = composo
 composoHy :: R [R a -> R a] -> R (R a -> R a)
 composoHy = hybrid1 composo_for (no_rev "composoV")
 composoV :: V (R [R a -> R a] -> R (R a -> R a))
-composoV = VConst "composoV" composoHy
+composoV = vconst "composoV" composoHy
 
 -- TODO: why is reverseV needed here??
 foldoVE :: (Show a, Show b) => V (R a -> R b -> R b) -> V b -> V [a] -> V b
@@ -141,22 +140,22 @@ mapViaFold f = foldr ((:) . f) []
 
 mapViaFoldVE vf vas =
   let fooo = composeVE consV vf
-   in foldoVE (VUnPartialApp fooo) (VCheckConst "mapViaFoldVE nil" []) vas
+   in foldoVE (vunapp fooo) (vcheckconst "mapViaFoldVE nil" []) vas
 
 reverse_for :: [a] -> [a]
 reverse_for = reverse
 reverse_rev :: R [a] -> [a] -> Write
 reverse_rev (R _ ra) as = ra <-- reverse as
 reverseV :: V (R [a] -> R [a])
-reverseV = VConst "reverseV" $ hybrid1 reverse_for reverse_rev
+reverseV = vconst "reverseV" $ hybrid1 reverse_for reverse_rev
 
 reverseVE :: (Eq a, Show a) => V [a] -> V [a]
 reverseVE vas =
   ifV <**> (nullV <$$> vas)
-      <**> VConst "[]" []
+      <**> vconst "[]" []
       <$$> (appendV <**> reverseVE (tailV <$$> vas)
                     <$$> (consV <**> (headV <$$> vas)
-                                <$$> VCheckConst "reverseVE" []))
+                                <$$> vcheckconst "reverseVE" []))
 
 reverseAcc :: [a] -> [a]
 reverseAcc xs = reverseAcc' xs []
@@ -164,7 +163,7 @@ reverseAcc xs = reverseAcc' xs []
         reverseAcc' (x:xs) xs' = reverseAcc' xs (x:xs')
 
 reverseAccVE :: (Eq a, Show a) => V [a] -> V [a]
-reverseAccVE xs = reverseAccVE' xs (VConst "reverseAccVE" [])
+reverseAccVE xs = reverseAccVE' xs (vconst "reverseAccVE" [])
   where reverseAccVE' xs xs' =
           ifV <**> (nullV <$$> xs)
               <**> xs'
@@ -182,20 +181,20 @@ append_rev (R xs rxs) (R ys rys) zs = (rxs <-- xs') <> (rys <-- ys')
                 xs'' = drop len0 xs
                 ok = length xs' + length xs'' == length xs
 appendV :: V (R [a] -> R [a] -> R [a])
-appendV = VConst "appendV" $ hybrid2 append_for append_rev
+appendV = vconst "appendV" $ hybrid2 append_for append_rev
 
 inxV :: V (R [a] -> R Int -> R a)
-inxV = VConst "inxV" $ hybrid2 for rev
+inxV = vconst "inxV" $ hybrid2 for rev
   where for = (!!)
         rev (R as ras) (R i _) a' = ras <-- (as !!- i) a'
 
 fstV :: V (R (a, b) -> R a)
-fstV = VConst "fstV" $ hybrid1 for rev
+fstV = vconst "fstV" $ hybrid1 for rev
   where for = fst
         rev (R (a, b) rab) a' = rab <-- (a', b)
 
 sndV :: V (R (a, b) -> R b)
-sndV = VConst "sndV" $ hybrid1 for rev
+sndV = vconst "sndV" $ hybrid1 for rev
   where for = snd
         rev (R (a, b) rab) b' = rab <-- (a, b')
 
@@ -203,7 +202,7 @@ sndV = VConst "sndV" $ hybrid1 for rev
 -- reverseVE :: Show a => V [a] -> V [a]
 -- reverseVE vas =
 --   ifV <**> (nullV <$$> vas)
---       <**> (VConst "[]" [])
+--       <**> (vconst "[]" [])
 --       <$$> (consV <**> (vf <$$> (headV <$$> vas))
 --                   <$$> (mapVE vf
 --                          (tailV <$$> vas)))
@@ -215,10 +214,10 @@ sndV = VConst "sndV" $ hybrid1 for rev
 -- --     Actual type: V (R b -> R [b] -> R [b])
 
 -- -- works
--- foo = composeVE consV (shiftNAddV <**> VConst "" 4)
--- bar = (composeVE consV (shiftNAddV <**> VConst "" 4) (VConst "" 12)) <**> VConst "" []
--- -- baz = foldoVE <**> (composeVE consV (shiftNAddV <**> VConst "" 4))
--- baz = foldoVE (VUnPartialApp foo) (VConst "" []) -- <**> (VConst "" [3, 4])
+-- foo = composeVE consV (shiftNAddV <**> vconst "" 4)
+-- bar = (composeVE consV (shiftNAddV <**> vconst "" 4) (vconst "" 12)) <**> vconst "" []
+-- -- baz = foldoVE <**> (composeVE consV (shiftNAddV <**> vconst "" 4))
+-- baz = foldoVE (VUnPartialApp foo) (vconst "" []) -- <**> (vconst "" [3, 4])
 
 -- -- qqq :: V (R Int) -> V (R [Int]) -> V (R [Int])
 -- -- qqq = \x -> (((foo . VSeal) x) <**>) . VSeal
@@ -237,21 +236,21 @@ ifV_rev (R b _rb) (R t rt) (R e re) x =
   let Receiver _ rec = if b then rt else re
    in rec x
 ifV :: V (R Bool -> R a -> R a -> R a)
-ifV = VConst "ifV" $ hybrid3 ifV_for ifV_rev
+ifV = vconst "ifV" $ hybrid3 ifV_for ifV_rev
 
 headR :: R [a] -> R a
 headR (R as (Receiver _ ras)) = R a ra
   where a = head as
         ra = Receiver "headR" $ \a -> ras (a : tail as)
 headV :: V (R [a] -> R a)
-headV = VConst "headV" headR
+headV = vconst "headV" headR
 
 tailR :: R [a] -> R [a]
 tailR (R as (Receiver _ ras)) = R as' ras'
   where as' = tail as
         ras' = Receiver "tailR" $ \as' -> ras (head as : as')
 tailV :: V (R [a] -> R [a])
-tailV = VConst "tailV" tailR
+tailV = vconst "tailV" tailR
 
 consR :: R a -> R [a] -> R [a]
 consR (R a ra) (R as ras) = R newAs ras'
@@ -262,32 +261,32 @@ consR (R a ra) (R as ras) = R newAs ras'
             then emptyWrite
             else ras <-- as'
 consV :: V (R a -> R [a] -> R [a])
-consV = VConst "consV" consR
+consV = vconst "consV" consR
 
 nullR :: R [a] -> R Bool
 nullR = hybrid1 null undefined
 
 nullV :: V (R [a] -> R Bool)
-nullV = VConst "nullV" nullR
+nullV = vconst "nullV" nullR
 
 lengthV :: V (R [a] -> R Int)
 lengthV = uni1 "lengthV" length
 
 uni1 :: String -> (a -> b) -> V (R a -> R b)
-uni1 n f = VConst n (hybrid1 f (no_rev n))
+uni1 n f = vconst n (hybrid1 f (no_rev n))
 
 uni2 :: String -> (a -> b -> c) -> V (R a -> R b -> R c)
-uni2 n f = VConst n (hybrid2 f (no_rev n))
+uni2 n f = vconst n (hybrid2 f (no_rev n))
 
 bi2 :: String -> (a -> b -> c) -> (c -> (a, b)) -> V (R a -> R b -> R c)
-bi2 name for rev = VConst name $ hybrid2 for rev'
+bi2 name for rev = vconst name $ hybrid2 for rev'
   where rev' (R _ ra) (R _ rb) c =
           let (a, b) = rev c
            in (ra <-- a) <> (rb <-- b)
 
 orV :: V (R Bool -> R Bool -> R Bool)
 orV = uni2 "orV" (||)
--- orV = VConst "orV" (hybrid2 (||) (no_rev "orV"))
+-- orV = vconst "orV" (hybrid2 (||) (no_rev "orV"))
 
 tup2 :: (Show a, Show b) => V (R a -> R b -> R (a, b))
 -- tup2 = uni2 "tup2" (,)
@@ -302,7 +301,7 @@ add_hy n (R x rx) = R x' rx'
         rx' = Receiver "inc_hy" $ \x ->
           rx <-- x - n
 addV :: Int -> V (R Int -> R Int)
-addV n = VConst "addV" $ add_hy n
+addV n = vconst "addV" $ add_hy n
 
 -- inc_hy :: R Int -> R Int
 -- inc_hy (R x rx) = R x' rx'
@@ -310,7 +309,7 @@ addV n = VConst "addV" $ add_hy n
 --         rx' = Receiver "inc_hy" $ \x ->
 --           rx <-- x - 1
 -- incV :: V (R Int -> R Int)
--- incV = VConst "incV" inc_hy
+-- incV = vconst "incV" inc_hy
 incV = addV 1
 
 plus_for :: Int -> Int -> Int
@@ -323,4 +322,4 @@ plus_rev (R x rx) (R y ry) newZ =
         y' = newZ - x'
 plus_hy' :: R Int -> R Int -> R Int
 plus_hy' = hybrid2 plus_for plus_rev
-plusV = VConst "plusV" plus_hy'
+plusV = vconst "plusV" plus_hy'

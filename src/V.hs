@@ -32,9 +32,13 @@ data V a where
   VSeal :: (Show a) => V (R a) -> V a
   -- VUnSeal :: (Show a) => V a -> V (R a)
 
--- more succinct
-k :: (Show a) => String -> a -> V a
-k = VConst
+vconst :: (Show a) => String -> a -> V a
+vconst = VConst
+vcheckconst :: (Show a, Eq a) => String -> a -> V a
+vcheckconst = VCheckConst
+vunapp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
+vunapp = VUnPartialApp
+
 infixl 4 <**>
 (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest
 (<**>) = VPartialApp
