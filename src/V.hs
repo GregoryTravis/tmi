@@ -26,6 +26,9 @@ composeReceivers :: (b -> a) -> Receiver a -> Receiver b
 composeReceivers f (Receiver s a2w) = Receiver s b2w
   where b2w = a2w . f
 
+renameReceiver :: String -> Receiver a -> Receiver a
+renameReceiver name (Receiver _ r) = Receiver name r
+
 data V a where
   VRoot :: V a
   VConst :: (Show a) => String -> a -> V a

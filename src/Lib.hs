@@ -239,9 +239,10 @@ ifV :: V (R Bool -> R a -> R a -> R a)
 ifV = vconst "ifV" $ hybrid3 ifV_for ifV_rev
 
 headR :: R [a] -> R a
-headR (R as (Receiver _ ras)) = R a ra
+headR (R as ras) = R a ra
   where a = head as
-        ra = Receiver "headR" $ \a -> ras (a : tail as)
+        --ra = Receiver "headR" $ \a -> ras (a : tail as)
+        ra = renameReceiver "headR" $ composeReceivers (:tail as) ras
 headV :: V (R [a] -> R a)
 headV = vconst "headV" headR
 

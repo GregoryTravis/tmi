@@ -11,6 +11,8 @@ module Tmi
 , _db
 , _rpc
 , Receiver(..)
+, composeReceivers
+, renameReceiver
 , hybrid1
 , hybrid2
 , hybrid3
