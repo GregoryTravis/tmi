@@ -241,15 +241,14 @@ ifV = vconst "ifV" $ hybrid3 ifV_for ifV_rev
 headR :: R [a] -> R a
 headR (R as ras) = R a ra
   where a = head as
-        --ra = Receiver "headR" $ \a -> ras (a : tail as)
-        ra = renameReceiver "headR" $ composeReceivers (:tail as) ras
+        ra = renameReceiver "headR" $ (:tail as) >$< ras
 headV :: V (R [a] -> R a)
 headV = vconst "headV" headR
 
 tailR :: R [a] -> R [a]
-tailR (R as (Receiver _ ras)) = R as' ras'
+tailR (R as ras) = R as' ras'
   where as' = tail as
-        ras' = Receiver "tailR" $ \as' -> ras (head as : as')
+        ras' = renameReceiver "tailR" $ (head as:) >$< ras
 tailV :: V (R [a] -> R [a])
 tailV = vconst "tailV" tailR
 
@@ -299,8 +298,7 @@ zipV = zipWithV tup2
 add_hy :: Int -> R Int -> R Int
 add_hy n (R x rx) = R x' rx'
   where x' = x + n
-        rx' = Receiver "inc_hy" $ \x ->
-          rx <-- x - n
+        rx' = renameReceiver "add_hy" $ (\x -> x-n) >$< rx
 addV :: Int -> V (R Int -> R Int)
 addV n = vconst "addV" $ add_hy n
 

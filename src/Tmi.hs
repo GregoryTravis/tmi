@@ -13,6 +13,7 @@ module Tmi
 , Receiver(..)
 , composeReceivers
 , renameReceiver
+, (>$<)
 , hybrid1
 , hybrid2
 , hybrid3

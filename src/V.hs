@@ -2,6 +2,8 @@
 
 module V where
 
+import Data.Functor.Contravariant
+
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
 deriving instance Show Write1
@@ -25,6 +27,13 @@ Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 composeReceivers :: (b -> a) -> Receiver a -> Receiver b
 composeReceivers f (Receiver s a2w) = Receiver s b2w
   where b2w = a2w . f
+
+instance Contravariant Receiver where
+  -- f >$< Receiver name a2w = Receiver name (a2w . f)
+  contramap f (Receiver name a2w) = Receiver name (a2w . f)
+-- Why is this necessary?
+(>$<) :: Contravariant f => (a -> b) -> (f b -> f a)
+(>$<) = contramap
 
 renameReceiver :: String -> Receiver a -> Receiver a
 renameReceiver name (Receiver _ r) = Receiver name r
