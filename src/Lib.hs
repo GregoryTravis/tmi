@@ -233,8 +233,9 @@ ifV_rev :: R Bool -> R a -> R a -> a -> Write
 -- ifV_rev = error "ifV_rev"
 -- ifV_rev _ _  _ _ = emptyWrite
 ifV_rev (R b _rb) (R t rt) (R e re) x =
-  let Receiver _ rec = if b then rt else re
-   in rec x
+  (if b then rt else re) <-- x
+  -- let Receiver _ rec = if b then rt else re
+  --  in rec x
 ifV :: V (R Bool -> R a -> R a -> R a)
 ifV = vconst "ifV" $ hybrid3 ifV_for ifV_rev
 
