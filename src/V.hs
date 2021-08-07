@@ -22,6 +22,10 @@ Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 -- Receiver va <-- x = Write [Write1 va x]
 -- Receiver va <-- x = Write [Write1 va x]
 
+composeReceivers :: (b -> a) -> Receiver a -> Receiver b
+composeReceivers f (Receiver s a2w) = Receiver s b2w
+  where b2w = a2w . f
+
 data V a where
   VRoot :: V a
   VConst :: (Show a) => String -> a -> V a

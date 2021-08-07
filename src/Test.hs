@@ -79,7 +79,7 @@ extAction = do
   -- return ()
 
 testMain = do
-  -- () <- tmiMain (return history) action
+  () <- tmiMain (return history) action
   () <- tmiMain (return history) extAction
   -- eventLoop history'
   -- history'' <- tmiRunIO history' refresh
@@ -173,7 +173,7 @@ action = do
   -- (consV <**> (headV <$$> (_aList <$$> db))
   --        <$$> (tailV <$$> (tailV <$$> (_aList <$$>) db))) <--- vconst [310, 520]
 
-_extMain = do
+_testMain = do
   -- msp $ fyold (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ fyold' (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
   -- msp $ foldo (\x acc -> acc * 10 + x) 0 [2::Int, 3, 4]
