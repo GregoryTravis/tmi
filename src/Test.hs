@@ -93,6 +93,7 @@ action = do
   -- this doesn't work
   listen invitedUsersV listeny
   listen modded listeny
+  -- listen (consV <**> vconst "boop" "boop" <$$> modded) listeny
   -- listen (ifV <**> vconst True <**> vconst 2 <$$> vconst 3) listeny
   -- listen (ifV <**> vconst False <**> vconst 2 <$$> vconst 3) listeny
   -- listen (headV <$$> vconst [3, 4, 5]) listeny

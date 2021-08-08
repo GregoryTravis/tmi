@@ -1,5 +1,7 @@
 module Lib where
 
+import Data.Functor.Contravariant.Divisible
+
 import Tmi
 import Util
 
@@ -258,7 +260,19 @@ tailR (R as ras) = R as' ras'
 tailV :: V (R [a] -> R [a])
 tailV = vconst "tailV" tailR
 
+  -- divide f rb rc = Receiver "divisible" ra
+  --   where ra a = case f a of (b, c) -> (rb <-- b) <> (rc <-- c)
+
 consR :: R a -> R [a] -> R [a]
+-- This compiles and runs but it should fail since it's not doing the writeIfNotNil logic
+-- which I think will need Decidable.
+-- consR (R a ra) (R as ras) = R newAs ras'
+--   where newAs = a:as
+--         ras' = divide (\(a':as') -> (a', as')) ra ras
+--         -- writeIfNotNil as' =
+--         --   if null as && null as'
+--         --     then emptyWrite
+--         --     else ras <-- as'
 consR (R a ra) (R as ras) = R newAs ras'
   where newAs = a:as
         ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> writeIfNotNil as'
