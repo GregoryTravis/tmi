@@ -93,7 +93,6 @@ action = do
   -- this doesn't work
   listen invitedUsersV listeny
   listen modded listeny
-  -- listen (consV <**> vconst "boop" "boop" <$$> modded) listeny
   -- listen (ifV <**> vconst True <**> vconst 2 <$$> vconst 3) listeny
   -- listen (ifV <**> vconst False <**> vconst 2 <$$> vconst 3) listeny
   -- listen (headV <$$> vconst [3, 4, 5]) listeny
@@ -159,8 +158,11 @@ action = do
   -- appended <--- vconst "" [12,3,4,12,513,14,15] -- works
   -- appended <--- vconst "" [0, 1, 2, 3, 4, 5, 6] -- works
   -- appended2 <--- vconst "" [12,513,14,15] -- works
+  let consied = consV <**> vcheckconst "boop" "boop" <$$> modded
+  listen consied (slisteny "consied")
   invitedUsersV <--- vconst "" ["b", "heyo", "hippo"]
   modded <--- vconst "" ["c!", "deyo!", "lippo!"]
+  consied <--- vconst "" ["boop", "c!", "deyo!", "lippo!"]
   -- uhh <- get
   -- liftIO $ msp ("num listeners", (length (listeners (execState uhh))))
   -- mapped <--- vconst "" [302, 402, 502] -- works

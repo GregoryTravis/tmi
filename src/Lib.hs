@@ -266,20 +266,20 @@ tailV = vconst "tailV" tailR
 consR :: R a -> R [a] -> R [a]
 -- This compiles and runs but it should fail since it's not doing the writeIfNotNil logic
 -- which I think will need Decidable.
--- consR (R a ra) (R as ras) = R newAs ras'
---   where newAs = a:as
---         ras' = divide (\(a':as') -> (a', as')) ra ras
---         -- writeIfNotNil as' =
---         --   if null as && null as'
---         --     then emptyWrite
---         --     else ras <-- as'
 consR (R a ra) (R as ras) = R newAs ras'
   where newAs = a:as
-        ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> writeIfNotNil as'
-        writeIfNotNil as' =
-          if null as && null as'
-            then emptyWrite
-            else ras <-- as'
+        ras' = divide (\(a':as') -> (a', as')) ra ras
+        -- writeIfNotNil as' =
+        --   if null as && null as'
+        --     then emptyWrite
+        --     else ras <-- as'
+-- consR (R a ra) (R as ras) = R newAs ras'
+--   where newAs = a:as
+--         ras' = Receiver "consR" $ \(a':as') -> (ra <-- a') <> writeIfNotNil as'
+--         writeIfNotNil as' =
+--           if null as && null as'
+--             then emptyWrite
+--             else ras <-- as'
 consV :: V (R a -> R [a] -> R [a])
 consV = vconst "consV" consR
 

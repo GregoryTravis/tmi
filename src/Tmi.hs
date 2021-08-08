@@ -41,6 +41,7 @@ module Tmi
 -- , mkFielder
 , initRpc
 , listeny
+, slisteny
 , initCall
 , Rpc
 , _calls

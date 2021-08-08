@@ -16,6 +16,9 @@ import W
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ show x
 
+slisteny :: Show a => String -> a -> IO ()
+slisteny s x = putStrLn $ s ++ ": " ++ show x
+
 runListeners :: ExecState w -> IO ()
 runListeners es = mapM_ runListener (listeners es)
   where runListener (Listener va action) = do
