@@ -27,10 +27,10 @@ hyGetFor1 :: (R a -> R b) -> (a -> b)
 hyGetFor1 rf a =
   case rf (R a (error "whoopsie hyGetFor1")) of
     R b _ -> b
-hyGetRev1 :: (R a -> R b) -> (R a -> b -> Write)
-hyGetRev1 rf ra =
-  let (R _ (Receiver _ rb)) = rf ra
-   in rb
+-- hyGetRev1 :: (R a -> R b) -> (R a -> b -> Write)
+-- hyGetRev1 rf ra =
+--   let (R _ (Receiver _ rb)) = rf ra
+--    in rb
 
 map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf = map (hyGetFor1 rf)
