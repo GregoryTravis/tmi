@@ -37,8 +37,7 @@ map_for rf = map (hyGetFor1 rf)
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
 map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
-    where ra a = map_rev (R rf rrf) (R oas ras') bs
-            where ras' = (a:) >$< ras
+    where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
 map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
 map_rev _ _ _ = error "map_rev case"
 -- map_rev (R rf _) (R oas (Receiver _ ras)) bs =

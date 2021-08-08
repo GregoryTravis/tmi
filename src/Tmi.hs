@@ -11,7 +11,7 @@ module Tmi
 , _db
 , _rpc
 , Receiver(..)
-, composeReceivers
+-- , composeReceivers
 , renameReceiver
 , (>$<)
 , hybrid1
