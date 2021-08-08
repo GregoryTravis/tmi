@@ -35,18 +35,24 @@ hyGetRev1 rf ra =
 map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf = map (hyGetFor1 rf)
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
-map_rev (R rf _) (R oas (Receiver _ ras)) bs =
-  let -- foo :: [a] -> [b] -> Write
-      -- TODO not have to reverse this?
-      foo nas [] [] = ras (reverse nas)
-      foo nas (oa:oas) (b:bs) =
-        let ra = R oa (Receiver "map_rev" cont)
-            cont na = foo (na:nas) oas bs
-         in rev ra b
-      foo _ _ _ = error "unhandled in map_rev"
-      -- rev :: R a -> b -> Write
-      rev = hyGetRev1 rf
-   in foo [] oas bs
+map_rev (R rf rrf) (R (oa : oas) (Receiver _ ras)) (b : bs) =
+  case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
+    where ra a = map_rev (R rf rrf) (R oas (Receiver "__" ras')) bs
+            where ras' as = ras (a : as)
+map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
+map_rev _ _ _ = error "map_rev case"
+-- map_rev (R rf _) (R oas (Receiver _ ras)) bs =
+--   let -- foo :: [a] -> [b] -> Write
+--       -- TODO not have to reverse this?
+--       foo nas [] [] = ras (reverse nas)
+--       foo nas (oa:oas) (b:bs) =
+--         let ra = R oa (Receiver "map_rev" cont)
+--             cont na = foo (na:nas) oas bs
+--          in rev ra b
+--       foo _ _ _ = error "unhandled in map_rev"
+--       -- rev :: R a -> b -> Write
+--       rev = hyGetRev1 rf
+--    in foo [] oas bs
 mapHy :: R (R a -> R b) -> R [a] -> R [b]
 mapHy = hybrid2 map_for map_rev
 mapV :: V (R (R a -> R b) -> R [a] -> R [b])
