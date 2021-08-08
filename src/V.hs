@@ -3,6 +3,7 @@
 module V where
 
 import Data.Functor.Contravariant
+import Data.Functor.Contravariant.Divisible
 
 -- data Write1 = forall a. Write1 a
 data Write1 = forall a. Show a => Write1 (V a) a
@@ -34,6 +35,18 @@ instance Contravariant Receiver where
 -- Why is this necessary?
 (>$<) :: Contravariant f => (a -> b) -> (f b -> f a)
 (>$<) = contramap
+
+instance Divisible Receiver where
+  divide f rb rc = Receiver "divisible" ra
+    where ra a = case f a of (b, c) -> (rb <-- b) <> (rc <-- c)
+  conquer = Receiver "conquer" (const emptyWrite)
+
+-- class Contravariant f => Divisible f where
+--   --- | If one can handle split `a` into `(b, c)`, as well as handle `b`s and `c`s, then one can handle `a`s
+--   divide  :: (a -> (b, c)) -> f b -> f c -> f a
+
+--   -- | Conquer acts as an identity for combining @Divisible@ functors.
+--   conquer :: f a
 
 renameReceiver :: String -> Receiver a -> Receiver a
 renameReceiver name (Receiver _ r) = Receiver name r

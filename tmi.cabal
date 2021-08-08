@@ -24,6 +24,7 @@ executable tmi
                        base16-bytestring,
                        bytestring,
                        containers,
+                       contravariant,
                        deepseq,
                        directory,
                        cryptohash-md5,

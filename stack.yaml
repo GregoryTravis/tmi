@@ -51,6 +51,8 @@ extra-deps:
   - splitmix-0.1.0.3@sha256:fc3aae74c467f4b608050bef53aec17904a618731df9407e655d8f3bf8c32d5c,6049
   - ansi-terminal-0.11@sha256:97470250c92aae14c4c810d7f664c532995ba8910e2ad797b29f22ad0d2d0194,3307
   - colour-2.3.6@sha256:ebdcbf15023958838a527e381ab3c3b1e99ed12d1b25efeb7feaa4ad8c37664a,2378
+  - contravariant-1.5.4@sha256:0d9f12ee2c14bddf627157f5664a905655823e899e8cc7cff3e7022b32d7b966,3162
+  - StateVar-1.2.2@sha256:3c022c00485fe165e3080d5da6b3ca9c9b02f62c5deebc584d1b3d1309ce673e,1673
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
