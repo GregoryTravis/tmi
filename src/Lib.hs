@@ -35,10 +35,10 @@ hyGetRev1 rf ra =
 map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf = map (hyGetFor1 rf)
 map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
-map_rev (R rf rrf) (R (oa : oas) (Receiver _ ras)) (b : bs) =
+map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
-    where ra a = map_rev (R rf rrf) (R oas (Receiver "__" ras')) bs
-            where ras' as = ras (a : as)
+    where ra a = map_rev (R rf rrf) (R oas ras') bs
+            where ras' = (a:) >$< ras
 map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
 map_rev _ _ _ = error "map_rev case"
 -- map_rev (R rf _) (R oas (Receiver _ ras)) bs =
