@@ -47,8 +47,7 @@ map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   where
     -- rawRas = case ras of Receiver _ ras -> ras
     ras' cdrAs =
-           case rf (R oa ra) of R _ recb -> recb <-- b
-             where ra = (:cdrAs) >$< ras
+           case rf (R oa ((:cdrAs) >$< ras)) of R _ recb -> recb <-- b
   -- This works
   -- case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
   --   where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
