@@ -43,15 +43,15 @@ map_rev :: forall a b. R (R a -> R b) -> R [a] -> [b] -> Write
 -- This returns a raw (Receiver [b])
 map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   -- This works
-  -- map_rev (R rf rrf) (R oas (Receiver "_" ras')) bs
-  -- where
-  --   rawRas = case ras of Receiver _ ras -> ras
-  --   ras' cdrAs =
-  --          case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
-  --            where ra a = rawRas (a:cdrAs)
+  map_rev (R rf rrf) (R oas (Receiver "_" ras')) bs
+  where
+    -- rawRas = case ras of Receiver _ ras -> ras
+    ras' cdrAs =
+           case rf (R oa ra) of R _ recb -> recb <-- b
+             where ra = (:cdrAs) >$< ras
   -- This works
-  case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
-    where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
+  -- case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
+  --   where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
 map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
 map_rev _ _ _ = error "map_rev case"
 -- map_rev (R rf _) (R oas (Receiver _ ras)) bs =
