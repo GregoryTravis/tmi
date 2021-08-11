@@ -25,9 +25,11 @@ Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 -- Receiver va <-- x = Write [Write1 va x]
 -- Receiver va <-- x = Write [Write1 va x]
 
--- composeReceivers :: (b -> a) -> Receiver a -> Receiver b
--- composeReceivers f (Receiver s a2w) = Receiver s b2w
---   where b2w = a2w . f
+-- No; all you can get from these first two arguments is two Writes
+-- whaa :: (Receiver a -> Write) -> (Receiver a -> Write) -> Write
+-- whaa recRecA recRecB =
+--   recRecA ra
+--     where ra a = 
 
 instance Contravariant Receiver where
   -- f >$< Receiver name a2w = Receiver name (a2w . f)

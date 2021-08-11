@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Lib where
 
 import Data.Functor.Contravariant.Divisible
@@ -36,8 +38,18 @@ hyGetFor1 rf a =
 
 map_for :: (R a -> R b) -> [a] -> [b]
 map_for rf = map (hyGetFor1 rf)
-map_rev :: R (R a -> R b) -> R [a] -> [b] -> Write
+map_rev :: forall a b. R (R a -> R b) -> R [a] -> [b] -> Write
+-- The goal is to map the defmodifier to the list and send it to 'ras'
+-- This returns a raw (Receiver [b])
 map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
+  -- This works
+  -- map_rev (R rf rrf) (R oas (Receiver "_" ras')) bs
+  -- where
+  --   rawRas = case ras of Receiver _ ras -> ras
+  --   ras' cdrAs =
+  --          case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
+  --            where ra a = rawRas (a:cdrAs)
+  -- This works
   case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
     where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
 map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
