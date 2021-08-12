@@ -2,6 +2,7 @@ module Test
 ( testMain ) where
 
 import Control.Monad.IO.Class (liftIO)
+import Data.Functor.Contravariant.Divisible (divide)
 
 import Appendo
 import Lens
@@ -55,9 +56,15 @@ invitedUsersV = _invitedUsers <$$> (_db <$$> vw)
 shiftNAdd :: R Int -> R Int -> R Int
 shiftNAdd (R x rx) (R y ry) = R z rz
   where z = y * 10 + x
-        rz = Receiver "shiftNAdd" $ \z' -> let x' = z' `mod` 10
-                                               y' = z' `div` 10
-                                            in (rx <-- x') <> (ry <-- y')
+        rz = divide dv rx ry
+          where dv z' = (x', y')
+                  where x' = z' `mod` 10
+                        y' = z' `div` 10
+        -- Works
+        -- rz = Receiver "shiftNAdd" $ \z' -> let x' = z' `mod` 10
+        --                                        y' = z' `div` 10
+        --                                     in (rx <-- x') <> (ry <-- y')
+
 shiftNAddV :: V (R Int -> R Int -> R Int)
 shiftNAddV = vconst "shiftNAddV" shiftNAdd
 
@@ -98,7 +105,7 @@ action = do
   -- listen (headV <$$> vconst [3, 4, 5]) listeny
   -- listen (tailV <$$> vconst [3, 4, 5]) listeny
   listen (_aList <$$> db) listeny
-  listen (_anotherList <$$> db) listeny
+  listen (_anotherList <$$> db) $ slisteny "_anotherList"
   listen (_zero <$$> db) listeny
   -- listen (headV <$$> (_aList <$$> db)) listeny
   -- listen (tailV <$$> (_aList <$$> db)) listeny
@@ -114,7 +121,7 @@ action = do
   listen aFold listeny
   let aFoldo :: V Int
       aFoldo = foldoVE shiftNAddV (_zero <$$> db) (_anotherList <$$> db)
-  listen aFoldo listeny
+  listen aFoldo $ slisteny "aFoldo"
   -- let fooo = composeVE consV (shiftNAddV <**> vconst "" 4)
   --     mappedViaFold = foldoVE (VUnPartialApp fooo) (vconst "" []) (_aList <$$> db)
   let mappedViaFold = mapViaFoldVE incV (_aList <$$> db)
@@ -169,7 +176,7 @@ action = do
   -- mappedViaFold <--- vconst "" [5964,6964,7964] -- works
   -- reverseMVF <--- vconst "" [7964,6964,5964]
   -- aFold <--- vconst "" (456::Int) -- Works
-  -- aFoldo <--- vconst "" (789::Int) -- Works
+  aFoldo <--- vconst "" (789::Int) -- Works
   -- (headV <$$> (_aList <$$> db)) <--- vconst 31
   -- (tailV <$$> (_aList <$$> db)) <--- vconst [42, 52]
   -- Non-singular write

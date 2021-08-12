@@ -2,7 +2,7 @@
 
 module Lib where
 
-import Data.Functor.Contravariant.Divisible
+import Data.Functor.Contravariant.Divisible (divide)
 
 import Tmi
 import Util
@@ -54,7 +54,7 @@ map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   -- This works
   -- case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
   --   where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
-map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
+map_rev (R rf rrf) (R [] ras) [] = ras <-- []
 map_rev _ _ _ = error "map_rev case"
 -- This works but is hairy as heck
 -- map_rev (R rf _) (R oas (Receiver _ ras)) bs =
