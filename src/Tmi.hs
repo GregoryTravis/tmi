@@ -10,7 +10,7 @@ module Tmi
 , W(..)
 , _db
 , _rpc
-, Receiver(..)
+, Receiver
 , split
 -- , composeReceivers
 , renameReceiver
