@@ -56,6 +56,7 @@ map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
   --   where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs
 map_rev (R rf rrf) (R [] (Receiver _ ras)) [] = ras []
 map_rev _ _ _ = error "map_rev case"
+-- This works but is hairy as heck
 -- map_rev (R rf _) (R oas (Receiver _ ras)) bs =
 --   let -- foo :: [a] -> [b] -> Write
 --       -- TODO not have to reverse this?

@@ -91,8 +91,8 @@ action = do
   liftIO $ msp "yooo"
   -- TODO we shouldn't change history in an action, and also it's ignored, so
   -- this doesn't work
-  listen invitedUsersV listeny
-  listen modded listeny
+  listen invitedUsersV $ slisteny "invitedUsersV"
+  listen modded (slisteny "modded")
   -- listen (ifV <**> vconst True <**> vconst 2 <$$> vconst 3) listeny
   -- listen (ifV <**> vconst False <**> vconst 2 <$$> vconst 3) listeny
   -- listen (headV <$$> vconst [3, 4, 5]) listeny
@@ -161,8 +161,8 @@ action = do
   let consied = consV <**> vcheckconst "boop" "boop" <$$> modded
   listen consied (slisteny "consied")
   invitedUsersV <--- vconst "" ["b", "heyo", "hippo"]
-  modded <--- vconst "" ["c!", "deyo!", "lippo!"]
-  consied <--- vconst "" ["boop", "c!", "deyo!", "lippo!"]
+  -- modded <--- vconst "" ["c!", "deyo!", "lippo!"]
+  consied <--- vconst "" ["boop", "c!", "ddeyo!", "lippo!"]
   -- uhh <- get
   -- liftIO $ msp ("num listeners", (length (listeners (execState uhh))))
   -- mapped <--- vconst "" [302, 402, 502] -- works
