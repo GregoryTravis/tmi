@@ -42,12 +42,15 @@ map_rev :: forall a b. R (R a -> R b) -> R [a] -> [b] -> Write
 -- The goal is to map the defmodifier to the list and send it to 'ras'
 -- This returns a raw (Receiver [b])
 map_rev (R rf rrf) (R (oa : oas) ras) (b : bs) =
+  -- Amazingly, this works too
+  split (:) ras recA2w recB2w
+    where recA2w ra = case rf (R oa ra) of R _ recb -> recb <-- b
+          recB2w ras = map_rev (R rf rrf) (R oas ras) bs
   -- This works
-  map_rev (R rf rrf) (R oas (Receiver "_" ras')) bs
-  where
-    -- rawRas = case ras of Receiver _ ras -> ras
-    ras' cdrAs =
-           case rf (R oa ((:cdrAs) >$< ras)) of R _ recb -> recb <-- b
+  -- map_rev (R rf rrf) (R oas (Receiver "_" ras')) bs
+  -- where
+  --   ras' cdrAs =
+  --          case rf (R oa ((:cdrAs) >$< ras)) of R _ recb -> recb <-- b
   -- This works
   -- case rf (R oa (Receiver "_" ra)) of R _ recb -> recb <-- b
   --   where ra = \a -> map_rev (R rf rrf) (R oas ((a:) >$< ras)) bs

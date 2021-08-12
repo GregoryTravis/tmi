@@ -11,6 +11,7 @@ module Tmi
 , _db
 , _rpc
 , Receiver(..)
+, split
 -- , composeReceivers
 , renameReceiver
 , (>$<)

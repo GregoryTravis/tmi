@@ -31,6 +31,17 @@ Receiver s r <-- x = {-eeesp ("REC <-- call", s) $-} r x
 --   recRecA ra
 --     where ra a = 
 
+-- Combine trickly receivers for two functions into one
+split :: (a -> b -> c) -> Receiver c -> (Receiver a -> Write) -> (Receiver b -> Write) -> Write
+split f (Receiver _ rc) recA2w recB2w =
+  let ra a =
+        let rb b =
+              let c = f a b
+               in rc c
+         in recB2w (Receiver "" rb)
+   in recA2w (Receiver "" ra)
+             
+
 instance Contravariant Receiver where
   -- f >$< Receiver name a2w = Receiver name (a2w . f)
   contramap f (Receiver name a2w) = Receiver name (a2w . f)

@@ -1,0 +1,29 @@
+"yooo"
+Listeny: ["c","deyo","lippo"]
+Listeny: ["c!","deyo!","lippo!"]
+Listeny: [30,40,50]
+Listeny: [2,3,4]
+Listeny: 0
+Listeny: [36,46,56]
+Listeny: 234
+Listeny: 432
+Listeny: [31,41,51]
+Listeny: [51,41,31]
+Listeny: [51,41,31]
+Listeny: [51,41,31]
+Listeny: [31,41,51]
+Listeny: [31,41,51]
+Listeny: [12,13,14,15]
+Listeny: []
+Listeny: [2,3,4,12,13,14,15]
+Listeny: [12,13,14,15]
+Listeny: [32,43,54]
+Listeny: [(30,2),(40,3),(50,4)]
+Listeny: 40
+Listeny: 40
+Listeny: 3
+Listeny: Appendo [1,2]
+Listeny: [30,40,50]
+Listeny: [Call {callUniqueId = UniqueId (1,0), req = Req 1.0 "hey", initiation = Nothing, resp = Nothing, consquenceEnacted = False},Call {callUniqueId = UniqueId (1,1), req = Req 2.0 "hey", initiation = Nothing, resp = Nothing, consquenceEnacted = False},Call {callUniqueId = UniqueId (1,2), req = Req 3.0 "hey", initiation = Nothing, resp = Nothing, consquenceEnacted = False}]
+Listeny: 3
+"ext hi"
