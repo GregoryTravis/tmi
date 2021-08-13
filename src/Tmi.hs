@@ -21,7 +21,7 @@ module Tmi
 , (<--)
 , (<**>)
 , (<$$>)
-, History(..)
+, History
 , mkHistory
 , getRoot
 , TMI

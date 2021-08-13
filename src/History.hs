@@ -1,4 +1,11 @@
-module History where
+module History
+( History
+, newGeneration
+, latestState
+, histlen
+, mkHistory
+, getRoot
+) where
 
 import V
 
