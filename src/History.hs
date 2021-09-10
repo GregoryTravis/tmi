@@ -3,6 +3,7 @@ module History
 , newGeneration
 , latestState
 , histlen
+, isEmpty
 , mkHistory
 , getRoot
 ) where
@@ -14,6 +15,10 @@ newtype History w = History [w]
 -- TODO Foldable
 histlen :: History w -> Int
 histlen (History ws) = length ws
+
+isEmpty :: History w -> Bool
+isEmpty h | histlen h == 0 = True
+          | otherwise = False
 
 instance Show w => Show (History w) where
   show (History ws) = show ws

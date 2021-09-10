@@ -80,8 +80,8 @@ propagateNonSingularAndIgnore h write =
 
 r :: History w -> V a -> a
 -- r :: W -> V a -> a
-r h VRoot = unsafeCoerce (latestState h)
-r _ VRoot = error "Can't get the root from an empty history"
+r h VRoot | isEmpty h = error "Can't get the root from an empty history"
+          | otherwise = unsafeCoerce (latestState h)
 r _ (VConst _ x) = x
 r _ (VCheckConst _ x) = x
 r h (VApp vfbfa vb) = r h (VSeal (VPartialApp vfbfa vb))

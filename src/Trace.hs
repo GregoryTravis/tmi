@@ -55,11 +55,7 @@ refreshRpcs execId rpc@Rpc {..}  = do
                 | uid `elem` uids = c { initiation = Just init }
                 | otherwise = c
   launchIOs ios
-  return rpc
-    -- where runEm (io:ios) = do
-    --         io
-    --         runEm ios
-    --       runEm [] = return ()
+  return rpc { calls = calls'' }
 
 launchIOs :: [IO ()] -> IO ()
 launchIOs = mapM_ forkIO
