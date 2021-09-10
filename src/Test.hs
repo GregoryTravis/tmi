@@ -7,6 +7,7 @@ import Data.Functor.Contravariant.Divisible (divide)
 import Appendo
 import Lens
 import Lib
+import StateTmi
 import Tmi
 import Util
 
@@ -82,7 +83,7 @@ extAction = do
   call <- initCall (Req 1 "hey")
   call2 <- initCall (Req 2 "hey")
   call3 <- initCall (Req 3 "hey")
-  calls <--- appendV <**> calls <$$> vconst "" [call, call2, call3]
+  addCalls vw $ vconst "" [call, call2, call3]
   -- return ()
 
 testMain = do

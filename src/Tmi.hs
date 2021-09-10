@@ -44,6 +44,8 @@ module Tmi
 , listeny
 , slisteny
 , initCall
+-- , addCalls
+, Call
 , Rpc
 , _calls
 , Req(..)
