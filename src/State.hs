@@ -2,6 +2,7 @@
 
 module State where
 
+import Control.Concurrent.Chan
 import Control.Monad.State.Lazy hiding (execState)
 
 import ExecId
@@ -32,11 +33,11 @@ data ExecState w = ExecState
   , history :: History w
   }
 
-updateRpc :: ExecState (W ww) -> IO (ExecState (W ww))
-updateRpc es@ExecState {..} = do
+updateRpc :: Chan Consequence -> ExecState (W ww) -> IO (ExecState (W ww))
+updateRpc consequencesChan es@ExecState {..} = do
   let w = latestState history
       --Rpc { rpc } = rpc w
-  rpc' <- refreshRpcs execId (rpc w)
+  rpc' <- refreshRpcs consequencesChan execId (rpc w)
   let w' = w { rpc = rpc' }
       h' = newGeneration h' w'
       es' = es { history = h' }
@@ -45,12 +46,13 @@ updateRpc es@ExecState {..} = do
 -- Runs the action, commits the change, and then listens to the event stream?
 tmiMain :: Show db => IO (History (W db)) -> TMI (W db) () -> IO ()
 tmiMain hio action = do
+  consequencesChan <- (newChan :: IO (Chan Consequence))
   h <- hio
   -- ch <- (newChan :: Chan TMI w ())
   eid <- currentExecId
   let es = ExecState { execId = eid, listeners = [], history = h }
   ((), es') <- runStateT (runTMI action) es
-  es'' <- updateRpc es'
+  es'' <- updateRpc consequencesChan es'
   runListeners es''
   return ()
 

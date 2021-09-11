@@ -87,7 +87,7 @@ extAction = do
   -- return ()
 
 testMain = do
-  () <- tmiMain (return history) action
+  -- () <- tmiMain (return history) action
   () <- tmiMain (return history) extAction
   -- eventLoop history'
   -- history'' <- tmiRunIO history' refresh

@@ -1,14 +1,18 @@
-{-# LANGUAGE NumericUnderscores, RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns, NumericUnderscores, RecordWildCards #-}
 
 module Trace where
 
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.Chan
 import Data.Maybe (isNothing)
 
 import ExecId
 import Ext
 import Lens
 import Util
+import W
+
+data Consequence = Consequence Call Resp
 
 initRpc :: Rpc
 initRpc = Rpc [] toExt -- toTmi
@@ -32,18 +36,19 @@ requestsThatNeedInitiation :: [Call] -> [Call]
 requestsThatNeedInitiation = filter needInitiation
   where needInitiation call = isNothing $ initiation call
 
-refreshRpcs :: ExecId -> Rpc -> IO Rpc
-refreshRpcs execId rpc@Rpc {..}  = do
+refreshRpcs :: Chan Consequence -> ExecId -> Rpc -> IO Rpc
+refreshRpcs consequencesChan execId rpc@Rpc {..}  = do
   -- Clear out stale initiations
   let calls' = clearOutStaleInitiations execId calls
       -- Get requests that need initiation
       needInit :: [Call]
       needInit = requestsThatNeedInitiation calls'
       -- Initiate them
-      ios = map (toIOV . req) calls'
-        where toIOV :: Req -> IO ()
-              toIOV req = do
-                toExt req
+      ios = map toIOV calls'
+        where toIOV :: Call -> IO ()
+              toIOV call@Call { req } = do
+                resp <- toExt req
+                writeChan consequencesChan (Consequence call resp)
                 return ()
       -- New initiation to write
       init = Initiation execId
