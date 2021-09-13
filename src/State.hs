@@ -11,6 +11,7 @@ import History
 import Propagate
 import Trace
 import UniqueId
+import Util
 import V
 import W
 
@@ -54,7 +55,20 @@ tmiMain hio action = do
   ((), es') <- runStateT (runTMI action) es
   es'' <- updateRpc consequencesChan es'
   runListeners es''
+  es''' <- applyConsequence consequencesChan es''
+  msp $ rpc $ latestState $ history es'''
   return ()
+
+applyConsequence :: Chan Consequence -> ExecState (W ww) -> IO (ExecState (W ww))
+applyConsequence consequencesChan es = do
+  consequence <- readChan consequencesChan
+  let w = latestState (history es)
+      rpc' = rpc (latestState (history es))
+      rpc'' = commitResponse consequence rpc'
+      w' = w { rpc = rpc'' }
+      h' = newGeneration h' w'
+      es'' = es { history = h' }
+  return es''
 
 runTMI :: Show w => TMI w () -> TMIE w ()
 -- runTMI :: TMI w () -> IO ()

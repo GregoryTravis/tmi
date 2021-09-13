@@ -80,9 +80,9 @@ extAction = do
       calls = _calls <$$> rpc
   listen calls listeny
   listen (lengthV <$$> calls) listeny
-  call <- initCall (Req 1 "hey")
-  call2 <- initCall (Req 2 "hey")
-  call3 <- initCall (Req 3 "hey")
+  call <- initCall (Req 1 "hey1")
+  call2 <- initCall (Req 2 "hey2")
+  call3 <- initCall (Req 3 "hey3")
   addCalls vw $ vconst "" [call, call2, call3]
   -- return ()
 

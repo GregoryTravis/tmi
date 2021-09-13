@@ -27,7 +27,7 @@ newtype Ext a = Ext (IO a)
 newtype Initiation = Initiation ExecId deriving (Eq, Show)
 
 data Req = Req Float String deriving Show
-newtype Resp = Resp String deriving Show
+newtype Resp = Resp String deriving (Eq, Show)
 
 data Rpc = Rpc
   { calls :: [Call]
@@ -46,3 +46,7 @@ data Call = Call
   , resp :: Maybe Resp
   , consquenceEnacted :: Bool
   } deriving Show
+
+showRpc :: Rpc -> String
+showRpc rpc = show $ map showCall (calls rpc)
+  where showCall Call {..} = show (callUniqueId, req, resp)

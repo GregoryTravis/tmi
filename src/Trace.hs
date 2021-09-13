@@ -62,6 +62,17 @@ refreshRpcs consequencesChan execId rpc@Rpc {..}  = do
   launchIOs ios
   return rpc { calls = calls'' }
 
+commitResponse :: Consequence -> Rpc -> Rpc
+commitResponse (Consequence Call { callUniqueId = lookingForCallUniqueId } theResp) rpc =
+  rpc { calls = findAndReplace (calls rpc) }
+  where findAndReplace [] = error ("Could not find call " ++ show callUniqueId)
+        findAndReplace (call:calls)
+          | callUniqueId call == lookingForCallUniqueId && isNothing (resp call) =
+              (call { resp = Just theResp }) : calls
+          | callUniqueId call == lookingForCallUniqueId =
+              error ("Call already has a response: " ++ show call)
+          | otherwise = call : findAndReplace calls
+
 launchIOs :: [IO ()] -> IO ()
 launchIOs = mapM_ forkIO
 
