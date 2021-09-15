@@ -34,7 +34,7 @@ data ExecState w = ExecState
   , history :: History w
   }
 
-updateRpc :: Chan Consequence -> ExecState (W ww) -> IO (ExecState (W ww))
+updateRpc :: Chan Consequence -> ExecState (W ww (TMI ww ())) -> IO (ExecState (W ww (TMI ww ())))
 updateRpc consequencesChan es@ExecState {..} = do
   let w = latestState history
       --Rpc { rpc } = rpc w
@@ -45,7 +45,7 @@ updateRpc consequencesChan es@ExecState {..} = do
   return es
 
 -- Runs the action, commits the change, and then listens to the event stream?
-tmiMain :: Show db => IO (History (W db)) -> TMI (W db) () -> IO ()
+tmiMain :: Show db => IO (History (W db (TMI db ()))) -> TMI (W db (TMI db ())) () -> IO ()
 tmiMain hio action = do
   consequencesChan <- (newChan :: IO (Chan Consequence))
   h <- hio
@@ -59,7 +59,7 @@ tmiMain hio action = do
   msp $ rpc $ latestState $ history es'''
   return ()
 
-applyConsequence :: Chan Consequence -> ExecState (W ww) -> IO (ExecState (W ww))
+applyConsequence :: Chan Consequence -> ExecState (W ww (TMI db ())) -> IO (ExecState (W ww (TMI db ())))
 applyConsequence consequencesChan es = do
   consequence <- readChan consequencesChan
   let w = latestState (history es)

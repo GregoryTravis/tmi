@@ -40,15 +40,15 @@ module Tmi
 -- , UniqueId
 , uniqueId
 -- , mkFielder
-, initRpc
 , listeny
 , slisteny
 , initCall
 -- , addCalls
 , Call
-, Rpc
+, Rpc(..)
 , _calls
 , Req(..)
+, Resp(..)
 ) where
 
 import Data.Dynamic

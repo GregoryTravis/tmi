@@ -29,13 +29,14 @@ newtype Initiation = Initiation ExecId deriving (Eq, Show)
 data Req = Req Float String deriving Show
 newtype Resp = Resp String deriving (Eq, Show)
 
-data Rpc = Rpc
+data Rpc c = Rpc
   { calls :: [Call]
   , toExt :: Req -> IO Resp
+  , toConsequence :: Resp -> c
   -- , toTmi :: Resp -> TMI WW ()
   }
 
-instance Show Rpc where
+instance Show (Rpc c) where
   -- TODO do not love this
   show rpc = "RPC " ++ show (calls rpc)
 
@@ -47,6 +48,6 @@ data Call = Call
   , consquenceEnacted :: Bool
   } deriving Show
 
-showRpc :: Rpc -> String
+showRpc :: Rpc c -> String
 showRpc rpc = show $ map showCall (calls rpc)
   where showCall Call {..} = show (callUniqueId, req, resp)

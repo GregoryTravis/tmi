@@ -1,6 +1,9 @@
+{-# LANGUAGE NumericUnderscores #-}
+
 module Test
 ( testMain ) where
 
+import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (liftIO)
 import Data.Functor.Contravariant.Divisible (divide)
 
@@ -22,7 +25,7 @@ data DB = DB
   }
   deriving Show
 
-type WW = W DB
+type WW = W DB (TMI DB ())
 
 world = W
   { db = DB
@@ -42,6 +45,17 @@ history = mkHistory world
 
 vw :: V WW
 vw = getRoot history
+
+initRpc :: Rpc (TMI DB ())
+initRpc = Rpc [] toExt toConsequence -- toTmi
+  where toExt r@(Req secs s) = io
+          where io = do
+                  threadDelay $ floor $ secs * 1_000_000
+                  msp $ "Running ext: " ++ show r
+                  return $ Resp $ s ++ "!"
+        toConsequence = error "toConsequence"
+        -- toTmi (Resp s) = do
+        --   liftIO $ msp $ "Consequence: " ++ s
 
 _invitedUsers = mkFielder "_invitedUsers" invitedUsers $ \w a -> w { invitedUsers = a }
 _aList = mkFielder "_aList" aList $ \w a -> w { aList = a }
@@ -76,7 +90,7 @@ extAction :: TMI WW ()
 extAction = do
   let db = _db <$$> vw
   listen (_aList <$$> db) listeny
-  let rpc = (_rpc <$$> vw :: V Rpc)
+  let rpc = _rpc <$$> vw
       calls = _calls <$$> rpc
   listen calls listeny
   listen (lengthV <$$> calls) listeny

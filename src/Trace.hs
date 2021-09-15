@@ -1,8 +1,8 @@
-{-# LANGUAGE NamedFieldPuns, NumericUnderscores, RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns, RecordWildCards #-}
 
 module Trace where
 
-import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan
 import Data.Maybe (isNothing)
 
@@ -13,16 +13,6 @@ import Util
 import W
 
 data Consequence = Consequence Call Resp
-
-initRpc :: Rpc
-initRpc = Rpc [] toExt -- toTmi
-  where toExt r@(Req secs s) = io
-          where io = do
-                  threadDelay $ floor $ secs * 1_000_000
-                  msp $ "Running ext: " ++ show r
-                  return $ Resp $ s ++ "!"
-        -- toTmi (Resp s) = do
-        --   liftIO $ msp $ "Consequence: " ++ s
 
 clearOutStaleInitiations :: ExecId -> [Call] -> [Call]
 clearOutStaleInitiations execId = map (clearOutStaleInitiation execId)
@@ -36,7 +26,7 @@ requestsThatNeedInitiation :: [Call] -> [Call]
 requestsThatNeedInitiation = filter needInitiation
   where needInitiation call = isNothing $ initiation call
 
-refreshRpcs :: Chan Consequence -> ExecId -> Rpc -> IO Rpc
+refreshRpcs :: Chan Consequence -> ExecId -> Rpc c -> IO (Rpc c)
 refreshRpcs consequencesChan execId rpc@Rpc {..}  = do
   -- Clear out stale initiations
   let calls' = clearOutStaleInitiations execId calls
@@ -62,7 +52,7 @@ refreshRpcs consequencesChan execId rpc@Rpc {..}  = do
   launchIOs ios
   return rpc { calls = calls'' }
 
-commitResponse :: Consequence -> Rpc -> Rpc
+commitResponse :: Consequence -> Rpc c -> Rpc c
 commitResponse (Consequence Call { callUniqueId = lookingForCallUniqueId } theResp) rpc =
   rpc { calls = findAndReplace (calls rpc) }
   where findAndReplace [] = error ("Could not find call " ++ show callUniqueId)
