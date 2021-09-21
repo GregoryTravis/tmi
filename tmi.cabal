@@ -17,7 +17,8 @@ executable tmi
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Util, Tmi, Ext, Lib, Narrative, Monies, ExecId, UniqueId,
-                       V, W, Appendo, History, Lens, Lift, Propagate, Test, State, Trace, StateTmi
+                       V, W, Appendo, History, Lens, Lift, Propagate, Test, State, Trace, StateTmi,
+                       NestedState
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5,
