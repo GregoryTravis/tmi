@@ -50,8 +50,8 @@ esNester = Nester (E { execId = 12, ops = 0 }) f r
 haha :: StateT (Nester E (Nester S a)) IO E
 haha = do
   npush $ do
-    Bots (S { sops }) <- get
-    put $ Bots $ S { sops = sops ++ ["a", "b"] }
+    S { sops } <- nget
+    nput $ S { sops = sops ++ ["a", "b"] }
   e <- nget
   return e
 
