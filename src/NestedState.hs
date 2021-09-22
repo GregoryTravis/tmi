@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 module NestedState
 ( NestedStateT
 , nestedStateMain
@@ -36,24 +38,22 @@ npush (StateT { runStateT = innerRunStateT }) = StateT { runStateT = outerRunSta
           return $ eesp "umm5" (a, nester')
         outerRunStateT (Bots _) = error "Cannot push at the bottom"
 
-foo :: (Int, Int) -> Nester (Int, Int) (Nester Int a)
-foo pr = Nester pr (Bots . fst) (\(ofst, osnd) (Bots nfst) -> (nfst, osnd))
+data E = E { execId :: Int, ops :: Int } deriving Show
+data S = S { sops :: [String] } deriving Show
 
--- ann :: Nester (Int, Int) Int
--- ann = foo (3, 4)
+esNester :: Nester E (Nester S a)
+esNester = Nester (E { execId = 12, ops = 0 }) f r
+  where f _ = Bots (S { sops = [] })
+        r e (Bots (S { sops })) = e { ops = (ops e) + (length sops) }
 
-haha :: StateT (Nester (Int, Int) (Nester Int a)) IO (Int, Int)
+-- haha :: StateT (Nester (Int, Int) (Nester Int a)) IO (Int, Int)
+haha :: StateT (Nester E (Nester S a)) IO E
 haha = do
-  -- x <- (nget :: Int)
-  x <- nget
   npush $ do
-    y <- nget
-    nput $ eesp "inner" $ y + 10
-    return ()
-  -- TODO wow without this part, it doesn't even run most of the npush code
-  --      lazy functional state threads indeed
-  x' <- nget
-  return x'
+    Bots (S { sops }) <- get
+    put $ Bots $ S { sops = sops ++ ["a", "b"] }
+  e <- nget
+  return e
 
 -- lolo = runStateT haha ann
 
@@ -61,7 +61,6 @@ haha = do
 -- newtype StateT s m a
 
 nestedStateMain = do
-  let lolo = runStateT haha (foo (3, 4))
-  (pr, n) <- lolo
-  msp pr
+  (res, _) <- runStateT haha esNester
+  msp res
   msp "nhi"
