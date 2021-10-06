@@ -15,6 +15,8 @@ import Util
 import V
 import W
 
+-- TODO: call this Mainloop or something?
+
 listeny :: Show a => a -> IO ()
 listeny x = putStrLn $ "Listeny: " ++ show x
 
@@ -59,11 +61,14 @@ tmiMain hio action = do
   msp $ rpc $ latestState $ history es'''
   return ()
 
+-- TODO: factor out the h, w, and rpc updating stuff, with a Monad m wrapper
+-- listeners too
+-- or use lens ffs?
 applyConsequence :: Chan Consequence -> ExecState (W ww (TMI db ())) -> IO (ExecState (W ww (TMI db ())))
 applyConsequence consequencesChan es = do
   consequence <- readChan consequencesChan
   let w = latestState (history es)
-      rpc' = rpc (latestState (history es))
+      rpc' = rpc w
       rpc'' = commitResponse consequence rpc'
       w' = w { rpc = rpc'' }
       h' = newGeneration h' w'
@@ -97,9 +102,11 @@ listen va ioAction = do
   let ls = listeners (execState stepState)
   let listener = Listener va ioAction
       ls' = ls ++ [listener]
+      -- TODO we don't need this execState write, right?
       stepState' = stepState { execState = (execState stepState) { listeners = ls' } }
   put stepState'
 
+-- TODO move to ID.hs
 uniqueId :: TMI w UniqueId
 uniqueId = do
   ss <- get
@@ -126,6 +133,7 @@ vlvalue <--- vrvalue = do
   -- liftIO $ runListeners history'
   return ()
 
+-- TODO: Move to Lister.hs
 data Listener = forall a. Listener (V a) (a -> IO ())
 
 initCall :: Req -> TMI w Call
