@@ -6,5 +6,5 @@ import Data.Dynamic
 import NestedState
 import Test
 
-main = testMain
-_main = nestedStateMain
+_main = testMain
+main = nestedStateMain

@@ -28,7 +28,7 @@ nput s' = do
 
 -- TODO write with do notation
 npush :: (MonadFail m, Monad m) => StateT ss m a -> StateT (Nester s ss) m a
-npush (StateT { runStateT = innerRunStateT }) = StateT { runStateT = outerRunStateT }
+npush StateT { runStateT = innerRunStateT } = StateT { runStateT = outerRunStateT }
   where -- outerRunStateT :: (Nester s ss) -> m (a, Nester s ss)
         outerRunStateT (Nester s f r) = do
           let ss = eesp "umm" $ f s
@@ -39,12 +39,13 @@ npush (StateT { runStateT = innerRunStateT }) = StateT { runStateT = outerRunSta
         outerRunStateT (Bots _) = error "Cannot push at the bottom"
 
 data E = E { execId :: Int, ops :: Int } deriving Show
-data S = S { sops :: [String] } deriving Show
+newtype S = S { sops :: [String] } deriving Show
 
 esNester :: Nester E (Nester S a)
 esNester = Nester (E { execId = 12, ops = 0 }) f r
   where f _ = Bots (S { sops = [] })
-        r e (Bots (S { sops })) = e { ops = (ops e) + (length sops) }
+        r e (Bots S { sops }) = e { ops = ops e + length sops }
+        r e Nester {} = error "esNester"
 
 -- haha :: StateT (Nester (Int, Int) (Nester Int a)) IO (Int, Int)
 haha :: StateT (Nester E (Nester S a)) IO E
