@@ -7,9 +7,6 @@ module Tmi
 , vconst
 , vcheckconst
 , vunapp
-, W(..)
-, _db
-, _rpc
 , Receiver
 , split
 -- , composeReceivers
@@ -42,21 +39,11 @@ module Tmi
 -- , mkFielder
 , listeny
 , slisteny
-, initCall
--- , addCalls
-, Call
-, Rpc(..)
-, _calls
-, Req(..)
-, Resp(..)
 ) where
 
 import Data.Dynamic
 
-import Ext
 import History
 import Lift
 import State
-import Trace
 import V
-import W

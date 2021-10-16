@@ -2,18 +2,14 @@
 
 module State where
 
-import Control.Concurrent.Chan
 import Control.Monad.State.Lazy hiding (execState)
 
 import ExecId
-import Ext
 import History
 import Propagate
-import Trace
 import UniqueId
 import Util
 import V
-import W
 
 -- TODO: call this Mainloop or something?
 
@@ -36,44 +32,16 @@ data ExecState w = ExecState
   , history :: History w
   }
 
-updateRpc :: Chan Consequence -> ExecState (W ww (TMI ww ())) -> IO (ExecState (W ww (TMI ww ())))
-updateRpc consequencesChan es@ExecState {..} = do
-  let w = latestState history
-      --Rpc { rpc } = rpc w
-  rpc' <- refreshRpcs consequencesChan execId (rpc w)
-  let w' = w { rpc = rpc' }
-      h' = newGeneration h' w'
-      es' = es { history = h' }
-  return es
-
 -- Runs the action, commits the change, and then listens to the event stream?
-tmiMain :: Show db => IO (History (W db (TMI db ()))) -> TMI (W db (TMI db ())) () -> IO ()
+tmiMain :: Show w => IO (History w) -> TMI w () -> IO ()
 tmiMain hio action = do
-  consequencesChan <- (newChan :: IO (Chan Consequence))
   h <- hio
   -- ch <- (newChan :: Chan TMI w ())
   eid <- currentExecId
   let es = ExecState { execId = eid, listeners = [], history = h }
   ((), es') <- runStateT (runTMI action) es
-  es'' <- updateRpc consequencesChan es'
-  runListeners es''
-  es''' <- applyConsequence consequencesChan es''
-  msp $ rpc $ latestState $ history es'''
+  runListeners es'
   return ()
-
--- TODO: factor out the h, w, and rpc updating stuff, with a Monad m wrapper
--- listeners too
--- or use lens ffs?
-applyConsequence :: Chan Consequence -> ExecState (W ww (TMI db ())) -> IO (ExecState (W ww (TMI db ())))
-applyConsequence consequencesChan es = do
-  consequence <- readChan consequencesChan
-  let w = latestState (history es)
-      rpc' = rpc w
-      rpc'' = commitResponse consequence rpc'
-      w' = w { rpc = rpc'' }
-      h' = newGeneration h' w'
-      es'' = es { history = h' }
-  return es''
 
 runTMI :: Show w => TMI w () -> TMIE w ()
 -- runTMI :: TMI w () -> IO ()
@@ -135,8 +103,3 @@ vlvalue <--- vrvalue = do
 
 -- TODO: Move to Lister.hs
 data Listener = forall a. Listener (V a) (a -> IO ())
-
-initCall :: Req -> TMI w Call
-initCall req = do
-  uid <- uniqueId
-  return $ Call uid req Nothing Nothing False
