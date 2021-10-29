@@ -103,3 +103,25 @@ instance Show a => Show (V a) where
   show (VPartialApp vf va) = "(VPartialApp " ++ show vf ++ " " ++ "arg" ++ ")"
   show (VUnPartialApp pa) = "(VUnPartialApp " ++ show pa ++ ")"
   show (VSeal va) = "(seal " ++ show va ++ ")"
+
+-- Trying some persistence. VUnPartialApp is not handled.
+data VRep = VRepRoot | VRepConst String | VRep1 String VRep | VRep2 String VRep VRep
+  deriving (Read, Show)
+
+vToVRep :: V a -> VRep
+vToVRep VRoot = VRepRoot
+vToVRep (VConst s x) = VRepConst (show (s, x))
+vToVRep (VCheckConst s x) = VRepConst (show (s, x))
+vToVRep (VPartialApp vf va) = VRep2 "VPartialApp" (vToVRep vf) (vToVRep va)
+vToVRep (VUnPartialApp vf) = undefined
+vToVRep (VApp vf va) = VRep2 "VApp" (vToVRep vf) (vToVRep va)
+vToVRep (VSeal va) = VRep1 "VSeal" (vToVRep va)
+
+vRepToV :: VRep -> V a
+vRepToV VRepRoot = VRoot
+-- Can't say anything about Show for the subnodes
+-- vRepToV (VRep2 "VPartialApp" vrf vra) = VPartialApp (vRepToV vrf) (vRepToV vra)
+-- Requires Read on VConst
+-- vRepToV (VRepConst ss) =
+--   let (s, x) = read ss
+--    in VConst s x
