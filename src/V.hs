@@ -66,7 +66,7 @@ renameReceiver name (Receiver _ r) = Receiver name r
 
 data V a where
   VRoot :: V a
-  VConst :: (Show a) => String -> a -> V a
+  VConst :: String -> a -> V a
   VCheckConst :: (Show a, Eq a) => String -> a -> V a
   VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
   VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
@@ -110,7 +110,8 @@ data VRep = VRepRoot | VRepConst String | VRep1 String VRep | VRep2 String VRep 
 
 vToVRep :: V a -> VRep
 vToVRep VRoot = VRepRoot
-vToVRep (VConst s x) = VRepConst (show (s, x))
+-- vToVRep (VConst s x) = VRepConst (show (s, x))
+vToVRep (VConst s x) = VRepConst s
 vToVRep (VCheckConst s x) = VRepConst (show (s, x))
 vToVRep (VPartialApp vf va) = VRep2 "VPartialApp" (vToVRep vf) (vToVRep va)
 vToVRep (VUnPartialApp vf) = undefined
@@ -122,6 +123,9 @@ vRepToV VRepRoot = VRoot
 -- Can't say anything about Show for the subnodes
 -- vRepToV (VRep2 "VPartialApp" vrf vra) = VPartialApp (vRepToV vrf) (vRepToV vra)
 -- Requires Read on VConst
--- vRepToV (VRepConst ss) =
---   let (s, x) = read ss
---    in VConst s x
+vRepToV (VRepConst s) =
+  let x = reconstitute s
+   in VConst s x
+
+reconstitute :: String -> a
+reconstitute = undefined

@@ -113,7 +113,7 @@ r h (VUnPartialApp vvf) = \ra -> ((r h (vvf (VSeal (VConst "uh" ra)))))
 wr :: History w -> V a -> a -> Write
 -- wr :: W -> V a -> a -> Write
 -- wr w VRoot _ = undefined "Can't write to root"
-wr h v@(VConst s _) _ = error $ "Can't write to a const: " ++ s ++ " " ++ (show v)
+wr h v@(VConst s _) _ = error $ "Can't write to a const: " ++ s -- ++ " " ++ (show v)
 wr h v@(VCheckConst s x) x'
   | x == x' = emptyWrite
   | otherwise = error $ "VCheckConst: unequal: " ++ show v ++ " <-- " ++ show x'
