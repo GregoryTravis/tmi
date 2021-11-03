@@ -66,8 +66,10 @@ renameReceiver name (Receiver _ r) = Receiver name r
 
 data V a where
   VRoot :: V a
+  -- This is really VNamed
   VConst :: String -> a -> V a
-  VCheckConst :: (Show a, Eq a) => String -> a -> V a
+  -- This is really VNiceConst
+  VCheckConst :: (Show a, Read a, Eq a) => String -> a -> V a
   VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
   VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
   VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
@@ -76,7 +78,7 @@ data V a where
 
 vconst :: (Show a) => String -> a -> V a
 vconst = VConst
-vcheckconst :: (Show a, Eq a) => String -> a -> V a
+vcheckconst :: (Show a, Read a, Eq a) => String -> a -> V a
 vcheckconst = VCheckConst
 vunapp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
 vunapp = VUnPartialApp

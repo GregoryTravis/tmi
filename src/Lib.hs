@@ -111,7 +111,7 @@ mapVE' vf vas =
   -- consV <**> (vf <**> (headV <$$> vas)) <$$> (vconst "[]" [])
 
 zipWithV ::
-  (Show a, Show b, Show c, Eq a, Eq b, Eq c) =>
+  (Show a, Show b, Show c, Read a, Read b, Read c, Eq a, Eq b, Eq c) =>
   V (R a -> R b -> R c) -> V [a] -> V [b] -> V [c]
 zipWithV vf vas vbs =
   ifV <**> (orV <**> (nullV <$$> vas)
@@ -171,7 +171,7 @@ reverse_rev (R _ ra) as = ra <-- reverse as
 reverseV :: V (R [a] -> R [a])
 reverseV = vconst "reverseV" $ hybrid1 reverse_for reverse_rev
 
-reverseVE :: (Eq a, Show a) => V [a] -> V [a]
+reverseVE :: (Eq a, Read a, Show a) => V [a] -> V [a]
 reverseVE vas =
   ifV <**> (nullV <$$> vas)
       <**> vconst "[]" []
@@ -327,7 +327,7 @@ tup2 :: (Show a, Show b) => V (R a -> R b -> R (a, b))
 -- tup2 = uni2 "tup2" (,)
 tup2 = bi2 "tup2" (,) id
 
-zipV :: (Eq a0, Eq b0, Show a0, Show b0) => V [a0] -> V [b0] -> V [(a0, b0)]
+zipV :: (Eq a0, Eq b0, Read a0, Read b0, Show a0, Show b0) => V [a0] -> V [b0] -> V [(a0, b0)]
 zipV = zipWithV tup2
 
 add_hy :: Int -> R Int -> R Int
