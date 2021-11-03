@@ -105,14 +105,14 @@ instance Show a => Show (V a) where
   show (VSeal va) = "(seal " ++ show va ++ ")"
 
 -- Trying some persistence. VUnPartialApp is not handled.
-data VRep = VRepRoot | VRepConst String | VRep1 String VRep | VRep2 String VRep VRep
+data VRep = VRepRoot | VRepConst String | VRepCheckConst String | VRep1 String VRep | VRep2 String VRep VRep
   deriving (Read, Show)
 
 vToVRep :: V a -> VRep
 vToVRep VRoot = VRepRoot
 -- vToVRep (VConst s x) = VRepConst (show (s, x))
 vToVRep (VConst s x) = VRepConst s
-vToVRep (VCheckConst s x) = VRepConst (show (s, x))
+vToVRep (VCheckConst s x) = VRepCheckConst (show (s, x))
 vToVRep (VPartialApp vf va) = VRep2 "VPartialApp" (vToVRep vf) (vToVRep va)
 vToVRep (VUnPartialApp vf) = undefined
 vToVRep (VApp vf va) = VRep2 "VApp" (vToVRep vf) (vToVRep va)
@@ -126,6 +126,10 @@ vRepToV VRepRoot = VRoot
 vRepToV (VRepConst s) =
   let x = reconstitute s
    in VConst s x
+-- Needs Read
+-- vRepToV (VRepCheckConst sx) =
+--   let (s, x) = read sx
+--    in VCheckConst s x
 
 reconstitute :: String -> a
 reconstitute = undefined
