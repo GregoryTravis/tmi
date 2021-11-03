@@ -69,7 +69,7 @@ data V a where
   -- This is really VNamed
   VConst :: String -> a -> V a
   -- This is really VNiceConst
-  VCheckConst :: (Show a, Read a, Eq a) => String -> a -> V a
+  VCheckConst :: (Show a, Read a, Eq a) => a -> V a
   VPartialApp :: (Show a) => V (R a -> rest) -> V a -> V rest
   VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
   VApp :: (Show a, Show b) => V (R b -> R a) -> V b -> V a
@@ -78,7 +78,7 @@ data V a where
 
 vconst :: (Show a) => String -> a -> V a
 vconst = VConst
-vcheckconst :: (Show a, Read a, Eq a) => String -> a -> V a
+vcheckconst :: (Show a, Read a, Eq a) => a -> V a
 vcheckconst = VCheckConst
 vunapp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
 vunapp = VUnPartialApp
@@ -98,7 +98,7 @@ instance Show a => Show (V a) where
   show VRoot = "[root]"
   show (VConst s a) = "(VConst " ++ s ++ " " ++ show a ++ ")"
   -- TODO: Replace VConst with this, and add Eq to everything
-  show (VCheckConst s a) = "(VCheckConst " ++ s ++ " " ++ show a ++ ")"
+  show (VCheckConst a) = "(VCheckConst " ++ show a ++ ")"
   -- show (VApp vfba vfb) = "(" ++ (show vfba) ++ " " ++ (show vfb) ++ ")"
   -- show (VPartialApp vf va) = "(" ++ (show vf) ++ " " ++ (show va) ++ ")"
   show (VApp vfba vfb) = "(" ++ show vfba ++ " " ++ "arg" ++ ")"
@@ -114,7 +114,7 @@ vToVRep :: V a -> VRep
 vToVRep VRoot = VRepRoot
 -- vToVRep (VConst s x) = VRepConst (show (s, x))
 vToVRep (VConst s x) = VRepConst s
-vToVRep (VCheckConst s x) = VRepCheckConst (show (s, x))
+vToVRep (VCheckConst x) = VRepCheckConst (show x)
 vToVRep (VPartialApp vf va) = VRep2 "VPartialApp" (vToVRep vf) (vToVRep va)
 vToVRep (VUnPartialApp vf) = undefined
 vToVRep (VApp vf va) = VRep2 "VApp" (vToVRep vf) (vToVRep va)
@@ -128,10 +128,9 @@ vRepToV VRepRoot = VRoot
 vRepToV (VRepConst s) =
   let x = reconstitute s
    in VConst s x
--- Needs Read
 -- vRepToV (VRepCheckConst sx) =
---   let (s, x) = read sx
---    in VCheckConst s x
+--   let x = read sx
+--    in VCheckConst x
 
 reconstitute :: String -> a
 reconstitute = undefined

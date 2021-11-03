@@ -7,7 +7,7 @@ import V
 appendo :: (Eq a, Read a, Show a) => V (Appendo a) -> V a -> TMI w ()
 appendo vapp va =
   let vas = appendo_1 <$$> vapp
-   in vas <--- appendV <**> vas <$$> (consV <**> va <$$> VCheckConst "appendo" [])
+   in vas <--- appendV <**> vas <$$> (consV <**> va <$$> VCheckConst [])
 
 newtype Appendo a = Appendo [a] deriving Show
 appendo_1 :: V (R (Appendo a) -> R [a])

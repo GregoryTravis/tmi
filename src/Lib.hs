@@ -116,7 +116,7 @@ zipWithV ::
 zipWithV vf vas vbs =
   ifV <**> (orV <**> (nullV <$$> vas)
                 <$$> (nullV <$$> vbs))
-      <**> vcheckconst "zipWith" []
+      <**> vcheckconst []
       <$$> (consV <**> (vf <**> (headV <$$> vas) <$$> (headV <$$> vbs))
                   <$$> zipWithV vf (tailV <$$> vas) (tailV <$$> vbs))
 
@@ -162,7 +162,7 @@ mapViaFold f = foldr ((:) . f) []
 
 mapViaFoldVE vf vas =
   let fooo = composeVE consV vf
-   in foldoVE (vunapp fooo) (vcheckconst "mapViaFoldVE nil" []) vas
+   in foldoVE (vunapp fooo) (vcheckconst []) vas
 
 reverse_for :: [a] -> [a]
 reverse_for = reverse
@@ -177,7 +177,7 @@ reverseVE vas =
       <**> vconst "[]" []
       <$$> (appendV <**> reverseVE (tailV <$$> vas)
                     <$$> (consV <**> (headV <$$> vas)
-                                <$$> vcheckconst "reverseVE" []))
+                                <$$> vcheckconst []))
 
 reverseAcc :: [a] -> [a]
 reverseAcc xs = reverseAcc' xs []

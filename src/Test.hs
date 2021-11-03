@@ -147,7 +147,7 @@ action = do
   -- appended <--- vconst "" [12,3,4,12,513,14,15] -- works
   -- appended <--- vconst "" [0, 1, 2, 3, 4, 5, 6] -- works
   -- appended2 <--- vconst "" [12,513,14,15] -- works
-  let consied = consV <**> vcheckconst "boop" "boop" <$$> modded
+  let consied = consV <**> vcheckconst "boop" <$$> modded
   listen consied (slisteny "consied")
   invitedUsersV <--- vconst "" ["b", "heyo", "hippo"]
   -- modded <--- vconst "" ["c!", "deyo!", "lippo!"]
