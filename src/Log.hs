@@ -124,6 +124,10 @@ logMain = do
   msp sfaa
   -- msp qfaa
   msp $ r w inced
+  msp aRes
+  msp aRes5
+  msp aResLerfed
+  msp aResLerfed5
   -- works
   -- let i = 12 :: Int
   --     step = Step (return i, msp)
