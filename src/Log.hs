@@ -61,12 +61,19 @@ aVal5 = 5
 
 recon :: String -> Dynamic
 recon "aFun" = toDyn aFun
+recon "aFunLerfed" = toDyn $ lerf aFun
 recon "aVal" = toDyn aVal
 recon "aVal5" = toDyn aVal5
 recon _ = error "recon"
 
 aRes = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal"))::Maybe Bool)
 aRes5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal5"))::Maybe Bool)
+
+aResLerfed = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "2"))::Maybe Bool)
+aResLerfed5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "5"))::Maybe Bool)
+
+lerf :: (Read a, Show a) => (a -> b) -> (String -> b)
+lerf f s = f (read s)
 
 newtype W = W { aa :: Int }
 
