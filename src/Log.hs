@@ -1,4 +1,4 @@
-{-# Language ExistentialQuantification, GADTs #-}
+{-# Language ExistentialQuantification, GADTs, PartialTypeSignatures #-}
 
 module Log
 ( logMain
@@ -66,11 +66,25 @@ recon "aVal" = toDyn aVal
 recon "aVal5" = toDyn aVal5
 recon _ = error "recon"
 
-aRes = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal"))::Maybe Bool)
-aRes5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal5"))::Maybe Bool)
+appish :: String -> String -> Dynamic
+appish fs as = 
+  fromJust $ dynApply (recon fs) (recon as)
 
+appishC :: String -> String -> Dynamic
+appishC fs as = 
+  fromJust $ dynApply (recon fs) (toDyn as)
+
+dextract x = fromJust $ fromDynamic x
+
+aRes = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal"))::Maybe Bool)
+aRes' = (dextract $ appish "aFun" "aVal") :: Bool
 aResLerfed = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "2"))::Maybe Bool)
 aResLerfed5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "5"))::Maybe Bool)
+
+aRes5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal5"))::Maybe Bool)
+aRes5' = (dextract $ appish "aFun" "aVal5") :: Bool
+aResLerfed' = (dextract $ appishC "aFunLerfed" "2") :: Bool
+aResLerfed5' = (dextract $ appishC "aFunLerfed" "5") :: Bool
 
 lerf :: (Read a, Show a) => (a -> b) -> (String -> b)
 lerf f s = f (read s)
@@ -128,6 +142,10 @@ logMain = do
   msp aRes5
   msp aResLerfed
   msp aResLerfed5
+  msp aRes'
+  msp aRes5'
+  msp aResLerfed'
+  msp aResLerfed5'
   -- works
   -- let i = 12 :: Int
   --     step = Step (return i, msp)
