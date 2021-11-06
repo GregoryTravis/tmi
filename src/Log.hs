@@ -52,6 +52,22 @@ reconstitute :: String -> Dynamic
 reconstitute "aa" = toDyn aa
 reconstitute s = error $ show ("recon", s)
 
+aFun :: Int -> Bool
+aFun = (<4)
+aVal :: Int
+aVal = 2
+aVal5 :: Int
+aVal5 = 5
+
+recon :: String -> Dynamic
+recon "aFun" = toDyn aFun
+recon "aVal" = toDyn aVal
+recon "aVal5" = toDyn aVal5
+recon _ = error "recon"
+
+aRes = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal"))::Maybe Bool)
+aRes5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal5"))::Maybe Bool)
+
 newtype W = W { aa :: Int }
 
 data Q a where
