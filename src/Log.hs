@@ -89,6 +89,26 @@ aResLerfed5' = (dextract $ appishC "aFunLerfed" "5") :: Bool
 lerf :: (Read a, Show a) => (a -> b) -> (String -> b)
 lerf f s = f (read s)
 
+-- data Lerf = forall a b. Lerf (a -> b) (String -> b)
+
+-- lerfApplyRegs2 :: Lerf -> Dynamic -> Dynamic
+-- lerfApplyRegs2 (Lerf regs lerfed) dx = fromJust $ dynApply (toDyn regs) dx
+-- lerfApplyLerfed2 (Lerf regs lerfed) dx = fromJust $ dynApply (toDyn lerfed) dx
+
+-- mkLerf2 :: Read a => (a -> b) -> Lerf
+-- mkLerf2 f = Lerf f (f . read)
+
+loof :: (Show a, Read a) => (a -> b) -> Either a String -> b
+loof f (Left x) = f x
+loof f (Right s) = f (read s)
+
+loof1 :: (Show a, Read a) => (a -> b) -> Either a String -> b
+loof1 = loof
+loof2 :: (Show a, Read a, Show b, Read b) => (a -> b -> c) -> Either a String -> Either b String -> c
+loof2 f eas = loof1 (loof1 f eas)
+loof3 :: (Show a, Read a, Show b, Read b, Show c, Read c) => (a -> b -> c -> d) -> Either a String -> Either b String -> Either c String -> d
+loof3 f eas = loof2 (loof1 f eas)
+
 newtype W = W { aa :: Int }
 
 data Q a where
