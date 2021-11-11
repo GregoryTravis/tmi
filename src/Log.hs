@@ -48,15 +48,15 @@ resolveStep sx (Step (_, k)) = do
 moreSteps = [Step (return (False, False), msp)]
 moreRets = [show (True, True)]
 
-reconstitute :: String -> Dynamic
-reconstitute "aa" = toDyn aa
+reconstitute :: (Show a, Read a, Typeable a) => String -> a
+reconstitute "aa" = fromJust $ fromDynamic $ toDyn aa
 reconstitute s = error $ show ("recon", s)
 
 newtype W = W { aa :: Int }
 
 data Q a where
   QRoot :: Q W
-  QNice :: (Show a, Read a) => a -> Q a
+  QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
 
@@ -80,22 +80,34 @@ faa = QApp vaa root
 inced = QApp plus faa
 w = W { aa = 13 }
 
-data S = SRoot | SNice String | SNamed String | SApp S S
+-- Show, Read. First is shewn, second is type
+data DumDyn = DumDyn String String deriving (Read, Show)
+mkDumDyn :: (Show a, Read a, Typeable a) => a -> DumDyn
+mkDumDyn x = DumDyn (show x) (show (toDyn x))
+
+dumDynToX :: (Show a, Read a, Typeable a) => DumDyn -> a
+dumDynToX (DumDyn s ts) = fromJust $ fromDynamic dyn
+  where dyn = case ts of "<<Int>>" -> toDyn (read s :: Int)
+                         "<<String>>" -> toDyn (read s :: String)
+                         _ -> error "dumDynToX"
+
+data S = SRoot | SNice DumDyn | SNamed String | SApp S S
   deriving (Read, Show)
 
 qs :: Q a -> S
 qs QRoot = SRoot
-qs (QNice x) = SNice (show x)
-qs (QNamed name _) = SNice name
+qs (QNice x) = SNice (mkDumDyn x)
+qs (QNamed name _) = SNamed name
 qs (QApp qf qx) = SApp (qs qf) (qs qx)
 
-sq :: S -> Dynamic
-sq SRoot = toDyn QRoot
--- sq (SNice s) = toDyn (read s)
+sq :: (Show a, Read a, Typeable a) => S -> Q a
+sq SRoot = fromJust $ fromDynamic $ toDyn QRoot
+sq (SNice ddyn) = QNice (dumDynToX ddyn)
+sq (SNamed name) = QNamed name (reconstitute name)
 sq _ = error "sq"
 
 sfaa = qs faa
-qfaa = sq sfaa
+qfaa = sq sfaa :: Q Int
 
 logMain = do
   msp sfaa
