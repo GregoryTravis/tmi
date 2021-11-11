@@ -113,6 +113,7 @@ logMain = do
   msp sfaa
   -- msp qfaa
   msp $ r w inced
+  msp $ r w qfaa
   -- works
   -- let i = 12 :: Int
   --     step = Step (return i, msp)
