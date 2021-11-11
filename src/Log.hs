@@ -52,63 +52,6 @@ reconstitute :: String -> Dynamic
 reconstitute "aa" = toDyn aa
 reconstitute s = error $ show ("recon", s)
 
-aFun :: Int -> Bool
-aFun = (<4)
-aVal :: Int
-aVal = 2
-aVal5 :: Int
-aVal5 = 5
-
-recon :: String -> Dynamic
-recon "aFun" = toDyn aFun
-recon "aFunLerfed" = toDyn $ lerf aFun
-recon "aVal" = toDyn aVal
-recon "aVal5" = toDyn aVal5
-recon _ = error "recon"
-
-appish :: String -> String -> Dynamic
-appish fs as = 
-  fromJust $ dynApply (recon fs) (recon as)
-
-appishC :: String -> String -> Dynamic
-appishC fs as = 
-  fromJust $ dynApply (recon fs) (toDyn as)
-
-dextract x = fromJust $ fromDynamic x
-
-aRes = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal"))::Maybe Bool)
-aRes' = (dextract $ appish "aFun" "aVal") :: Bool
-aResLerfed = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "2"))::Maybe Bool)
-aResLerfed5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFunLerfed") (toDyn "5"))::Maybe Bool)
-
-aRes5 = fromJust ((fromDynamic $ fromJust $ dynApply (recon "aFun") (recon "aVal5"))::Maybe Bool)
-aRes5' = (dextract $ appish "aFun" "aVal5") :: Bool
-aResLerfed' = (dextract $ appishC "aFunLerfed" "2") :: Bool
-aResLerfed5' = (dextract $ appishC "aFunLerfed" "5") :: Bool
-
-lerf :: (Read a, Show a) => (a -> b) -> (String -> b)
-lerf f s = f (read s)
-
--- data Lerf = forall a b. Lerf (a -> b) (String -> b)
-
--- lerfApplyRegs2 :: Lerf -> Dynamic -> Dynamic
--- lerfApplyRegs2 (Lerf regs lerfed) dx = fromJust $ dynApply (toDyn regs) dx
--- lerfApplyLerfed2 (Lerf regs lerfed) dx = fromJust $ dynApply (toDyn lerfed) dx
-
--- mkLerf2 :: Read a => (a -> b) -> Lerf
--- mkLerf2 f = Lerf f (f . read)
-
-loof :: (Show a, Read a) => (a -> b) -> Either a String -> b
-loof f (Left x) = f x
-loof f (Right s) = f (read s)
-
-loof1 :: (Show a, Read a) => (a -> b) -> Either a String -> b
-loof1 = loof
-loof2 :: (Show a, Read a, Show b, Read b) => (a -> b -> c) -> Either a String -> Either b String -> c
-loof2 f eas = loof1 (loof1 f eas)
-loof3 :: (Show a, Read a, Show b, Read b, Show c, Read c) => (a -> b -> c -> d) -> Either a String -> Either b String -> Either c String -> d
-loof3 f eas = loof2 (loof1 f eas)
-
 newtype W = W { aa :: Int }
 
 data Q a where
@@ -158,14 +101,6 @@ logMain = do
   msp sfaa
   -- msp qfaa
   msp $ r w inced
-  msp aRes
-  msp aRes5
-  msp aResLerfed
-  msp aResLerfed5
-  msp aRes'
-  msp aRes5'
-  msp aResLerfed'
-  msp aResLerfed5'
   -- works
   -- let i = 12 :: Int
   --     step = Step (return i, msp)
