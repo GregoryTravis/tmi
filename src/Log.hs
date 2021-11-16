@@ -138,8 +138,8 @@ stuff (Ding x' (Dynamic trx xx) _) =
       yeah0 = eqTypeRep qfa (typeRep @W)
       yeah1 = eqTypeRep qfa (typeRep @Int)
       wtr' = typeRep @W
-      yeah2 == eqTypeRep yeah0 qfa
-   in show ("heh", yeah0, yeah1, yeah2)
+      -- yeah2 = eqTypeRep yeah0 qfa
+   in show ("heh", yeah0, yeah1)
    -- in case splitApps trx
    --      of (tycon, strs) ->
    --           case strs of [SomeTypeRep (Fun tr _)] -> show (tr, tr `eqTypeRep` typeRep @W)
