@@ -1,11 +1,14 @@
-{-# Language ExistentialQuantification, GADTs, PartialTypeSignatures #-}
+{-# Language AllowAmbiguousTypes, ExistentialQuantification, GADTs, RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications #-}
 
 module Log
 ( logMain
 ) where
 
 import Data.Dynamic
+import Data.Kind (Type)
+import Data.Proxy
 import Data.Maybe (fromJust)
+import Type.Reflection
 
 import Util
 
@@ -52,7 +55,15 @@ reconstitute :: (Show a, Read a, Typeable a) => String -> a
 reconstitute "aa" = fromJust $ fromDynamic $ toDyn aa
 reconstitute s = error $ show ("recon", s)
 
-newtype W = W { aa :: Int }
+reconstituteShow :: Typeable a => String -> Q a
+reconstituteShow "aa" = fromJust $ fromDynamic $ toDyn (QNamed "aa" aa)
+reconstituteShow s = error $ show ("recon", s)
+
+reconstituteShowD :: String -> Dynamic
+reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
+reconstituteShowD s = error $ show ("recon", s)
+
+newtype W = W { aa :: Int } deriving (Read, Show)
 
 data Q a where
   QRoot :: Q W
@@ -66,11 +77,11 @@ instance Show (Q a) where
   show (QNamed name _) = "(QNamed " ++ name ++ ")"
   show (QApp qf qx) = "(QApp " ++ show qf ++ " " ++ show qx ++ ")"
 
-r :: W -> Q a -> a
-r w QRoot = w
-r w (QNice x) = x
-r w (QNamed _ x) = x
-r w (QApp qf qx) = r w qf (r w qx)
+rd :: W -> Q a -> a
+rd w QRoot = w
+rd w (QNice x) = x
+rd w (QNamed _ x) = x
+rd w (QApp qf qx) = rd w qf (rd w qx)
 
 root = QRoot
 vaa = QNamed "aa" aa
@@ -89,7 +100,19 @@ dumDynToX :: (Show a, Read a, Typeable a) => DumDyn -> a
 dumDynToX (DumDyn s ts) = fromJust $ fromDynamic dyn
   where dyn = case ts of "<<Int>>" -> toDyn (read s :: Int)
                          "<<String>>" -> toDyn (read s :: String)
-                         _ -> error "dumDynToX"
+                         _ -> error $ "dumDynToX " ++ ts
+
+dumDynToXShow :: (Typeable a) => DumDyn -> Q a
+dumDynToXShow (DumDyn s ts) = fromJust $ fromDynamic dyn
+  where dyn = case ts of "<<Int>>" -> toDyn $ QNice (read s :: Int)
+                         "<<String>>" -> toDyn $ QNice (read s :: String)
+                         _ -> error $ "dumDynToX " ++ ts
+
+dumDynToXShowD :: DumDyn -> Dynamic
+dumDynToXShowD (DumDyn s ts) = dyn
+  where dyn = case ts of "<<Int>>" -> toDyn $ QNice (read s :: Int)
+                         "<<String>>" -> toDyn $ QNice (read s :: String)
+                         _ -> error $ "dumDynToX " ++ ts
 
 data S = SRoot | SNice DumDyn | SNamed String | SApp S S
   deriving (Read, Show)
@@ -100,20 +123,127 @@ qs (QNice x) = SNice (mkDumDyn x)
 qs (QNamed name _) = SNamed name
 qs (QApp qf qx) = SApp (qs qf) (qs qx)
 
-sq :: (Show a, Read a, Typeable a) => S -> Q a
-sq SRoot = fromJust $ fromDynamic $ toDyn QRoot
-sq (SNice ddyn) = QNice (dumDynToX ddyn)
-sq (SNamed name) = QNamed name (reconstitute name)
+data Ding = forall a. Typeable a => Ding a Dynamic (Ding -> String)
+mkding :: Typeable a => a -> Ding
+mkding x = Ding x (toDyn x) stuff
+stuff :: Ding -> String
+stuff (Ding x' (Dynamic trx xx) _) =
+  let q = case splitApps (typeRep @Q) of (tycon', strs) -> tycon'
+      -- App qf qa = (typeRep @(Q W)) -- ok
+      -- Fun _ _ = typeRep @(Int -> String) -- ok
+      -- App qq qf = typeRep @(Q (W -> Int))
+      -- Fun qfa qfr = qf
+      -- yeah = typeRep @(Maybe Int) == App (typeRep @Maybe) (typeRep @Int)
+      App qq (Fun qfa qfr) = typeRep @(Q (W -> Int))
+      yeah0 = eqTypeRep qfa (typeRep @W)
+      yeah1 = eqTypeRep qfa (typeRep @Int)
+      wtr' = typeRep @W
+      yeah2 == eqTypeRep yeah0 qfa
+   in show ("heh", yeah0, yeah1, yeah2)
+   -- in case splitApps trx
+   --      of (tycon, strs) ->
+   --           case strs of [SomeTypeRep (Fun tr _)] -> show (tr, tr `eqTypeRep` typeRep @W)
+   -- in case splitApps trx of (tycon, strs) -> show strs -- ok
+   -- in case splitApps trx of (tycon, strs) -> show (tycon == q) -- ok
+  -- show trx
+doding :: Ding -> String
+doding d@(Ding x dx f) = f d
+foo = mkding vaa
+laa = QApp vaa root
+
+-- querp :: Dynamic -> Dynamic -> String
+-- querp (Dynamic qabtr qab) (Dynamic qatr qa) =
+--   let (q, []) = splitApps (typeRep @Q)
+--    in case splitApps qabtr of (tycon, strs) -> show (tycon, strs, eqTypeRep tycon q)
+
+-- -- alp = \(_::S) -> toDyn $ QNice $ dumDynToX undefined
+-- ooo :: Typeable a => a
+-- ooo = undefined
+-- -- Can't: even tho ooo is typeable, it's poly so it's not really typeable
+-- larr = toDyn ooo
+
+sqd :: S -> Dynamic
+sqd SRoot = toDyn QRoot
+-- sqd (SNice ddyn) = toDyn $ QNice (dumDynToX ddyn)
+sqd (SNice ddyn) = dumDynToXShowD ddyn
+-- sqd (SNamed name) = toDyn $ QNamed name (reconstitute name)
+sqd (SNamed name) = reconstituteShowD name
+-- sqd (SApp sf sx) = fromJustVerbose "sqd SApp"$ dynApply (sqd sf) (sqd sx)
+-- dqs (SApp sf sx) = toDyn q
+--   where q = QApp (fromJust $ fromDynamic (sqd sf)) (fromJust $ fromDynamic (sqd sx))
+-- sqd (SApp sf sx) =
+--   let Dynamic _ f = sf
+--       Dynamic _ x = x
+--    in QApp f x
+-- sqd (SApp sf sx) =
+--   let df = sqd sf
+--       dx = sqd sx
+--    in fromJust $ dynApply df dx
+-- sqd _ = error "sq"
+
+sq' :: Typeable a => S -> Q a
+sq' s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
+
+-- sq :: (Show a, Read a, Typeable a) => S -> Q a
+-- Can't do this because then we don't know that the arg to QNice is a show (more
+-- precisely that we don't know which one, or even more precisely, we can't restrict
+-- this to only be used *at some Show monotype*.
+sq :: Typeable a => S -> Q a
+sq SRoot = fromJustVerbose "sq SRoot" $ fromDynamic $ toDyn QRoot
+sq (SNice ddyn) = dumDynToXShow ddyn -- QNice (dumDynToX ddyn)
+sq (SNamed name) = reconstituteShow name -- QNamed name (reconstitute name)
+-- sq (SApp sf sx) = QApp (sq sf) (sq sx)
 sq _ = error "sq"
 
+wak :: Dynamic -> Int
+wak (Dynamic tr f) =
+  let qwt = typeRep @(Q W) -- typeOf QRoot -- (Proxy @(Q W))
+   in case tr `eqTypeRep` qwt
+        of Nothing -> error ("yope " ++ show tr ++ " " ++ show qwt)
+           Just HRefl -> 14
+
+-- wuk :: Dynamic -> Dynamic -> Int
+-- wuk (Dynamic qabtr qab) (Dynamic qatr qa)
+
+-- Trying to drill down into a type but maybe you can't do it in ghci
+-- :t (case (head (case splitApps (typeRep @(Q (W -> Int))) of (tycon, strs) -> strs)) of SomeTypeRep (Fun tra _) -> tra `eqTypeRep` tra) :: Maybe (arg :~~: arg)
+
+-- (f::(a->b)) `dynApply` (x::a) = (f a)::b
+dynApply' :: Dynamic -> Dynamic -> Maybe Dynamic
+dynApply' (Dynamic (Fun ta tr) f) (Dynamic ta' x)
+  | Just HRefl <- ta `eqTypeRep` ta'
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
+  = Just (Dynamic tr (f x))
+dynApply' _ _
+  = Nothing
+
+-- Minimal example of how we can't treat a (Show a => a) as a Show
+-- returnsShow :: Show a => Int -> a
+-- returnsShow = undefined
+-- data Thing a where
+--   ShowThing :: Show a => a -> Thing a
+-- foo = ShowThing (returnsShow undefined)
+
 sfaa = qs faa
-qfaa = sq sfaa :: Q Int
+qfaa = sq' sfaa :: Q Int
 
 logMain = do
-  msp sfaa
-  -- msp qfaa
-  msp $ r w inced
-  msp $ r w qfaa
+  -- msp $ querp (toDyn vaa) (toDyn QRoot)
+  msp $ doding foo
+
+  -- works
+  -- msp sfaa
+  -- -- msp qfaa
+  -- msp $ rd w inced
+  -- msp $ rd w (sq $ SNice (DumDyn "12" "<<Int>>") :: Q Int)
+  -- let foo = ((rd w (sq $ SNamed "aa" :: Q (W -> Int))) :: (W -> Int))
+  -- msp $ foo w
+  -- msp $ rd w (sq $ SRoot :: Q W)
+
+  -- Can't because sq requires Show
+  -- let theAA = r w $ (sq $ SNamed "aa" :: Q (W -> Int))
+  -- msp $ r w $ sq $ SNice (DumDyn "<<Int>>" "13")
+  -- msp $ r w qfaa
   -- works
   -- let i = 12 :: Int
   --     step = Step (return i, msp)

@@ -61,6 +61,7 @@ module Util
 , (!!-)
 , transfer
 , readFile'
+, fromJustVerbose
 ) where
 
 import Control.Exception
@@ -68,6 +69,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Control.DeepSeq
 import Data.List (group, groupBy, maximumBy, minimumBy, sort, isSuffixOf, partition)
 import qualified Data.Map.Strict as M
+import Data.Maybe (fromJust)
 import Data.Text (unpack)
 import Data.Text.Lazy (toStrict)
 import Data.Time.Clock (diffUTCTime)
@@ -390,3 +392,7 @@ readFile' filePath = do
     contents <- hGetContents handle
     return $!! contents
     -- return $ length contents `seq` contents
+
+fromJustVerbose :: String -> Maybe a -> a
+fromJustVerbose s (Just x) = x
+fromJustVerbose s Nothing = error ("fromJustVerbose " ++ s)
