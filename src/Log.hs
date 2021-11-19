@@ -1,13 +1,17 @@
-{-# Language AllowAmbiguousTypes, ExistentialQuantification, GADTs, RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications #-}
+{-# Language AllowAmbiguousTypes, ExistentialQuantification, GADTs, RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications, KindSignatures #-}
 
 module Log
 ( logMain
 ) where
 
+-- import Data.Data (DataRep(..))
 import Data.Dynamic
 import Data.Kind (Type)
 import Data.Proxy
 import Data.Maybe (fromJust)
+-- import GHC.Core.TyCon (PrimRep(..))
+-- import GHC.Exts (TYPE)
+-- import GHC.Exts (RuntimeRep)
 import Type.Reflection
 
 import Util
@@ -128,18 +132,19 @@ mkding :: Typeable a => a -> Ding
 mkding x = Ding x (toDyn x) stuff
 stuff :: Ding -> String
 stuff (Ding x' (Dynamic trx xx) _) =
-  let q = case splitApps (typeRep @Q) of (tycon', strs) -> tycon'
-      -- App qf qa = (typeRep @(Q W)) -- ok
-      -- Fun _ _ = typeRep @(Int -> String) -- ok
-      -- App qq qf = typeRep @(Q (W -> Int))
-      -- Fun qfa qfr = qf
-      -- yeah = typeRep @(Maybe Int) == App (typeRep @Maybe) (typeRep @Int)
-      App qq (Fun qfa qfr) = typeRep @(Q (W -> Int))
-      yeah0 = eqTypeRep qfa (typeRep @W)
-      yeah1 = eqTypeRep qfa (typeRep @Int)
-      wtr' = typeRep @W
-      -- yeah2 = eqTypeRep yeah0 qfa
-   in show ("heh", yeah0, yeah1)
+  let qw = typeRep @(Q W)
+      qw' = App (typeRep @Q) (typeRep @W)
+      same = eqTypeRep qw qw'
+   in show ("asdf", same)
+  -- All works
+  -- let q = case splitApps (typeRep @Q) of (tycon', strs) -> tycon'
+  --     App qq (Fun qfa qfr) = typeRep @(Q (W -> Int))
+  --     App qq' _ = typeRep @(Q W)
+  --     yeah0 = eqTypeRep qfa (typeRep @W)
+  --     yeah1 = eqTypeRep qfa (typeRep @Int)
+  --     yeah2 = eqTypeRep qq qq'
+  --  in show ("heh", yeah0, yeah1, yeah2)
+
    -- in case splitApps trx
    --      of (tycon, strs) ->
    --           case strs of [SomeTypeRep (Fun tr _)] -> show (tr, tr `eqTypeRep` typeRep @W)
@@ -150,6 +155,59 @@ doding :: Ding -> String
 doding d@(Ding x dx f) = f d
 foo = mkding vaa
 laa = QApp vaa root
+
+-- aa :: Q (W -> Int)
+-- root :: Q W
+-- QApp :: Q (a -> b) -> Q a -> Q b
+
+gaff :: Dynamic -> Dynamic -> String
+gaff (Dynamic atr@(App qq (Fun qfatr qfbtr)) qfab) (Dynamic atr'@(App qq' qatr) qa)
+-- gaff (Dynamic atr@(App qq (App (App arrow qfatr) qfbtr)) qfab) (Dynamic atr'@(App qq' qatr) qa)
+  | Just HRefl <- qq `eqTypeRep` qq'
+  , Just HRefl <- qfatr `eqTypeRep` qatr
+  -- = Dynamic (App qq qfbtr) (QApp qfab qa)
+  =
+  let debug = show ("deeb", withTypeable atr (typeOf qfab),
+                    withTypeable atr' (typeOf qa),
+                    qatr', qatr'', qfabtr'', qfabtr''', qfbtr, ack0,
+                    qfbtr `eqTypeRep` typeRep @Int, wtoi, ack1)
+                    -- qbtr)
+      qatr' = App qq qatr
+      qatr'' = App qq qfatr
+      qfabtr'' = App qq (Fun qfatr qfbtr)
+      qfabtr''' = App qq (App qq (Fun qfatr qfbtr))
+      ack0 = App qq (typeRep @Int)
+      wtoi = Fun qfatr qfbtr
+      ack1 = App qq wtoi
+      -- nope, there's exactly one thing we can't apply Q to, which is b:
+      -- ack2 = App qq qfbtr 
+      -- ack3 = App (typeRep @(Maybe)) qfbtr 
+
+      -- asdfasdf = App qq (App qq qfbtr)
+      -- qbtr' = App qq qfbtr
+      -- qbtr = withTypeable atr $ withTypeable atr' $ App qq qfbtr
+   in debug
+  -- where arrow :: TypeRep ((->) :: TYPE IntRep -> Type -> Type)
+  --       arrow = undefined
+
+        -- Dynamic (App qq qfbtr) (QApp qfab qa)
+  -- = Dynamic qfbtr (QApp qfab qa)
+  -- = Dynamic (App (typeRep @Q) qfbtr) (QApp qfab qa)
+
+  -- let App qq (Fun qfa qfr) = typeRep @(Q (W -> Int))
+  --     App qq' (Fun qfa' qfr') = qabtr
+  --  in "asdf"
+  -- let App qtc (Fun fa fr) = qabtr
+  --  in "heyo"
+
+-- (f::(a->b)) `dynApply` (x::a) = (f a)::b
+dynApply' :: Dynamic -> Dynamic -> Maybe Dynamic
+dynApply' (Dynamic (Fun ta tr) f) (Dynamic ta' x)
+  | Just HRefl <- ta `eqTypeRep` ta'
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
+  = Just (Dynamic tr (f x))
+dynApply' _ _
+  = Nothing
 
 -- querp :: Dynamic -> Dynamic -> String
 -- querp (Dynamic qabtr qab) (Dynamic qatr qa) =
@@ -208,15 +266,6 @@ wak (Dynamic tr f) =
 -- Trying to drill down into a type but maybe you can't do it in ghci
 -- :t (case (head (case splitApps (typeRep @(Q (W -> Int))) of (tycon, strs) -> strs)) of SomeTypeRep (Fun tra _) -> tra `eqTypeRep` tra) :: Maybe (arg :~~: arg)
 
--- (f::(a->b)) `dynApply` (x::a) = (f a)::b
-dynApply' :: Dynamic -> Dynamic -> Maybe Dynamic
-dynApply' (Dynamic (Fun ta tr) f) (Dynamic ta' x)
-  | Just HRefl <- ta `eqTypeRep` ta'
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
-  = Just (Dynamic tr (f x))
-dynApply' _ _
-  = Nothing
-
 -- Minimal example of how we can't treat a (Show a => a) as a Show
 -- returnsShow :: Show a => Int -> a
 -- returnsShow = undefined
@@ -230,6 +279,7 @@ qfaa = sq' sfaa :: Q Int
 logMain = do
   -- msp $ querp (toDyn vaa) (toDyn QRoot)
   msp $ doding foo
+  msp $ gaff (toDyn vaa) (toDyn root)
 
   -- works
   -- msp sfaa
