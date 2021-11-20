@@ -57,7 +57,8 @@ moreRets = [show (True, True)]
 
 reconstitute :: (Show a, Read a, Typeable a) => String -> a
 reconstitute "aa" = fromJust $ fromDynamic $ toDyn aa
-reconstitute s = error $ show ("recon", s)
+reconstitute "inc" = fromJust $ fromDynamic $ toDyn ((+1) :: Int -> Int)
+reconstitute s = error $ show ("reconstitute", s)
 
 reconstituteShow :: Typeable a => String -> Q a
 reconstituteShow "aa" = fromJust $ fromDynamic $ toDyn (QNamed "aa" aa)
@@ -65,6 +66,7 @@ reconstituteShow s = error $ show ("recon", s)
 
 reconstituteShowD :: String -> Dynamic
 reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
+reconstituteShowD "inc" = toDyn (QNamed "inc" ((+1) :: Int -> Int))
 reconstituteShowD s = error $ show ("recon", s)
 
 newtype W = W { aa :: Int } deriving (Read, Show)
@@ -90,7 +92,7 @@ rd w (QApp qf qx) = rd w qf (rd w qx)
 root = QRoot
 vaa = QNamed "aa" aa
 one = QNice (1::Int)
-plus = QNamed "plus" (+(1::Int))
+plus = QNamed "inc" (+(1::Int))
 faa = QApp vaa root
 inced = QApp plus faa
 w = W { aa = 13 }
@@ -222,12 +224,21 @@ dynApply' _ _
 
 --  :: Q (a->b) -> Q a      -> Maybe (Q b)
 qapp :: Dynamic  -> Dynamic -> Maybe Dynamic
-qapp (Dynamic (App q (Fun ta tr)) qf) (Dynamic (App q' ta') qx)
+qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx)
   | Just HRefl <- q `eqTypeRep` q'
   , Just HRefl <- q `eqTypeRep` (typeRep @Q)
   , Just HRefl <- ta `eqTypeRep` ta'
   , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
   = Just (Dynamic (App q tr) (QApp qf qx))
+  -- | otherwise =
+  -- let qqev = q `eqTypeRep` q'
+  --     qQev = q `eqTypeRep` (typeRep @Q)
+  --     taev = ta `eqTypeRep` ta'
+  --     trev = typeRep @Type `eqTypeRep` typeRepKind tr
+  --  in error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") " ++ show (qqev, qQev, taev, trev)
+-- qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx) = error "??"
+qapp (Dynamic qabt _) (Dynamic qat _) =
+   error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") "
 
 sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
@@ -287,9 +298,12 @@ wak (Dynamic tr f) =
 -- foo = ShowThing (returnsShow undefined)
 
 sfaa = qs faa
+sfaa' = qs inced
 dqfaa = sqd sfaa
 qfaa = sq sfaa :: Q Int
 -- qfaa = sq' sfaa :: Q Int
+dqfaa' = sqd sfaa'
+qfaa' = sq sfaa' :: Q Int
 
 logMain = do
   -- works
@@ -297,6 +311,11 @@ logMain = do
   msp dqfaa
   msp qfaa
   msp $ rd w qfaa
+
+  msp sfaa'
+  msp dqfaa'
+  msp qfaa'
+  msp $ rd w qfaa'
 
   -- works
   -- -- msp $ querp (toDyn vaa) (toDyn QRoot)
