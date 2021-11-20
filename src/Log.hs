@@ -71,11 +71,21 @@ reconstituteShowD s = error $ show ("recon", s)
 
 newtype W = W { aa :: Int } deriving (Read, Show)
 
+data R a where
+  RRoot :: R W
+  RNice :: Q a -> R a
+  RNamed :: Q a -> R a
+  RApp :: Q (b -> a) -> R a -> R b
+
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
+
+infixr 4 <$$>
+(<$$>) :: Q (a -> b) -> Q a -> Q b
+(<$$>) = QApp
 
 instance Show (Q a) where
   show QRoot = "QRoot"
@@ -93,8 +103,9 @@ root = QRoot
 vaa = QNamed "aa" aa
 one = QNice (1::Int)
 plus = QNamed "inc" (+(1::Int))
-faa = QApp vaa root
-inced = QApp plus faa
+faa = vaa <$$> root
+_inced = plus <$$> faa
+inced = plus <$$> vaa <$$> root
 w = W { aa = 13 }
 
 -- Show, Read. First is shewn, second is type
