@@ -220,12 +220,25 @@ dynApply' _ _
 -- -- Can't: even tho ooo is typeable, it's poly so it's not really typeable
 -- larr = toDyn ooo
 
+--  :: Q (a->b) -> Q a      -> Maybe (Q b)
+qapp :: Dynamic  -> Dynamic -> Maybe Dynamic
+qapp (Dynamic (App q (Fun ta tr)) qf) (Dynamic (App q' ta') qx)
+  | Just HRefl <- q `eqTypeRep` q'
+  , Just HRefl <- q `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- ta `eqTypeRep` ta'
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
+  = Just (Dynamic (App q tr) (QApp qf qx))
+
 sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
 -- sqd (SNice ddyn) = toDyn $ QNice (dumDynToX ddyn)
 sqd (SNice ddyn) = dumDynToXShowD ddyn
 -- sqd (SNamed name) = toDyn $ QNamed name (reconstitute name)
 sqd (SNamed name) = reconstituteShowD name
+sqd (SApp sf sx) =
+  let dsf = sqd sf
+      dsx = sqd sx
+   in fromJust $ qapp dsf dsx
 -- sqd (SApp sf sx) = fromJustVerbose "sqd SApp"$ dynApply (sqd sf) (sqd sx)
 -- dqs (SApp sf sx) = toDyn q
 --   where q = QApp (fromJust $ fromDynamic (sqd sf)) (fromJust $ fromDynamic (sqd sx))
@@ -239,19 +252,19 @@ sqd (SNamed name) = reconstituteShowD name
 --    in fromJust $ dynApply df dx
 -- sqd _ = error "sq"
 
-sq' :: Typeable a => S -> Q a
-sq' s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
-
--- sq :: (Show a, Read a, Typeable a) => S -> Q a
--- Can't do this because then we don't know that the arg to QNice is a show (more
--- precisely that we don't know which one, or even more precisely, we can't restrict
--- this to only be used *at some Show monotype*.
 sq :: Typeable a => S -> Q a
-sq SRoot = fromJustVerbose "sq SRoot" $ fromDynamic $ toDyn QRoot
-sq (SNice ddyn) = dumDynToXShow ddyn -- QNice (dumDynToX ddyn)
-sq (SNamed name) = reconstituteShow name -- QNamed name (reconstitute name)
--- sq (SApp sf sx) = QApp (sq sf) (sq sx)
-sq _ = error "sq"
+sq s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
+
+-- -- sq :: (Show a, Read a, Typeable a) => S -> Q a
+-- -- Can't do this because then we don't know that the arg to QNice is a show (more
+-- -- precisely that we don't know which one, or even more precisely, we can't restrict
+-- -- this to only be used *at some Show monotype*.
+-- sq :: Typeable a => S -> Q a
+-- sq SRoot = fromJustVerbose "sq SRoot" $ fromDynamic $ toDyn QRoot
+-- sq (SNice ddyn) = dumDynToXShow ddyn -- QNice (dumDynToX ddyn)
+-- sq (SNamed name) = reconstituteShow name -- QNamed name (reconstitute name)
+-- -- sq (SApp sf sx) = QApp (sq sf) (sq sx)
+-- sq _ = error "sq"
 
 wak :: Dynamic -> Int
 wak (Dynamic tr f) =
@@ -274,12 +287,21 @@ wak (Dynamic tr f) =
 -- foo = ShowThing (returnsShow undefined)
 
 sfaa = qs faa
-qfaa = sq' sfaa :: Q Int
+dqfaa = sqd sfaa
+qfaa = sq sfaa :: Q Int
+-- qfaa = sq' sfaa :: Q Int
 
 logMain = do
-  -- msp $ querp (toDyn vaa) (toDyn QRoot)
-  msp $ doding foo
-  msp $ gaff (toDyn vaa) (toDyn root)
+  -- works
+  msp sfaa
+  msp dqfaa
+  msp qfaa
+  msp $ rd w qfaa
+
+  -- works
+  -- -- msp $ querp (toDyn vaa) (toDyn QRoot)
+  -- msp $ doding foo
+  -- msp $ gaff (toDyn vaa) (toDyn root)
 
   -- works
   -- msp sfaa
