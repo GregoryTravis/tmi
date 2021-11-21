@@ -62,6 +62,7 @@ module Util
 , transfer
 , readFile'
 , fromJustVerbose
+, boom
 ) where
 
 import Control.Exception
@@ -396,3 +397,6 @@ readFile' filePath = do
 fromJustVerbose :: String -> Maybe a -> a
 fromJustVerbose s (Just x) = x
 fromJustVerbose s Nothing = error ("fromJustVerbose " ++ s)
+
+boom :: Show a => a -> b -> b
+boom m _ = error $ "boom " ++ show m

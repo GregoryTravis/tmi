@@ -1,4 +1,5 @@
-{-# Language AllowAmbiguousTypes, ExistentialQuantification, GADTs, RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications, KindSignatures #-}
+{-# Language AllowAmbiguousTypes, ExistentialQuantification, KindSignatures, GADTs, NamedFieldPuns,
+    RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications, TypeOperators #-}
 
 module Log
 ( logMain
@@ -70,18 +71,61 @@ reconstituteShowD "inc" = toDyn (QNamed "inc" ((+1) :: Int -> Int))
 reconstituteShowD s = error $ show ("recon", s)
 
 newtype W = W { aa :: Int } deriving (Read, Show)
+_aa :: W -> Int -> W
+-- _aa w aa = error $ "ugh " ++ show aa
+_aa w aa = w { aa }
 
-data R a where
-  RRoot :: R W
-  RNice :: Q a -> R a
-  RNamed :: Q a -> R a
-  RApp :: Q (b -> a) -> R a -> R b
+-- data R a where
+--   RRoot :: R W
+--   RNice :: Q a -> R a
+--   RNamed :: Q a -> R a
+--   RApp :: Q (b -> a) -> R a -> R b
+
+-- infixr 0 -->
+-- data a --> b = L (a -> b) (a -> b -> a)
+
+-- -- L (a -> (L (b -> c) (b -> c -> b))) (a -> (L (b -> c) (b -> c -> b)) -> a)
+-- goo :: a --> b --> c
+-- goo = undefined
+
+data Write = forall a. Show a => Write (Q a) a | Writes [Write]
+emptyWrite :: Write
+emptyWrite = Writes []
+
+instance Show Write where
+  show (Write qa a) = "(Write " ++ show qa ++ " " ++ show a ++ ")"
+  show (Writes ws) = show ws
+data R a = R (W -> a -> Write)
+
+receive :: W -> R a -> a -> Write
+receive w (R rec) x = rec w x
 
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
+  B :: Q a -> R a -> Q a
+
+loft1 :: String -> (a -> b) -> (a -> b -> a) -> Q a -> Q b
+loft1 name for rev (B qa ra) = B qb bb
+  where qb = QApp (QNamed name for) qa
+        bb = R rec
+        rec w b = receive w ra (rev (rd w qa) b)
+
+liaa :: Q W -> Q Int
+liaa = loft1 "aa" aa _aa
+qaa :: Q Int
+qaa = liaa broot
+
+broot :: Q W
+broot = B root (R (\w w' -> Write broot w'))
+
+-- Assignment goes from right to left like god intended
+wr :: W -> Q a -> Q a -> Write
+wr w (B _ r) qx =
+  let a = rd w qx
+   in receive w r a
 
 infixr 4 <$$>
 (<$$>) :: Q (a -> b) -> Q a -> Q b
@@ -92,12 +136,14 @@ instance Show (Q a) where
   show (QNice x) = "(QNice " ++ show x ++ ")"
   show (QNamed name _) = "(QNamed " ++ name ++ ")"
   show (QApp qf qx) = "(QApp " ++ show qf ++ " " ++ show qx ++ ")"
+  show (B q r) = "(B " ++ (show q) ++ ")"
 
 rd :: W -> Q a -> a
 rd w QRoot = w
 rd w (QNice x) = x
 rd w (QNamed _ x) = x
 rd w (QApp qf qx) = rd w qf (rd w qx)
+rd w (B q _) = rd w q
 
 root = QRoot
 vaa = QNamed "aa" aa
@@ -317,16 +363,17 @@ dqfaa' = sqd sfaa'
 qfaa' = sq sfaa' :: Q Int
 
 logMain = do
-  -- works
-  msp sfaa
-  msp dqfaa
-  msp qfaa
-  msp $ rd w qfaa
-
-  msp sfaa'
-  msp dqfaa'
-  msp qfaa'
-  msp $ rd w qfaa'
+  msp $ rd w qaa
+  msp $ wr w qaa (QNice (130 :: Int))
+  -- -- works
+  -- msp sfaa
+  -- msp dqfaa
+  -- msp qfaa
+  -- msp $ rd w qfaa
+  -- msp sfaa'
+  -- msp dqfaa'
+  -- msp qfaa'
+  -- msp $ rd w qfaa'
 
   -- works
   -- -- msp $ querp (toDyn vaa) (toDyn QRoot)
