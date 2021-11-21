@@ -113,10 +113,16 @@ loft1 name for rev (B qa ra) = B qb bb
         bb = R rec
         rec w b = receive w ra (rev (rd w qa) b)
 
+linc :: Q Int -> Q Int
+linc = loft1 "inc" (+1) inc_
+  where inc_ _ i = i - 1
+
 liaa :: Q W -> Q Int
 liaa = loft1 "aa" aa _aa
 qaa :: Q Int
 qaa = liaa broot
+qaai :: Q Int
+qaai = linc qaa
 
 broot :: Q W
 broot = B root (R (\w w' -> Write broot w'))
@@ -365,6 +371,8 @@ qfaa' = sq sfaa' :: Q Int
 logMain = do
   msp $ rd w qaa
   msp $ wr w qaa (QNice (130 :: Int))
+  msp $ rd w qaai
+  msp $ wr w qaai (QNice (130 :: Int))
   -- -- works
   -- msp sfaa
   -- msp dqfaa
