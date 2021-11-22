@@ -67,13 +67,15 @@ reconstituteShow s = error $ show ("recon", s)
 
 reconstituteShowD :: String -> Dynamic
 reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
-reconstituteShowD "inc" = toDyn (QNamed "inc" ((+1) :: Int -> Int))
+reconstituteShowD "aa_" = toDyn (QNamed "aa_" aa_)
+reconstituteShowD "inc" = toDyn (QNamed "inc" inc)
+reconstituteShowD "inc_" = toDyn (QNamed "inc_" inc_)
 reconstituteShowD s = error $ show ("recon", s)
 
 newtype W = W { aa :: Int } deriving (Read, Show)
-_aa :: W -> Int -> W
--- _aa w aa = error $ "ugh " ++ show aa
-_aa w aa = w { aa }
+-- _aa :: W -> Int -> W
+-- -- _aa w aa = error $ "ugh " ++ show aa
+-- _aa w aa = w { aa }
 
 -- data R a where
 --   RRoot :: R W
@@ -95,43 +97,71 @@ emptyWrite = Writes []
 instance Show Write where
   show (Write qa a) = "(Write " ++ show qa ++ " " ++ show a ++ ")"
   show (Writes ws) = show ws
-data R a = R (W -> a -> Write)
+data R a = R (a -> Write)
 
-receive :: W -> R a -> a -> Write
-receive w (R rec) x = rec w x
+-- receive :: W -> R a -> a -> Write
+-- receive w (R rec) x = rec w x
 
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
-  B :: Q a -> R a -> Q a
+  BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
 
-loft1 :: String -> (a -> b) -> (a -> b -> a) -> Q a -> Q b
-loft1 name for rev (B qa ra) = B qb bb
-  where qb = QApp (QNamed name for) qa
-        bb = R rec
-        rec w b = receive w ra (rev (rd w qa) b)
+baa :: Q Int
+baa = BApp (QNamed "aa" aa) (QNamed "aa_" aa_) root
+-- aa :: W -> Int
+aa_ :: W -> R W -> R Int
+aa_ w (R wr) = R ir
+  where ir aa = wr $ w { aa }
 
-linc :: Q Int -> Q Int
-linc = loft1 "inc" (+1) inc_
-  where inc_ _ i = i - 1
+binc :: Q Int -> Q Int
+binc = BApp (QNamed "inc" inc) (QNamed "inc_" inc_)
+binced :: Q Int
+binced = binc baa
 
-liaa :: Q W -> Q Int
-liaa = loft1 "aa" aa _aa
-qaa :: Q Int
-qaa = liaa broot
-qaai :: Q Int
-qaai = linc qaa
+inc :: Int -> Int
+inc = (+1)
+inc_ :: Int -> R Int -> R Int
+inc_ _ (R r) = R r'
+  where r' i = r (i - 1)
 
-broot :: Q W
-broot = B root (R (\w w' -> Write broot w'))
+wr :: Show b => W -> Q b -> Q b -> Write
+wr w (BApp qfor qrev qx) qv =
+  let nb = rd w qv
+      -- for = rd w qfor
+      rev = rd w qrev
+      oa = rd w qx
+      ra = R (\a -> Write qx a)
+      R rb = rev oa ra
+   in rb nb
 
--- Assignment goes from right to left like god intended
-wr :: W -> Q a -> Q a -> Write
-wr w (B _ r) qx =
-  let a = rd w qx
-   in receive w r a
+-- loft1 :: String -> (a -> b) -> (a -> b -> a) -> Q a -> Q b
+-- loft1 name for rev (B qa ra) = B qb bb
+--   where qb = QApp (QNamed name for) qa
+--         bb = R rec
+--         rec w b = receive w ra (rev (rd w qa) b)
+
+-- linc :: Q Int -> Q Int
+-- linc = loft1 "inc" (+1) inc_
+--   where inc_ _ i = i - 1
+
+-- liaa :: Q W -> Q Int
+-- liaa = loft1 "aa" aa _aa
+-- qaa :: Q Int
+-- qaa = liaa broot
+-- qaai :: Q Int
+-- qaai = linc qaa
+
+-- broot :: Q W
+-- broot = B root (R (\w w' -> Write broot w'))
+
+-- -- Assignment goes from right to left like god intended
+-- wr :: W -> Q a -> Q a -> Write
+-- wr w (B _ r) qx =
+--   let a = rd w qx
+--    in receive w r a
 
 infixr 4 <$$>
 (<$$>) :: Q (a -> b) -> Q a -> Q b
@@ -142,15 +172,16 @@ instance Show (Q a) where
   show (QNice x) = "(QNice " ++ show x ++ ")"
   show (QNamed name _) = "(QNamed " ++ name ++ ")"
   show (QApp qf qx) = "(QApp " ++ show qf ++ " " ++ show qx ++ ")"
-  show (B q r) = "(B " ++ (show q) ++ ")"
+  show (BApp qf qr qx) = "(BApp " ++ show qf ++ " " ++ show qr ++ " " ++ show qx ++ ")"
 
 rd :: W -> Q a -> a
 rd w QRoot = w
 rd w (QNice x) = x
 rd w (QNamed _ x) = x
 rd w (QApp qf qx) = rd w qf (rd w qx)
-rd w (B q _) = rd w q
+rd w (BApp qf _ qx) = rd w qf (rd w qx)
 
+root :: Q W
 root = QRoot
 vaa = QNamed "aa" aa
 one = QNice (1::Int)
@@ -369,10 +400,17 @@ dqfaa' = sqd sfaa'
 qfaa' = sq sfaa' :: Q Int
 
 logMain = do
-  msp $ rd w qaa
-  msp $ wr w qaa (QNice (130 :: Int))
-  msp $ rd w qaai
-  msp $ wr w qaai (QNice (130 :: Int))
+  msp $ rd w baa
+  msp $ wr w baa (QNice (140::Int))
+  msp $ rd w binced
+  msp $ wr w binced (QNice (140::Int))
+
+  -- -- Works
+  -- msp $ rd w qaa
+  -- msp $ wr w qaa (QNice (130 :: Int))
+  -- msp $ rd w qaai
+  -- msp $ wr w qaai (QNice (130 :: Int))
+
   -- -- works
   -- msp sfaa
   -- msp dqfaa
