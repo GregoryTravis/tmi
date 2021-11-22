@@ -94,7 +94,7 @@ data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
 -- goo :: a --> b --> c
 -- goo = undefined
 
-data Write = forall a. Show a => Write (Q a) a | Writes [Write]
+data Write = forall a. Write (Q a) a | Writes [Write]
 emptyWrite :: Write
 emptyWrite = Writes []
 
@@ -102,7 +102,7 @@ instance Semigroup Write where
   w <> w' = Writes [w, w']
 
 instance Show Write where
-  show (Write qa a) = "(Write " ++ show qa ++ " " ++ show a ++ ")"
+  show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
   show (Writes ws) = show ws
 data R a = R (a -> Write)
 
@@ -114,8 +114,8 @@ data Q a where
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
-  BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
-  BApp2 :: (Show a, Show b) => Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
+  BApp :: {- (Show a, Show b) => -} Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
+  BApp2 :: {- (Show a, Show b) => -} Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
 
 bplus :: Int -> Int -> Int
 bplus = (+)
@@ -156,7 +156,7 @@ inc_ :: Int -> R Int -> R Int
 inc_ _ (R r) = R r'
   where r' i = r (i - 1)
 
-wr :: Show b => W -> Q b -> Q b -> Write
+wr :: W -> Q b -> Q b -> Write
 wr w (BApp qfor qrev qx) qv =
   let nb = rd w qv
       -- for = rd w qfor
@@ -212,6 +212,8 @@ instance Show (Q a) where
   show (QNamed name _) = "(QNamed " ++ name ++ ")"
   show (QApp qf qx) = "(QApp " ++ show qf ++ " " ++ show qx ++ ")"
   show (BApp qf qr qx) = "(BApp " ++ show qf ++ " " ++ show qr ++ " " ++ show qx ++ ")"
+  show (BApp2 qf qr qx qy) = "(BApp " ++ show qf ++ " " ++ show qr ++ " " ++ show qx ++
+         " " ++ show qy ++ ")"
 
 rd :: W -> Q a -> a
 rd w QRoot = w
@@ -255,7 +257,7 @@ dumDynToXShowD (DumDyn s ts) = dyn
                          "<<String>>" -> toDyn $ QNice (read s :: String)
                          _ -> error $ "dumDynToX " ++ ts
 
-data S = SRoot | SNice DumDyn | SNamed String | SApp S S
+data S = SRoot | SNice DumDyn | SNamed String | SApp S S | BSApp S S S | BSApp2 S S S S
   deriving (Read, Show)
 
 qs :: Q a -> S
@@ -263,6 +265,8 @@ qs QRoot = SRoot
 qs (QNice x) = SNice (mkDumDyn x)
 qs (QNamed name _) = SNamed name
 qs (QApp qf qx) = SApp (qs qf) (qs qx)
+qs (BApp qf qr qx) = BSApp (qs qf) (qs qr) (qs qx)
+qs (BApp2 qf qr qx qy) = BSApp2 (qs qf) (qs qr) (qs qx) (qs qy)
 
 data Ding = forall a. Typeable a => Ding a Dynamic (Ding -> String)
 mkding :: Typeable a => a -> Ding
@@ -375,6 +379,56 @@ qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx)
 qapp (Dynamic qabt _) (Dynamic qat _) =
    error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") "
 
+-- BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
+qbapp :: Dynamic  -> Dynamic -> Dynamic -> Maybe Dynamic
+qbapp (Dynamic qft@(App qt0 (Fun at0 bt0)) qf)
+      (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) y@(App rt1 bt1)))) qr)
+      (Dynamic qat@(App qt2 at3) qa)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- qt0 `eqTypeRep` qt1
+  , Just HRefl <- qt0 `eqTypeRep` qt2
+  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+  , Just HRefl <- rt0 `eqTypeRep` rt1
+  , Just HRefl <- at0 `eqTypeRep` at1
+  , Just HRefl <- at0 `eqTypeRep` at2
+  , Just HRefl <- at0 `eqTypeRep` at3
+  , Just HRefl <- bt0 `eqTypeRep` bt1
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
+  = Just (Dynamic (App qt0 bt0) (BApp qf qr qa))
+
+-- BApp2 :: (Show a, Show b) => Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
+qbapp2 :: Dynamic  -> Dynamic -> Dynamic -> Dynamic -> Maybe Dynamic
+qbapp2 (Dynamic qft@(App qt0 (Fun at0 (Fun bt0 ct0))) qf)
+       (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) (Fun bt1 (Fun (App rt1 bt2) (App rt2 ct1)))))) qr)
+       (Dynamic qat@(App qt2 at3) qa)
+       (Dynamic qbt@(App qt3 bt3) qb)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- qt0 `eqTypeRep` qt1
+  , Just HRefl <- qt0 `eqTypeRep` qt2
+  , Just HRefl <- qt0 `eqTypeRep` qt3
+
+  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+  , Just HRefl <- rt0 `eqTypeRep` rt1
+  , Just HRefl <- rt0 `eqTypeRep` rt2
+
+  , Just HRefl <- at0 `eqTypeRep` at1
+  , Just HRefl <- at0 `eqTypeRep` at2
+  , Just HRefl <- at0 `eqTypeRep` at3
+
+  , Just HRefl <- bt0 `eqTypeRep` bt1
+  , Just HRefl <- bt0 `eqTypeRep` bt2
+  , Just HRefl <- bt0 `eqTypeRep` bt3
+
+  , Just HRefl <- ct0 `eqTypeRep` ct1
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind ct0
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
+  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
+  = Just (Dynamic (App qt0 ct0) (BApp2 qf qr qa qb))
+
 sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
 -- sqd (SNice ddyn) = toDyn $ QNice (dumDynToX ddyn)
@@ -385,6 +439,17 @@ sqd (SApp sf sx) =
   let dsf = sqd sf
       dsx = sqd sx
    in fromJust $ qapp dsf dsx
+sqd (BSApp sf sr sx) =
+  let dsf = sqd sf
+      dsr = sqd sr
+      dsx = sqd sx
+   in fromJust $ qbapp dsf dsr dsx
+sqd (BSApp2 sf sr sx sy) =
+  let dsf = sqd sf
+      dsr = sqd sr
+      dsx = sqd sx
+      dsy = sqd sy
+   in fromJust $ qbapp2 dsf dsr dsx dsy
 -- sqd (SApp sf sx) = fromJustVerbose "sqd SApp"$ dynApply (sqd sf) (sqd sx)
 -- dqs (SApp sf sx) = toDyn q
 --   where q = QApp (fromJust $ fromDynamic (sqd sf)) (fromJust $ fromDynamic (sqd sx))
@@ -443,10 +508,21 @@ qfaa' = sq sfaa' :: Q Int
 logMain = do
   msp $ rd w baa
   msp $ wr w baa (QNice (140::Int))
+  msp $ wr w baa (QNice (140::Int))
   msp $ rd w binced
   msp $ wr w binced (QNice (140::Int))
   msp $ rd w bplussed
   msp $ wr w bplussed (QNice (340::Int))
+  msp "sss"
+  let splussed = qs bplussed
+      ssplussed = show splussed
+      rsplussed = read ssplussed :: S
+      bplussed' = sq rsplussed :: Q Int
+  msp $ bplussed
+  msp $ splussed
+  msp $ ssplussed
+  msp $ rsplussed
+  msp $ bplussed'
 
   -- -- Works
   -- msp $ rd w qaa
