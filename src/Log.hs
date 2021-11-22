@@ -68,11 +68,15 @@ reconstituteShow s = error $ show ("recon", s)
 reconstituteShowD :: String -> Dynamic
 reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
 reconstituteShowD "aa_" = toDyn (QNamed "aa_" aa_)
+reconstituteShowD "bb" = toDyn (QNamed "bb" bb)
+reconstituteShowD "bb_" = toDyn (QNamed "bb_" bb_)
 reconstituteShowD "inc" = toDyn (QNamed "inc" inc)
 reconstituteShowD "inc_" = toDyn (QNamed "inc_" inc_)
+reconstituteShowD "bplus" = toDyn (QNamed "bplus" bplus)
+reconstituteShowD "bplus_" = toDyn (QNamed "bplus_" bplus_)
 reconstituteShowD s = error $ show ("recon", s)
 
-newtype W = W { aa :: Int } deriving (Read, Show)
+data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
 -- _aa :: W -> Int -> W
 -- -- _aa w aa = error $ "ugh " ++ show aa
 -- _aa w aa = w { aa }
@@ -94,6 +98,9 @@ data Write = forall a. Show a => Write (Q a) a | Writes [Write]
 emptyWrite :: Write
 emptyWrite = Writes []
 
+instance Semigroup Write where
+  w <> w' = Writes [w, w']
+
 instance Show Write where
   show (Write qa a) = "(Write " ++ show qa ++ " " ++ show a ++ ")"
   show (Writes ws) = show ws
@@ -108,6 +115,21 @@ data Q a where
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
   BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
+  BApp2 :: (Show a, Show b) => Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
+
+bplus :: Int -> Int -> Int
+bplus = (+)
+bplus_ :: Int -> R Int -> Int -> R Int -> R Int
+bplus_ _ (R ra) _ (R rb) = R rc
+  where rc c = let a = c `div` 2
+                   b = c - a
+                in ra a <> rb b
+
+bplusser :: Q Int -> Q Int -> Q Int
+bplusser = BApp2 (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
+
+bplussed :: Q Int
+bplussed = bplusser baa bbb
 
 baa :: Q Int
 baa = BApp (QNamed "aa" aa) (QNamed "aa_" aa_) root
@@ -115,6 +137,13 @@ baa = BApp (QNamed "aa" aa) (QNamed "aa_" aa_) root
 aa_ :: W -> R W -> R Int
 aa_ w (R wr) = R ir
   where ir aa = wr $ w { aa }
+
+bbb :: Q Int
+bbb = BApp (QNamed "bb" bb) (QNamed "bb_" bb_) root
+-- bb :: W -> Int
+bb_ :: W -> R W -> R Int
+bb_ w (R wr) = R ir
+  where ir bb = wr $ w { bb }
 
 binc :: Q Int -> Q Int
 binc = BApp (QNamed "inc" inc) (QNamed "inc_" inc_)
@@ -136,6 +165,16 @@ wr w (BApp qfor qrev qx) qv =
       ra = R (\a -> Write qx a)
       R rb = rev oa ra
    in rb nb
+wr w (BApp2 qfor qrev qx qy) qc =
+  let nc = rd w qc
+      -- for = rd w qfor
+      rev = rd w qrev
+      oa = rd w qx
+      ob = rd w qy
+      ra = R (\a -> Write qx a)
+      rb = R (\b -> Write qy b)
+      R rc = rev oa ra ob rb
+   in rc nc
 
 -- loft1 :: String -> (a -> b) -> (a -> b -> a) -> Q a -> Q b
 -- loft1 name for rev (B qa ra) = B qb bb
@@ -180,6 +219,7 @@ rd w (QNice x) = x
 rd w (QNamed _ x) = x
 rd w (QApp qf qx) = rd w qf (rd w qx)
 rd w (BApp qf _ qx) = rd w qf (rd w qx)
+rd w (BApp2 qf _ qx qy) = (rd w qf) (rd w qx) (rd w qy)
 
 root :: Q W
 root = QRoot
@@ -189,7 +229,8 @@ plus = QNamed "inc" (+(1::Int))
 faa = vaa <$$> root
 _inced = plus <$$> faa
 inced = plus <$$> vaa <$$> root
-w = W { aa = 13 }
+w :: W
+w = W { aa = 13, bb = 100 }
 
 -- Show, Read. First is shewn, second is type
 data DumDyn = DumDyn String String deriving (Read, Show)
@@ -404,6 +445,8 @@ logMain = do
   msp $ wr w baa (QNice (140::Int))
   msp $ rd w binced
   msp $ wr w binced (QNice (140::Int))
+  msp $ rd w bplussed
+  msp $ wr w bplussed (QNice (340::Int))
 
   -- -- Works
   -- msp $ rd w qaa
