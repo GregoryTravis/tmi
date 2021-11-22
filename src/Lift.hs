@@ -15,4 +15,4 @@ hybrid2 f r ra@(R x rx) rb@(R y ry) = R z rz
 hybrid3 :: (a -> b -> c -> d) -> (R a -> R b -> R c -> d -> Write) -> (R a -> R b -> R c -> R d)
 hybrid3 f r ra@(R x rx) rb@(R y ry) rc@(R z rz) = R w rw
   where w = f x y z
-        rw = Receiver "hybrid2" $ \x -> r ra rb rc x
+        rw = Receiver "hybrid3" $ \x -> r ra rb rc x
