@@ -8,4 +8,4 @@ import NestedState
 import Reddit
 import Test
 
-main = logMain
+main = testMain
