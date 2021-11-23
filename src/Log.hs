@@ -81,6 +81,30 @@ data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
 -- -- _aa w aa = error $ "ugh " ++ show aa
 -- _aa w aa = w { aa }
 
+data B a where
+  -- This ctor makes it seem like you could just walk the tree and pull out values of type
+  -- a but of course you cannot, it should be like Q in this regard
+  BRoot :: B (Rec W)
+  B :: a -> B a
+  BApply :: B (Rec a -> b) -> B (Rec a) -> B b
+data Rec a = Rec (a -> Write)
+
+-- baa_ :: Rec W -> Rec Int
+-- baa_ (
+
+arev :: Rec Int -> Rec Int -> Rec Int
+arev = undefined
+
+arev0 :: B (Rec Int -> Rec Int)
+arev0 = BApply (B arev) (B intrec)
+arev1 :: B (Rec Int)
+arev1 = BApply arev0 (B intrec)
+
+intrec :: Rec Int
+intrec = undefined
+
+-- bwr :: B a -> 
+
 -- data R a where
 --   RRoot :: R W
 --   RNice :: Q a -> R a
@@ -109,13 +133,32 @@ data R a = R (a -> Write)
 -- receive :: W -> R a -> a -> Write
 -- receive w (R rec) x = rec w x
 
+data Bi f r where
+  Bi :: Q f -> Q r -> Bi f r
+  -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
+  BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
+
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
+  QBiSeal :: Bi a (R a) -> Q a
+  -- BAppG :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Q b
   BApp :: {- (Show a, Show b) => -} Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
   BApp2 :: {- (Show a, Show b) => -} Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
+
+sepp :: Bi (Int -> Int -> Int)
+           (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
+sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
+sepp2 :: Bi (Int -> Int) (Int -> Log.R Int -> Log.R Int)
+sepp2 = BiApp sepp baa
+sepp3 :: Bi Int (Log.R Int)
+sepp3 = BiApp sepp2 bbb
+sepp3s :: Q Int
+sepp3s = QBiSeal sepp3
+-- bplus0 = BiApp (Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)) baa
+-- bplus1 = BiApp bplus0 bbb
 
 bplus :: Int -> Int -> Int
 bplus = (+)
@@ -381,53 +424,55 @@ qapp (Dynamic qabt _) (Dynamic qat _) =
 
 -- BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
 qbapp :: Dynamic  -> Dynamic -> Dynamic -> Maybe Dynamic
-qbapp (Dynamic qft@(App qt0 (Fun at0 bt0)) qf)
-      (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) y@(App rt1 bt1)))) qr)
-      (Dynamic qat@(App qt2 at3) qa)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- qt0 `eqTypeRep` qt1
-  , Just HRefl <- qt0 `eqTypeRep` qt2
-  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
-  , Just HRefl <- rt0 `eqTypeRep` rt1
-  , Just HRefl <- at0 `eqTypeRep` at1
-  , Just HRefl <- at0 `eqTypeRep` at2
-  , Just HRefl <- at0 `eqTypeRep` at3
-  , Just HRefl <- bt0 `eqTypeRep` bt1
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
-  = Just (Dynamic (App qt0 bt0) (BApp qf qr qa))
+qbapp = undefined
+-- qbapp (Dynamic qft@(App qt0 (Fun at0 bt0)) qf)
+--       (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) y@(App rt1 bt1)))) qr)
+--       (Dynamic qat@(App qt2 at3) qa)
+--   | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+--   , Just HRefl <- qt0 `eqTypeRep` qt1
+--   , Just HRefl <- qt0 `eqTypeRep` qt2
+--   , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+--   , Just HRefl <- rt0 `eqTypeRep` rt1
+--   , Just HRefl <- at0 `eqTypeRep` at1
+--   , Just HRefl <- at0 `eqTypeRep` at2
+--   , Just HRefl <- at0 `eqTypeRep` at3
+--   , Just HRefl <- bt0 `eqTypeRep` bt1
+--   , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
+--   = Just (Dynamic (App qt0 bt0) (BApp qf qr qa))
 
 -- BApp2 :: (Show a, Show b) => Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
 qbapp2 :: Dynamic  -> Dynamic -> Dynamic -> Dynamic -> Maybe Dynamic
-qbapp2 (Dynamic qft@(App qt0 (Fun at0 (Fun bt0 ct0))) qf)
-       (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) (Fun bt1 (Fun (App rt1 bt2) (App rt2 ct1)))))) qr)
-       (Dynamic qat@(App qt2 at3) qa)
-       (Dynamic qbt@(App qt3 bt3) qb)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- qt0 `eqTypeRep` qt1
-  , Just HRefl <- qt0 `eqTypeRep` qt2
-  , Just HRefl <- qt0 `eqTypeRep` qt3
+qbapp2 = undefined
+-- qbapp2 (Dynamic qft@(App qt0 (Fun at0 (Fun bt0 ct0))) qf)
+--        (Dynamic qrt@(App qt1 (Fun at1 (Fun (App rt0 at2) (Fun bt1 (Fun (App rt1 bt2) (App rt2 ct1)))))) qr)
+--        (Dynamic qat@(App qt2 at3) qa)
+--        (Dynamic qbt@(App qt3 bt3) qb)
+--   | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+--   , Just HRefl <- qt0 `eqTypeRep` qt1
+--   , Just HRefl <- qt0 `eqTypeRep` qt2
+--   , Just HRefl <- qt0 `eqTypeRep` qt3
 
-  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
-  , Just HRefl <- rt0 `eqTypeRep` rt1
-  , Just HRefl <- rt0 `eqTypeRep` rt2
+--   , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+--   , Just HRefl <- rt0 `eqTypeRep` rt1
+--   , Just HRefl <- rt0 `eqTypeRep` rt2
 
-  , Just HRefl <- at0 `eqTypeRep` at1
-  , Just HRefl <- at0 `eqTypeRep` at2
-  , Just HRefl <- at0 `eqTypeRep` at3
+--   , Just HRefl <- at0 `eqTypeRep` at1
+--   , Just HRefl <- at0 `eqTypeRep` at2
+--   , Just HRefl <- at0 `eqTypeRep` at3
 
-  , Just HRefl <- bt0 `eqTypeRep` bt1
-  , Just HRefl <- bt0 `eqTypeRep` bt2
-  , Just HRefl <- bt0 `eqTypeRep` bt3
+--   , Just HRefl <- bt0 `eqTypeRep` bt1
+--   , Just HRefl <- bt0 `eqTypeRep` bt2
+--   , Just HRefl <- bt0 `eqTypeRep` bt3
 
-  , Just HRefl <- ct0 `eqTypeRep` ct1
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind ct0
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
-  -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
-  = Just (Dynamic (App qt0 ct0) (BApp2 qf qr qa qb))
+--   , Just HRefl <- ct0 `eqTypeRep` ct1
+--   , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind ct0
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind y
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind at2
+--   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
+--   = Just (Dynamic (App qt0 ct0) (BApp2 qf qr qa qb))
 
 sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
@@ -506,23 +551,26 @@ dqfaa' = sqd sfaa'
 qfaa' = sq sfaa' :: Q Int
 
 logMain = do
-  msp $ rd w baa
-  msp $ wr w baa (QNice (140::Int))
-  msp $ wr w baa (QNice (140::Int))
-  msp $ rd w binced
-  msp $ wr w binced (QNice (140::Int))
-  msp $ rd w bplussed
-  msp $ wr w bplussed (QNice (340::Int))
-  msp "sss"
-  let splussed = qs bplussed
-      ssplussed = show splussed
-      rsplussed = read ssplussed :: S
-      bplussed' = sq rsplussed :: Q Int
-  msp $ bplussed
-  msp $ splussed
-  msp $ ssplussed
-  msp $ rsplussed
-  msp $ bplussed'
+  msp $ rd w sepp3s
+  msp $ wr w sepp3s (QNice (140::Int))
+  -- -- works
+  -- msp $ rd w baa
+  -- msp $ wr w baa (QNice (140::Int))
+  -- msp $ wr w baa (QNice (140::Int))
+  -- msp $ rd w binced
+  -- msp $ wr w binced (QNice (140::Int))
+  -- msp $ rd w bplussed
+  -- msp $ wr w bplussed (QNice (340::Int))
+  -- msp "sss"
+  -- let splussed = qs bplussed
+  --     ssplussed = show splussed
+  --     rsplussed = read ssplussed :: S
+  --     bplussed' = sq rsplussed :: Q Int
+  -- msp $ bplussed
+  -- msp $ splussed
+  -- msp $ ssplussed
+  -- msp $ rsplussed
+  -- msp $ bplussed'
 
   -- -- Works
   -- msp $ rd w qaa
