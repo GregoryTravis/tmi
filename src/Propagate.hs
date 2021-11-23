@@ -103,7 +103,9 @@ r h (VPartialApp vf va) = paf
         paf = f ra
 -- VUnPartialApp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
 -- must return (R a -> rest)
-r h (VUnPartialApp vvf) = \ra -> ((r h (vvf (VSeal (VConst "uh" ra)))))
+-- r h (VUnPartialApp vvf) = \ra -> ((r h (vvf (VSeal (VConst "uh" ra)))))
+r h (VUnPartialApp vvf) = (r h) . vvf . VSeal . (VConst "uh")
+-- (VUnPartialApp vvf) = vvf . VSeal . (VConst "uh")
 -- r h (VUnPartialApp vvf) = \ra ->     -- ra = -- :: rest
 --   let va = VConst "VUnPartialApp" ra
 --       vRest = vvf va

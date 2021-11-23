@@ -138,12 +138,19 @@ data Bi f r where
   -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
   BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
 
+data Bi2 f r where
+  Bi2 :: f -> r -> Bi2 f r
+
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QApp :: Q (a -> b) -> Q a -> Q b
   QBiSeal :: Bi a (R a) -> Q a
+
+  QBi2App :: Q (Bi2 (a -> b) (a -> R a -> c)) -> Q a -> Q (Bi2 b c)
+  QBi2Seal :: Q (Bi a (R a)) -> Q a
+
   -- BAppG :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Q b
   BApp :: {- (Show a, Show b) => -} Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
   BApp2 :: {- (Show a, Show b) => -} Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c

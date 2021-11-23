@@ -163,6 +163,8 @@ mapViaFold f = foldr ((:) . f) []
 mapViaFoldVE vf vas =
   let fooo = composeVE consV vf
    in foldoVE (vunapp fooo) (vcheckconst []) vas
+   -- in foldoVE (fooo . vseal . (vconst "uhh")) (vcheckconst []) vas
+-- (VUnPartialApp vvf) = vvf . VSeal . (VConst "uh")
 
 reverse_for :: [a] -> [a]
 reverse_for = reverse

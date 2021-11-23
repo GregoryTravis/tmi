@@ -82,6 +82,8 @@ vcheckconst :: (Show a, Read a, Eq a) => a -> V a
 vcheckconst = VCheckConst
 vunapp :: (Show a) => (V a -> V rest) -> V (R a -> rest)
 vunapp = VUnPartialApp
+vseal :: (Show a) => V (R a) -> V a
+vseal = VSeal
 
 infixl 4 <**>
 (<**>) :: (Show a) => V (R a -> rest) -> V a -> V rest

@@ -7,6 +7,7 @@ module Tmi
 , vconst
 , vcheckconst
 , vunapp
+, vseal
 , Receiver
 , split
 -- , composeReceivers
