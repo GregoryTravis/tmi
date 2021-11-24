@@ -236,6 +236,37 @@ wr w (BApp2 qfor qrev qx qy) qc =
       R rc = rev oa ra ob rb
    in rc nc
 -- wr w (QBiSeal bi) qa = wrb w bi qa
+wr w (QBiSeal (Bi qfor qrev)) qa =
+  let rev = rd w qrev -- R a
+      oa = rd w qfor -- a
+      na = rd w qa -- a
+   in case rev of R rec -> rec na
+-- wr w (QBiSeal (BiApp (Bi qfor qrev) qa)) qb =
+--   let rev = rd w qrev -- a -> R a -> b
+--       oa = rd w qa
+--       ra = R (\a -> Write qa a)
+--       rb = rev oa ra
+--       R rbrec = rb
+--       nb = rd w qb
+--    in rbrec nb
+wr w (QBiSeal bi) qa =
+  let R rarec = getrev w bi
+      a = rd w qa
+   in rarec a
+wr w q _ = error $ "wr " ++ show q
+
+getrev :: W -> Bi f r -> r
+getrev w (Bi qf qr) =
+  let r = rd w qr
+   in r
+-- getrev w (BiApp (Bi _ qrev) qa) =
+--   let rev = rd w qrev -- a -> R a -> b
+getrev w (BiApp bi qa) =
+  let rev = getrev w bi
+      oa = rd w qa
+      ra = R (\a -> Write qa a)
+      rb = rev oa ra
+   in rb
 
 -- -- wrb :: W -> Bi f r -> Q a -> Write
 -- -- wrb w (BiApp bi 
@@ -290,6 +321,11 @@ instance Show (Q a) where
   show (BApp qf qr qx) = "(BApp " ++ show qf ++ " " ++ show qr ++ " " ++ show qx ++ ")"
   show (BApp2 qf qr qx qy) = "(BApp " ++ show qf ++ " " ++ show qr ++ " " ++ show qx ++
          " " ++ show qy ++ ")"
+  show (QBiSeal bi) = "(QBiSeal " ++ show bi ++ ")"
+
+instance Show (Bi f r) where 
+  show (Bi qf qr) = "(Bi " ++ show qf ++ " " ++ show qr ++ ")"
+  show (BiApp bi qa) = "(BiApp " ++ show bi ++ " " ++ show qa ++ ")"
 
 rd :: W -> Q a -> a
 rd w QRoot = w
@@ -594,7 +630,7 @@ qfaa' = sq sfaa' :: Q Int
 
 logMain = do
   msp $ rd w sepp3s
-  -- msp $ wr w sepp3s (QNice (140::Int))
+  msp $ wr w sepp3s (QNice (140::Int))
 
   -- -- works
   -- msp $ rd w baa
