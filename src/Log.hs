@@ -273,6 +273,21 @@ bqd (BSBiApp bs s) =
 sq :: Typeable a => S -> Q a
 sq s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
 
+roundTrip :: Typeable a => Q a -> IO [Q a]
+roundTrip q = do
+  let s = qs q
+      ss = show s
+      rs = read ss
+      q' = sq rs
+  msp "===="
+  msp q
+  msp s
+  msp ss
+  msp rs
+  msp q'
+  msp "===="
+  return [q, q']
+
 logMain = do
   msp $ rd w sepp3s
   msp $ wr w sepp3s 140
@@ -282,16 +297,10 @@ logMain = do
   msp $ propToRoots w (Write sepp3s'' 160)
   msp $ propToRoots w (Write sepp3s''' 160)
   msp $ propToRoots w (Write sepp3s'''' 160)
-  msp $ qs QRoot
-  msp $ ((sq (qs QRoot)) :: Q W)
-  msp $ qs sepp3s
-  msp $ ((sq (qs sepp3s)) :: Q Int)
-  msp $ qs sepp3s'
-  msp $ ((sq (qs sepp3s')) :: Q Int)
-  msp $ qs sepp3s''
-  msp $ ((sq (qs sepp3s'')) :: Q Int)
-  msp $ qs sepp3s'''
-  msp $ ((sq (qs sepp3s''')) :: Q Int)
-  msp $ qs sepp3s''''
-  msp $ ((sq (qs sepp3s'''')) :: Q Int)
+  roundTrip QRoot
+  roundTrip sepp3s
+  roundTrip sepp3s'
+  roundTrip sepp3s''
+  roundTrip sepp3s'''
+  roundTrip sepp3s''''
   msp "log hi"
