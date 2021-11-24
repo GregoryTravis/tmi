@@ -12,6 +12,10 @@ import Type.Reflection
 import Util
 
 -- todo
+-- + dead: QApp, <$$>, faa, inced_
+-- - w -> theWorld (cuz it's often a param that I sometimes forget to pass)
+-- - move typerep stuff to another file so we don't have to rebuild all the time
+-- - lifters and use them for sepps
 -- - Eq for Q
 -- - roundTrip asserts they're equal
 -- - modules: propagate, serialization, rd/wr
@@ -64,14 +68,12 @@ data R a = R (a -> Write)
 
 data Bi f r where
   Bi :: Q f -> Q r -> Bi f r
-  -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
   BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
 
 data Q a where
   QRoot :: Q W
   QNice :: (Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
-  QApp :: Q (a -> b) -> Q a -> Q b
   QBiSeal :: Bi a (R a) -> Q a
 
 sepp :: Bi (Int -> Int -> Int)
@@ -145,15 +147,10 @@ getrev w (BiApp bi qa) =
       rb = rev oa ra
    in rb
 
-infixr 4 <$$>
-(<$$>) :: Q (a -> b) -> Q a -> Q b
-(<$$>) = QApp
-
 instance Show (Q a) where
   show QRoot = "QRoot"
   show (QNice x) = "(QNice " ++ show x ++ ")"
   show (QNamed name _) = "(QNamed " ++ name ++ ")"
-  show (QApp qf qx) = "(QApp " ++ show qf ++ " " ++ show qx ++ ")"
   show (QBiSeal bi) = "(QBiSeal " ++ show bi ++ ")"
 
 instance Show (Bi f r) where 
@@ -164,7 +161,6 @@ rd :: W -> Q a -> a
 rd w QRoot = w
 rd w (QNice x) = x
 rd w (QNamed _ x) = x
-rd w (QApp qf qx) = rd w qf (rd w qx)
 rd w (QBiSeal bi) = rdb w bi
 
 rdb :: W -> Bi f r -> f
@@ -176,12 +172,6 @@ rdb w (BiApp bi qa) =
 
 root :: Q W
 root = QRoot
-vaa = QNamed "aa" aa
-one = QNice (1::Int)
-plus = QNamed "inc" (+(1::Int))
-faa = vaa <$$> root
-_inced = plus <$$> faa
-inced = plus <$$> vaa <$$> root
 w :: W
 w = W { aa = 13, bb = 100 }
 
@@ -196,8 +186,7 @@ dumDynToXShowD (DumDyn s ts) = dyn
                          "<<String>>" -> toDyn $ QNice (read s :: String)
                          _ -> error $ "dumDynToX " ++ ts
 
-data S = SRoot | SNice DumDyn | SNamed String | SApp S S -- | BSApp S S S | BSApp2 S S S S
-       | SQBiSeal BS
+data S = SRoot | SNice DumDyn | SNamed String | SQBiSeal BS
   deriving (Read, Show)
 data BS = BSBi S S | BSBiApp BS S
   deriving (Read, Show)
@@ -206,22 +195,11 @@ qs :: Q a -> S
 qs QRoot = SRoot
 qs (QNice x) = SNice (mkDumDyn x)
 qs (QNamed name _) = SNamed name
-qs (QApp qf qx) = SApp (qs qf) (qs qx)
 qs (QBiSeal bi) = SQBiSeal (bs bi)
 
 bs :: Bi f r -> BS
 bs (Bi f r) = BSBi (qs f) (qs r)
 bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
-
-qapp :: Dynamic  -> Dynamic -> Maybe Dynamic
-qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx)
-  | Just HRefl <- q `eqTypeRep` q'
-  , Just HRefl <- q `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- ta `eqTypeRep` ta'
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
-  = Just (Dynamic (App q tr) (QApp qf qx))
-qapp (Dynamic qabt _) (Dynamic qat _) =
-   error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") "
 
 qbiseal :: Dynamic -> Maybe Dynamic
 qbiseal (Dynamic bit@(App (App bit0 at0) (App rt0 at1)) bi)
@@ -255,10 +233,6 @@ sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
 sqd (SNice ddyn) = dumDynToXShowD ddyn
 sqd (SNamed name) = reconstituteShowD name
-sqd (SApp sf sx) =
-  let dsf = sqd sf
-      dsx = sqd sx
-   in fromJust $ qapp dsf dsx
 sqd (SQBiSeal bis) =
   let dbs = bqd bis
    in fromJust $ qbiseal dbs
