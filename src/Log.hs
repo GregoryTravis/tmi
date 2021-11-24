@@ -9,7 +9,7 @@ module Log
 import Data.Dynamic
 import Data.Kind (Type)
 import Data.Proxy
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, catMaybes)
 -- import GHC.Core.TyCon (PrimRep(..))
 -- import GHC.Exts (TYPE)
 -- import GHC.Exts (RuntimeRep)
@@ -122,6 +122,33 @@ data Write = forall a. Write (Q a) a | Writes [Write]
 emptyWrite :: Write
 emptyWrite = Writes []
 
+-- flattenWrites :: Write -> [Write]
+-- flattenWrites w@(Write _ _) = [w]
+-- flattenWrites (Writes ws) = concat (map flattenWrites ws)
+
+propWrite :: W -> Write -> Write
+propWrite w (Write qa a) = wr w qa a
+
+propWriteSome :: W -> Write -> [Write]
+propWriteSome w (Write qa a) = [wr w qa a]
+propWriteSome w (Writes ws) = concat $ map (propWriteSome w) ws
+
+isRoot :: Write -> Bool
+isRoot (Write QRoot _) = True
+
+propWriteFully :: W -> Write -> [Write]
+propWriteFully w write@(Write QRoot _) = [write]
+propWriteFully w write = write : (concat $ map (propWriteFully w) (propWriteSome w write))
+
+propToRoots :: W -> Write -> [W]
+propToRoots w write =
+  let writes = propWriteFully w write
+   in catMaybes $ map ifRoot writes
+
+ifRoot :: Write -> Maybe W
+ifRoot (Write QRoot w) = Just w
+ifRoot _ = Nothing
+
 instance Semigroup Write where
   w <> w' = Writes [w, w']
 
@@ -164,6 +191,16 @@ sepp3 :: Bi Int (Log.R Int)
 sepp3 = BiApp sepp2 bbb
 sepp3s :: Q Int
 sepp3s = QBiSeal sepp3
+
+sepp3s' = QBiSeal (BiApp (BiApp sepp baa) bbb)
+
+plurs :: Bi (Int -> Int)
+            (Int -> Log.R Int -> Log.R Int)
+plurs = Bi (QNamed "inc" inc) (QNamed "inc_" inc_)
+
+sepp3s'' = QBiSeal (BiApp (BiApp sepp (QBiSeal (BiApp plurs baa))) bbb)
+sepp3s''' = QBiSeal (BiApp (BiApp sepp baa) (QBiSeal (BiApp plurs bbb)))
+sepp3s'''' = QBiSeal (BiApp (BiApp sepp (QBiSeal (BiApp plurs baa))) (QBiSeal (BiApp plurs bbb)))
 
 -- sepp :: Bi (Int -> Int -> Int)
 --            (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
@@ -216,19 +253,15 @@ inc_ :: Int -> R Int -> R Int
 inc_ _ (R r) = R r'
   where r' i = r (i - 1)
 
-wr :: W -> Q b -> Q b -> Write
-wr w (BApp qfor qrev qx) qv =
-  let nb = rd w qv
-      -- for = rd w qfor
-      rev = rd w qrev
+wr :: W -> Q b -> b -> Write
+wr w (BApp _qfor qrev qx) nb =
+  let rev = rd w qrev
       oa = rd w qx
       ra = R (\a -> Write qx a)
       R rb = rev oa ra
    in rb nb
-wr w (BApp2 qfor qrev qx qy) qc =
-  let nc = rd w qc
-      -- for = rd w qfor
-      rev = rd w qrev
+wr w (BApp2 qfor qrev qx qy) nc =
+  let rev = rd w qrev
       oa = rd w qx
       ob = rd w qy
       ra = R (\a -> Write qx a)
@@ -236,10 +269,9 @@ wr w (BApp2 qfor qrev qx qy) qc =
       R rc = rev oa ra ob rb
    in rc nc
 -- wr w (QBiSeal bi) qa = wrb w bi qa
-wr w (QBiSeal (Bi qfor qrev)) qa =
+wr w (QBiSeal (Bi qfor qrev)) na =
   let rev = rd w qrev -- R a
       oa = rd w qfor -- a
-      na = rd w qa -- a
    in case rev of R rec -> rec na
 -- wr w (QBiSeal (BiApp (Bi qfor qrev) qa)) qb =
 --   let rev = rd w qrev -- a -> R a -> b
@@ -249,9 +281,8 @@ wr w (QBiSeal (Bi qfor qrev)) qa =
 --       R rbrec = rb
 --       nb = rd w qb
 --    in rbrec nb
-wr w (QBiSeal bi) qa =
+wr w (QBiSeal bi) a =
   let R rarec = getrev w bi
-      a = rd w qa
    in rarec a
 wr w q _ = error $ "wr " ++ show q
 
@@ -630,7 +661,16 @@ qfaa' = sq sfaa' :: Q Int
 
 logMain = do
   msp $ rd w sepp3s
-  msp $ wr w sepp3s (QNice (140::Int))
+  msp $ wr w sepp3s 140
+  msp $ propWriteFully w (Write sepp3s 140)
+  msp $ propToRoots w (Write sepp3s 140)
+  msp $ propToRoots w (Write sepp3s' 160)
+  msp $ propToRoots w (Write sepp3s'' 160)
+  msp $ propToRoots w (Write sepp3s''' 160)
+  msp $ propToRoots w (Write sepp3s'''' 160)
+  -- let Writes [wr0, wr1] =  wr w sepp3s 140
+  --     wr2 = propWrite w wr0
+  -- msp wr2
 
   -- -- works
   -- msp $ rd w baa
