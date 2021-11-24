@@ -11,6 +11,12 @@ import Type.Reflection
 
 import Util
 
+-- todo
+-- - Eq for Q
+-- - roundTrip asserts they're equal
+-- - modules: propagate, serialization, rd/wr
+-- - multi-module registry
+
 reconstituteShowD :: String -> Dynamic
 reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
 reconstituteShowD "aa_" = toDyn (QNamed "aa_" aa_)
