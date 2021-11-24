@@ -148,8 +148,8 @@ data Q a where
   QApp :: Q (a -> b) -> Q a -> Q b
   QBiSeal :: Bi a (R a) -> Q a
 
-  QBi2App :: Q (Bi2 (a -> b) (a -> R a -> c)) -> Q a -> Q (Bi2 b c)
-  QBi2Seal :: Q (Bi a (R a)) -> Q a
+  -- QBi2App :: Q (Bi2 (a -> b) (a -> R a -> c)) -> Q a -> Q (Bi2 b c)
+  -- QBi2Seal :: Q (Bi a (R a)) -> Q a
 
   -- BAppG :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Q b
   BApp :: {- (Show a, Show b) => -} Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
@@ -164,8 +164,18 @@ sepp3 :: Bi Int (Log.R Int)
 sepp3 = BiApp sepp2 bbb
 sepp3s :: Q Int
 sepp3s = QBiSeal sepp3
--- bplus0 = BiApp (Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)) baa
--- bplus1 = BiApp bplus0 bbb
+
+-- sepp :: Bi (Int -> Int -> Int)
+--            (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
+-- sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
+-- sepp2 :: Bi (Int -> Int) (Int -> Log.R Int -> Log.R Int)
+-- sepp2 = BiApp sepp baa
+-- sepp3 :: Bi Int (Log.R Int)
+-- sepp3 = BiApp sepp2 bbb
+-- sepp3s :: Q Int
+-- sepp3s = QBiSeal sepp3
+-- -- bplus0 = BiApp (Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)) baa
+-- -- bplus1 = BiApp bplus0 bbb
 
 bplus :: Int -> Int -> Int
 bplus = (+)
@@ -225,6 +235,22 @@ wr w (BApp2 qfor qrev qx qy) qc =
       rb = R (\b -> Write qy b)
       R rc = rev oa ra ob rb
    in rc nc
+-- wr w (QBiSeal bi) qa = wrb w bi qa
+
+-- -- wrb :: W -> Bi f r -> Q a -> Write
+-- -- wrb w (BiApp bi 
+-- wrbGetRev :: W -> Bi f r -> r
+-- wrbGetRev (Bi qf qr) = rd w qr
+-- wrbGetRev (BiApp bi) qa =
+--   let rev = wrbGetRev bi
+--       a = r w qa
+
+-- QBiSeal :: Bi a (R a) -> Q a
+-- data Bi f r where
+--   Bi :: Q f -> Q r -> Bi f r
+--   -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
+--   BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
+
 
 -- loft1 :: String -> (a -> b) -> (a -> b -> a) -> Q a -> Q b
 -- loft1 name for rev (B qa ra) = B qb bb
@@ -272,6 +298,15 @@ rd w (QNamed _ x) = x
 rd w (QApp qf qx) = rd w qf (rd w qx)
 rd w (BApp qf _ qx) = rd w qf (rd w qx)
 rd w (BApp2 qf _ qx qy) = (rd w qf) (rd w qx) (rd w qy)
+-- rd w (QBiSeal (Bi qfor qrev)) = rd w qfor
+rd w (QBiSeal bi) = rdb w bi
+
+rdb :: W -> Bi f r -> f
+rdb w (Bi qf qr) = rd w qf
+rdb w (BiApp bi qa) =
+  let for = rdb w bi
+      a = rd w qa
+   in for a
 
 root :: Q W
 root = QRoot
@@ -559,7 +594,8 @@ qfaa' = sq sfaa' :: Q Int
 
 logMain = do
   msp $ rd w sepp3s
-  msp $ wr w sepp3s (QNice (140::Int))
+  -- msp $ wr w sepp3s (QNice (140::Int))
+
   -- -- works
   -- msp $ rd w baa
   -- msp $ wr w baa (QNice (140::Int))
