@@ -5,65 +5,13 @@ module Log
 ( logMain
 ) where
 
--- import Data.Data (DataRep(..))
 import Data.Dynamic
 import Data.Kind (Type)
 import Data.Proxy
 import Data.Maybe (fromJust, catMaybes)
--- import GHC.Core.TyCon (PrimRep(..))
--- import GHC.Exts (TYPE)
--- import GHC.Exts (RuntimeRep)
 import Type.Reflection
 
 import Util
-
----- todo
----- - store the dynamic arg in a string
----- - represent the (a -> b) as a looked-up function (c -> a -> b) with c Nice, and a c,
-----   storing the function name and c as a string
----- - be able to to apply the latter (with withDynArg) to the former
----- - put em in a file
-----
----- The first one is the non-trivial one; oh wait, we know it's Nice tho?
-
----- lala' :: Typeable a => (a -> b) -> (Dynamic -> b)
----- lala' = undefined
-
---withNiceArg :: forall a b. (Show a, Read a) => (a -> b) -> (String -> b)
---withNiceArg f = f . read
-
---withDynArg :: forall a b. Typeable a => (a -> b) -> (Dynamic -> b)
---withDynArg f = f'
---  where f' dx = case fromDynamic dx of Just x -> f x
---                                       Nothing -> error "oof"
-
---oof = withDynArg (+(1::Int))
---tlSteps = [oof]
---tlVals = [toDyn (12 :: Int)]
-
---incInt :: Int -> Int
---incInt = (+1)
-
----- This correctly parses a nice argument and passes it to a function
----- And it works for both int and (bool, bool)
---data Step = forall a b. Read a => Step (IO a, a -> IO ())
-
---resolveStep :: String -> Step -> IO ()
---resolveStep sx (Step (_, k)) = do
---  let x = read sx
---   in k x
-
---moreSteps = [Step (return (False, False), msp)]
---moreRets = [show (True, True)]
-
---reconstitute :: (Show a, Read a, Typeable a) => String -> a
---reconstitute "aa" = fromJust $ fromDynamic $ toDyn aa
---reconstitute "inc" = fromJust $ fromDynamic $ toDyn ((+1) :: Int -> Int)
---reconstitute s = error $ show ("reconstitute", s)
-
---reconstituteShow :: Typeable a => String -> Q a
---reconstituteShow "aa" = fromJust $ fromDynamic $ toDyn (QNamed "aa" aa)
---reconstituteShow s = error $ show ("recon", s)
 
 reconstituteShowD :: String -> Dynamic
 reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
@@ -77,54 +25,10 @@ reconstituteShowD "bplus_" = toDyn (QNamed "bplus_" bplus_)
 reconstituteShowD s = error $ show ("recon", s)
 
 data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
----- _aa :: W -> Int -> W
----- -- _aa w aa = error $ "ugh " ++ show aa
----- _aa w aa = w { aa }
-
---data B a where
---  -- This ctor makes it seem like you could just walk the tree and pull out values of type
---  -- a but of course you cannot, it should be like Q in this regard
---  BRoot :: B (Rec W)
---  B :: a -> B a
---  BApply :: B (Rec a -> b) -> B (Rec a) -> B b
---data Rec a = Rec (a -> Write)
-
----- baa_ :: Rec W -> Rec Int
----- baa_ (
-
---arev :: Rec Int -> Rec Int -> Rec Int
---arev = undefined
-
---arev0 :: B (Rec Int -> Rec Int)
---arev0 = BApply (B arev) (B intrec)
---arev1 :: B (Rec Int)
---arev1 = BApply arev0 (B intrec)
-
---intrec :: Rec Int
---intrec = undefined
-
----- bwr :: B a -> 
-
----- data R a where
-----   RRoot :: R W
-----   RNice :: Q a -> R a
-----   RNamed :: Q a -> R a
-----   RApp :: Q (b -> a) -> R a -> R b
-
----- infixr 0 -->
----- data a --> b = L (a -> b) (a -> b -> a)
-
----- -- L (a -> (L (b -> c) (b -> c -> b))) (a -> (L (b -> c) (b -> c -> b)) -> a)
----- goo :: a --> b --> c
----- goo = undefined
 
 data Write = forall a. Write (Q a) a | Writes [Write]
 emptyWrite :: Write
 emptyWrite = Writes []
-
----- flattenWrites :: Write -> [Write]
----- flattenWrites w@(Write _ _) = [w]
----- flattenWrites (Writes ws) = concat (map flattenWrites ws)
 
 propWrite :: W -> Write -> Write
 propWrite w (Write qa a) = wr w qa a
@@ -132,9 +36,6 @@ propWrite w (Write qa a) = wr w qa a
 propWriteSome :: W -> Write -> [Write]
 propWriteSome w (Write qa a) = [wr w qa a]
 propWriteSome w (Writes ws) = concat $ map (propWriteSome w) ws
-
---isRoot :: Write -> Bool
---isRoot (Write QRoot _) = True
 
 propWriteFully :: W -> Write -> [Write]
 propWriteFully w write@(Write QRoot _) = [write]
@@ -157,16 +58,10 @@ instance Show Write where
   show (Writes ws) = show ws
 data R a = R (a -> Write)
 
----- receive :: W -> R a -> a -> Write
----- receive w (R rec) x = rec w x
-
 data Bi f r where
   Bi :: Q f -> Q r -> Bi f r
   -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
   BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
-
---data Bi2 f r where
---  Bi2 :: f -> r -> Bi2 f r
 
 data Q a where
   QRoot :: Q W
@@ -175,16 +70,8 @@ data Q a where
   QApp :: Q (a -> b) -> Q a -> Q b
   QBiSeal :: Bi a (R a) -> Q a
 
---  -- QBi2App :: Q (Bi2 (a -> b) (a -> R a -> c)) -> Q a -> Q (Bi2 b c)
---  -- QBi2Seal :: Q (Bi a (R a)) -> Q a
-
---  -- BAppG :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Q b
---  BApp :: {- (Show a, Show b) => -} Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
---  BApp2 :: {- (Show a, Show b) => -} Q (a -> b -> c) -> Q (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
-
 sepp :: Bi (Int -> Int -> Int)
            (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
--- sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
 sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
 sepp2 :: Bi (Int -> Int) (Int -> Log.R Int -> Log.R Int)
 sepp2 = BiApp sepp baa
@@ -202,18 +89,6 @@ plurs = Bi (QNamed "inc" inc) (QNamed "inc_" inc_)
 sepp3s'' = QBiSeal (BiApp (BiApp sepp (QBiSeal (BiApp plurs baa))) bbb)
 sepp3s''' = QBiSeal (BiApp (BiApp sepp baa) (QBiSeal (BiApp plurs bbb)))
 sepp3s'''' = QBiSeal (BiApp (BiApp sepp (QBiSeal (BiApp plurs baa))) (QBiSeal (BiApp plurs bbb)))
-
----- sepp :: Bi (Int -> Int -> Int)
-----            (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
----- sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
----- sepp2 :: Bi (Int -> Int) (Int -> Log.R Int -> Log.R Int)
----- sepp2 = BiApp sepp baa
----- sepp3 :: Bi Int (Log.R Int)
----- sepp3 = BiApp sepp2 bbb
----- sepp3s :: Q Int
----- sepp3s = QBiSeal sepp3
----- -- bplus0 = BiApp (Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)) baa
----- -- bplus1 = BiApp bplus0 bbb
 
 bplus :: Int -> Int -> Int
 bplus = (+)
@@ -394,9 +269,9 @@ w :: W
 w = W { aa = 13, bb = 100 }
 
 ---- Show, Read. First is shewn, second is type
---data DumDyn = DumDyn String String deriving (Read, Show)
---mkDumDyn :: (Show a, Read a, Typeable a) => a -> DumDyn
---mkDumDyn x = DumDyn (show x) (show (toDyn x))
+data DumDyn = DumDyn String String deriving (Read, Show)
+mkDumDyn :: (Show a, Read a, Typeable a) => a -> DumDyn
+mkDumDyn x = DumDyn (show x) (show (toDyn x))
 
 --dumDynToX :: (Show a, Read a, Typeable a) => DumDyn -> a
 --dumDynToX (DumDyn s ts) = fromJust $ fromDynamic dyn
@@ -410,22 +285,31 @@ w = W { aa = 13, bb = 100 }
 --                         "<<String>>" -> toDyn $ QNice (read s :: String)
 --                         _ -> error $ "dumDynToX " ++ ts
 
---dumDynToXShowD :: DumDyn -> Dynamic
---dumDynToXShowD (DumDyn s ts) = dyn
---  where dyn = case ts of "<<Int>>" -> toDyn $ QNice (read s :: Int)
---                         "<<String>>" -> toDyn $ QNice (read s :: String)
---                         _ -> error $ "dumDynToX " ++ ts
+dumDynToXShowD :: DumDyn -> Dynamic
+dumDynToXShowD (DumDyn s ts) = dyn
+  where dyn = case ts of "<<Int>>" -> toDyn $ QNice (read s :: Int)
+                         "<<String>>" -> toDyn $ QNice (read s :: String)
+                         _ -> error $ "dumDynToX " ++ ts
 
---data S = SRoot | SNice DumDyn | SNamed String | SApp S S | BSApp S S S | BSApp2 S S S S
---  deriving (Read, Show)
+data S = SRoot | SNice DumDyn | SNamed String | SApp S S -- | BSApp S S S | BSApp2 S S S S
+       | SQBiSeal BS
+  deriving (Read, Show)
+data BS = BSBi S S | BSBiApp BS S
+  deriving (Read, Show)
 
---qs :: Q a -> S
---qs QRoot = SRoot
---qs (QNice x) = SNice (mkDumDyn x)
---qs (QNamed name _) = SNamed name
---qs (QApp qf qx) = SApp (qs qf) (qs qx)
---qs (BApp qf qr qx) = BSApp (qs qf) (qs qr) (qs qx)
---qs (BApp2 qf qr qx qy) = BSApp2 (qs qf) (qs qr) (qs qx) (qs qy)
+qs :: Q a -> S
+qs QRoot = SRoot
+qs (QNice x) = SNice (mkDumDyn x)
+qs (QNamed name _) = SNamed name
+qs (QApp qf qx) = SApp (qs qf) (qs qx)
+qs (QBiSeal bi) = SQBiSeal (bs bi)
+
+bs :: Bi f r -> BS
+bs (Bi f r) = BSBi (qs f) (qs r)
+bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
+
+-- qs (BApp qf qr qx) = BSApp (qs qf) (qs qr) (qs qx)
+-- qs (BApp2 qf qr qx qy) = BSApp2 (qs qf) (qs qr) (qs qx) (qs qy)
 
 --data Ding = forall a. Typeable a => Ding a Dynamic (Ding -> String)
 --mkding :: Typeable a => a -> Ding
@@ -520,23 +404,57 @@ w = W { aa = 13, bb = 100 }
 ---- -- Can't: even tho ooo is typeable, it's poly so it's not really typeable
 ---- larr = toDyn ooo
 
-----  :: Q (a->b) -> Q a      -> Maybe (Q b)
---qapp :: Dynamic  -> Dynamic -> Maybe Dynamic
---qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx)
---  | Just HRefl <- q `eqTypeRep` q'
---  , Just HRefl <- q `eqTypeRep` (typeRep @Q)
---  , Just HRefl <- ta `eqTypeRep` ta'
---  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
---  = Just (Dynamic (App q tr) (QApp qf qx))
---  -- | otherwise =
---  -- let qqev = q `eqTypeRep` q'
---  --     qQev = q `eqTypeRep` (typeRep @Q)
---  --     taev = ta `eqTypeRep` ta'
---  --     trev = typeRep @Type `eqTypeRep` typeRepKind tr
---  --  in error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") " ++ show (qqev, qQev, taev, trev)
----- qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx) = error "??"
---qapp (Dynamic qabt _) (Dynamic qat _) =
---   error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") "
+--  :: Q (a->b) -> Q a      -> Maybe (Q b)
+qapp :: Dynamic  -> Dynamic -> Maybe Dynamic
+qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx)
+  | Just HRefl <- q `eqTypeRep` q'
+  , Just HRefl <- q `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- ta `eqTypeRep` ta'
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
+  = Just (Dynamic (App q tr) (QApp qf qx))
+  -- | otherwise =
+  -- let qqev = q `eqTypeRep` q'
+  --     qQev = q `eqTypeRep` (typeRep @Q)
+  --     taev = ta `eqTypeRep` ta'
+  --     trev = typeRep @Type `eqTypeRep` typeRepKind tr
+  --  in error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") " ++ show (qqev, qQev, taev, trev)
+-- qapp (Dynamic qabt@(App q (Fun ta tr)) qf) qat@(Dynamic (App q' ta') qx) = error "??"
+qapp (Dynamic qabt _) (Dynamic qat _) =
+   error $ "QApp (" ++ show qabt ++ ") (" ++ show qat ++ ") "
+
+qbiseal :: Dynamic -> Maybe Dynamic
+qbiseal (Dynamic bit@(App (App bit0 at0) (App rt0 at1)) bi)
+  | Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
+  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+  , Just HRefl <- at0 `eqTypeRep` at1
+  = Just (Dynamic (App (typeRep @Q) at0) (QBiSeal bi))
+
+bi :: Dynamic -> Dynamic -> Maybe Dynamic
+bi (Dynamic (App qt0 ft0) qf)
+   (Dynamic (App qt1 rt0) qr)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- qt0 `eqTypeRep` qt1
+  = Just (Dynamic (App (App (typeRep @Bi) ft0) rt0) (Bi qf qr))
+
+-- (Bi (a -> b) (a -> R a -> c))
+bsbiapp :: Dynamic -> Dynamic -> Maybe Dynamic
+bsbiapp (Dynamic (App (App bit0 (Fun at0 bt0))
+                                (Fun at1 (Fun (App rt0 at2) ct0))) bi)
+        (Dynamic (App qt0 at3) q)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
+  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0
+  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind ct0
+  , Just HRefl <- at0 `eqTypeRep` at1
+  , Just HRefl <- at0 `eqTypeRep` at2
+  , Just HRefl <- at0 `eqTypeRep` at3
+  = Just (Dynamic (App (App bit0 bt0) ct0) (BiApp bi q))
+
+  -- QBiSeal :: Bi a (R a) -> Q a
+  -- Bi :: Q f -> Q r -> Bi f r
+  -- -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
+  -- BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
 
 ---- BApp :: (Show a, Show b) => Q (a -> b) -> Q (a -> R a -> R b) -> Q a -> Q b
 --qbapp :: Dynamic  -> Dynamic -> Dynamic -> Maybe Dynamic
@@ -590,53 +508,76 @@ w = W { aa = 13, bb = 100 }
 ----   -- , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt1
 ----   = Just (Dynamic (App qt0 ct0) (BApp2 qf qr qa qb))
 
---sqd :: S -> Dynamic
---sqd SRoot = toDyn QRoot
----- sqd (SNice ddyn) = toDyn $ QNice (dumDynToX ddyn)
---sqd (SNice ddyn) = dumDynToXShowD ddyn
----- sqd (SNamed name) = toDyn $ QNamed name (reconstitute name)
---sqd (SNamed name) = reconstituteShowD name
---sqd (SApp sf sx) =
---  let dsf = sqd sf
---      dsx = sqd sx
---   in fromJust $ qapp dsf dsx
---sqd (BSApp sf sr sx) =
---  let dsf = sqd sf
---      dsr = sqd sr
---      dsx = sqd sx
---   in fromJust $ qbapp dsf dsr dsx
---sqd (BSApp2 sf sr sx sy) =
---  let dsf = sqd sf
---      dsr = sqd sr
---      dsx = sqd sx
---      dsy = sqd sy
---   in fromJust $ qbapp2 dsf dsr dsx dsy
----- sqd (SApp sf sx) = fromJustVerbose "sqd SApp"$ dynApply (sqd sf) (sqd sx)
----- dqs (SApp sf sx) = toDyn q
-----   where q = QApp (fromJust $ fromDynamic (sqd sf)) (fromJust $ fromDynamic (sqd sx))
----- sqd (SApp sf sx) =
-----   let Dynamic _ f = sf
-----       Dynamic _ x = x
-----    in QApp f x
----- sqd (SApp sf sx) =
-----   let df = sqd sf
-----       dx = sqd sx
-----    in fromJust $ dynApply df dx
----- sqd _ = error "sq"
+sqd :: S -> Dynamic
+sqd SRoot = toDyn QRoot
+-- sqd (SNice ddyn) = toDyn $ QNice (dumDynToX ddyn)
+sqd (SNice ddyn) = dumDynToXShowD ddyn
+-- sqd (SNamed name) = toDyn $ QNamed name (reconstitute name)
+sqd (SNamed name) = reconstituteShowD name
+sqd (SApp sf sx) =
+  let dsf = sqd sf
+      dsx = sqd sx
+   in fromJust $ qapp dsf dsx
+sqd (SQBiSeal bis) =
+  let dbs = bqd bis
+   in fromJust $ qbiseal dbs
 
---sq :: Typeable a => S -> Q a
---sq s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
+-- name should be bsbd
+bqd :: BS -> Dynamic
+bqd (BSBi sf sr) =
+  let dsf = sqd sf
+      dsr = sqd sr
+   in fromJust $ bi dsf dsr
+bqd (BSBiApp bs s) =
+  let dbs = bqd bs
+      ds = sqd s
+   in fromJust $ bsbiapp dbs ds
 
----- -- sq :: (Show a, Read a, Typeable a) => S -> Q a
----- -- Can't do this because then we don't know that the arg to QNice is a show (more
----- -- precisely that we don't know which one, or even more precisely, we can't restrict
----- -- this to only be used *at some Show monotype*.
----- sq :: Typeable a => S -> Q a
----- sq SRoot = fromJustVerbose "sq SRoot" $ fromDynamic $ toDyn QRoot
----- sq (SNice ddyn) = dumDynToXShow ddyn -- QNice (dumDynToX ddyn)
----- sq (SNamed name) = reconstituteShow name -- QNamed name (reconstitute name)
----- -- sq (SApp sf sx) = QApp (sq sf) (sq sx)
----- sq _ = error "sq"
+-- data BS = BSBi S S | BSBiApp BS S
+--   deriving (Read, Show)
+
+  -- QBiSeal :: Bi a (R a) -> Q a
+  -- Bi :: Q f -> Q r -> Bi f r
+  -- -- BiApp :: Q (a -> b) -> Q (a -> R a -> c) -> Q a -> Bi b c
+  -- BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
+
+-- sqd (BSApp sf sr sx) =
+--   let dsf = sqd sf
+--       dsr = sqd sr
+--       dsx = sqd sx
+--    in fromJust $ qbapp dsf dsr dsx
+-- sqd (BSApp2 sf sr sx sy) =
+--   let dsf = sqd sf
+--       dsr = sqd sr
+--       dsx = sqd sx
+--       dsy = sqd sy
+--    in fromJust $ qbapp2 dsf dsr dsx dsy
+-- sqd (SApp sf sx) = fromJustVerbose "sqd SApp"$ dynApply (sqd sf) (sqd sx)
+-- dqs (SApp sf sx) = toDyn q
+--   where q = QApp (fromJust $ fromDynamic (sqd sf)) (fromJust $ fromDynamic (sqd sx))
+-- sqd (SApp sf sx) =
+--   let Dynamic _ f = sf
+--       Dynamic _ x = x
+--    in QApp f x
+-- sqd (SApp sf sx) =
+--   let df = sqd sf
+--       dx = sqd sx
+--    in fromJust $ dynApply df dx
+-- sqd _ = error "sq"
+
+sq :: Typeable a => S -> Q a
+sq s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
+
+-- -- sq :: (Show a, Read a, Typeable a) => S -> Q a
+-- -- Can't do this because then we don't know that the arg to QNice is a show (more
+-- -- precisely that we don't know which one, or even more precisely, we can't restrict
+-- -- this to only be used *at some Show monotype*.
+-- sq :: Typeable a => S -> Q a
+-- sq SRoot = fromJustVerbose "sq SRoot" $ fromDynamic $ toDyn QRoot
+-- sq (SNice ddyn) = dumDynToXShow ddyn -- QNice (dumDynToX ddyn)
+-- sq (SNamed name) = reconstituteShow name -- QNamed name (reconstitute name)
+-- -- sq (SApp sf sx) = QApp (sq sf) (sq sx)
+-- sq _ = error "sq"
 
 --wak :: Dynamic -> Int
 --wak (Dynamic tr f) =
@@ -675,6 +616,18 @@ logMain = do
   msp $ propToRoots w (Write sepp3s'' 160)
   msp $ propToRoots w (Write sepp3s''' 160)
   msp $ propToRoots w (Write sepp3s'''' 160)
+  msp $ qs QRoot
+  msp $ ((sq (qs QRoot)) :: Q W)
+  msp $ qs sepp3s
+  msp $ ((sq (qs sepp3s)) :: Q Int)
+  msp $ qs sepp3s'
+  msp $ ((sq (qs sepp3s')) :: Q Int)
+  msp $ qs sepp3s''
+  msp $ ((sq (qs sepp3s'')) :: Q Int)
+  msp $ qs sepp3s'''
+  msp $ ((sq (qs sepp3s''')) :: Q Int)
+  msp $ qs sepp3s''''
+  msp $ ((sq (qs sepp3s'''')) :: Q Int)
   -- let Writes [wr0, wr1] =  wr w sepp3s 140
   --     wr2 = propWrite w wr0
   -- msp wr2
