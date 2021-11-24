@@ -1,5 +1,4 @@
-{-# Language AllowAmbiguousTypes, ExistentialQuantification, KindSignatures, GADTs, NamedFieldPuns,
-    RankNTypes, ScopedTypeVariables, PartialTypeSignatures, TypeApplications, TypeOperators #-}
+{-# Language GADTs, NamedFieldPuns, TypeApplications #-}
 
 module Log
 ( logMain
@@ -7,7 +6,6 @@ module Log
 
 import Data.Dynamic
 import Data.Kind (Type)
-import Data.Proxy
 import Data.Maybe (fromJust, catMaybes)
 import Type.Reflection
 
