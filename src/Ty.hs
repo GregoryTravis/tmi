@@ -21,6 +21,6 @@ data Bi f r where
 
 data Q a where
   QRoot :: Q W
-  QNice :: (Show a, Read a, Typeable a) => a -> Q a
+  QNice :: (Eq a, Show a, Read a, Typeable a) => a -> Q a
   QNamed :: String -> a -> Q a
   QBiSeal :: Bi a (R a) -> Q a
