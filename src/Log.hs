@@ -86,7 +86,12 @@ sepp3 = BiApp sepp2 bbb
 sepp3s :: Q Int
 sepp3s = QBiSeal sepp3
 
+lift2 :: Bi (a -> b -> c) (a -> R a -> b -> R b -> R c) -> Q a -> Q b -> Q c
+lift2 bi qa qb = QBiSeal (BiApp (BiApp bi qa) qb)
+
 sepp3s' = QBiSeal (BiApp (BiApp sepp baa) bbb)
+sepp' = lift2 sepp
+vupp = sepp' baa bbb
 
 plurs :: Bi (Int -> Int)
             (Int -> Log.R Int -> Log.R Int)
@@ -275,10 +280,12 @@ logMain = do
   msp $ propToRoots w (Write sepp3s'' 160)
   msp $ propToRoots w (Write sepp3s''' 160)
   msp $ propToRoots w (Write sepp3s'''' 160)
+  msp $ propToRoots w (Write vupp 400)
   roundTrip QRoot
   roundTrip sepp3s
   roundTrip sepp3s'
   roundTrip sepp3s''
   roundTrip sepp3s'''
   roundTrip sepp3s''''
+  roundTrip vupp
   msp "log hi"
