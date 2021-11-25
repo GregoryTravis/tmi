@@ -11,33 +11,30 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Util
 
-data Q a where
-  Q :: a -> Q a
-  QF :: (a -> b) -> Q (a -> b)
-  QApp :: Q (a -> b) -> Q a -> Q b
+data W
+data Write
+data R a = R (a -> Write)
 
---  :: Q (a->b) -> Q a      -> Maybe (Q b)
-app :: Dynamic  -> Dynamic -> Maybe Dynamic
-app (Dynamic (App q (Fun ta tr)) qf) (Dynamic (App q' ta') qx)
-  | Just HRefl <- q `eqTypeRep` q'
-  , Just HRefl <- q `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- ta `eqTypeRep` ta'
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
-  = Just (Dynamic (App q tr) (QApp qf qx))
+data D f r where
+  D :: C f -> C r -> D f r
+  DApp :: D (a -> b) (a -> R a -> c) -> C a -> D b c
+--           ^--------^------^------------^---------- 'a' is not in the output type
 
-dynApply' :: Dynamic -> Dynamic -> Maybe Dynamic
-dynApply' (Dynamic (Fun ta tr) f) (Dynamic ta' x)
-  | Just HRefl <- ta `eqTypeRep` ta'
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind tr
-  = Just (Dynamic tr (f x))
-dynApply' _ _
-  = Nothing
+data C a where
+  -- CRoot :: C W
+  -- CNice :: (Eq a, Show a, Read a, Typeable a) => a -> C a
+  CNamed :: String -> a -> C a
+  CDSeal :: D a (R a) -> C a
 
-root = Q (10 :: Int)
-vaa = QF (+ (1::Int))
+instance Eq (D f r) where
+  D qf qr == D qf' qr' = qf == qf' && qr == qr'
+  -- Error: Couldn't match type ‘a1’ with ‘a’
+  -- DApp bi q == DApp bi' q' = bi == bi' && q == q'
 
-redditMain = do
-  let Just foo = app (toDyn vaa) (toDyn root)
-  msp foo
-  let qi = fromJust $ fromDynamic foo :: Q Int
-  msp $ case qi of QApp (QF f) (Q x) -> f x
+instance Eq (C a) where
+  -- CRoot == CRoot = True
+  -- CNice x == CNice y = x == y
+  CNamed name _ == CNamed name' _ = name == name'
+  CDSeal bi == CDSeal bi' = bi == bi'
+
+redditMain = msp "hi reddit"

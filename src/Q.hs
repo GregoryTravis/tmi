@@ -17,7 +17,7 @@ instance Show Write where
   show (Writes ws) = show ws
 
 instance Eq (Bi f r) where
-  Bi f r == Bi f' r' = f == f' && r == r'
+  Bi qf qr == Bi qf' qr' = qf == qf' && qr == qr'
   -- TODO: use dynamic stuff to do this?
   -- BiApp bi q == BiApp bi' q' = bi == bi' && q == q'
   _ == _ = False

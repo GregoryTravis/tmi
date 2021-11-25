@@ -17,8 +17,8 @@ import Q
 -- + w -> theWorld (cuz it's often a param that I sometimes forget to pass)
 -- + move typerep stuff to another file so we don't have to rebuild all the time
 -- + lifters and use them for sepps
--- - Finish Eq
--- - Eq for Q
+-- - remove most everything else
+-- - Eq for Q -- need BiApp
 -- - roundTrip asserts they're equal
 -- - modules: propagate, serialization, rd/wr
 -- - multi-module registry
