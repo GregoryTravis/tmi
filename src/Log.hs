@@ -15,8 +15,8 @@ import Q
 -- todo
 -- + dead: QApp, <$$>, faa, inced_
 -- - w -> theWorld (cuz it's often a param that I sometimes forget to pass)
--- - move typerep stuff to another file so we don't have to rebuild all the time
--- - lifters and use them for sepps
+-- + move typerep stuff to another file so we don't have to rebuild all the time
+-- + lifters and use them for sepps
 -- - Eq for Q
 -- - roundTrip asserts they're equal
 -- - modules: propagate, serialization, rd/wr
@@ -140,8 +140,8 @@ rdb w (BiApp bi qa) =
 
 root :: Q W
 root = QRoot
-w :: W
-w = W { aa = 13, bb = 100 }
+theWorld :: W
+theWorld = W { aa = 13, bb = 100 }
 
 ---- Show, Read. First is shewn, second is type
 data DumDyn = DumDyn String String deriving (Read, Show)
@@ -209,10 +209,10 @@ roundTrip q = do
   return check
 
 logMain = do
-  msp $ propToRoots w (Write added 140)
-  msp $ propToRoots w (Write added' 140)
-  msp $ propToRoots w (Write added'' 140)
-  msp $ propToRoots w (Write added''' 140)
+  msp $ propToRoots theWorld (Write added 140)
+  msp $ propToRoots theWorld (Write added' 140)
+  msp $ propToRoots theWorld (Write added'' 140)
+  msp $ propToRoots theWorld (Write added''' 140)
   roundTrip QRoot
   roundTrip added
   roundTrip added'
