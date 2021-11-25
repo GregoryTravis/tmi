@@ -6,7 +6,7 @@ import Data.Dynamic
 import Data.Kind (Type)
 import Type.Reflection
 
-import Q
+import Ty
 
 qbiseal :: Dynamic -> Maybe Dynamic
 qbiseal (Dynamic bit@(App (App bit0 at0) (App rt0 at1)) bi)

@@ -8,6 +8,7 @@ import Data.Dynamic
 import Data.Maybe (fromJust, catMaybes)
 
 import Dyn
+import Ty
 import Util
 import Q
 
