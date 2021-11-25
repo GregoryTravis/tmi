@@ -1,15 +1,15 @@
-{-# Language GADTs, NamedFieldPuns, TypeApplications #-}
+{-# Language GADTs, NamedFieldPuns #-}
 
 module Log
 ( logMain
 ) where
 
 import Data.Dynamic
-import Data.Kind (Type)
 import Data.Maybe (fromJust, catMaybes)
-import Type.Reflection
 
+import Dyn
 import Util
+import Q
 
 -- todo
 -- + dead: QApp, <$$>, faa, inced_
@@ -32,12 +32,6 @@ reconstituteShowD "bplus" = toDyn (QNamed "bplus" bplus)
 reconstituteShowD "bplus_" = toDyn (QNamed "bplus_" bplus_)
 reconstituteShowD s = error $ show ("recon", s)
 
-data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
-
-data Write = forall a. Write (Q a) a | Writes [Write]
-emptyWrite :: Write
-emptyWrite = Writes []
-
 propWrite :: W -> Write -> Write
 propWrite w (Write qa a) = wr w qa a
 
@@ -58,30 +52,12 @@ ifRoot :: Write -> Maybe W
 ifRoot (Write QRoot w) = Just w
 ifRoot _ = Nothing
 
-instance Semigroup Write where
-  w <> w' = Writes [w, w']
-
-instance Show Write where
-  show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
-  show (Writes ws) = show ws
-data R a = R (a -> Write)
-
-data Bi f r where
-  Bi :: Q f -> Q r -> Bi f r
-  BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
-
-data Q a where
-  QRoot :: Q W
-  QNice :: (Show a, Read a, Typeable a) => a -> Q a
-  QNamed :: String -> a -> Q a
-  QBiSeal :: Bi a (R a) -> Q a
-
 sepp :: Bi (Int -> Int -> Int)
-           (Int -> Log.R Int -> Int -> Log.R Int -> Log.R Int)
+           (Int -> R Int -> Int -> R Int -> R Int)
 sepp = Bi (QNamed "bplus" bplus) (QNamed "bplus_" bplus_)
-sepp2 :: Bi (Int -> Int) (Int -> Log.R Int -> Log.R Int)
+sepp2 :: Bi (Int -> Int) (Int -> R Int -> R Int)
 sepp2 = BiApp sepp baa
-sepp3 :: Bi Int (Log.R Int)
+sepp3 :: Bi Int (R Int)
 sepp3 = BiApp sepp2 bbb
 sepp3s :: Q Int
 sepp3s = QBiSeal sepp3
@@ -94,7 +70,7 @@ sepp' = lift2 sepp
 vupp = sepp' baa bbb
 
 plurs :: Bi (Int -> Int)
-            (Int -> Log.R Int -> Log.R Int)
+            (Int -> R Int -> R Int)
 plurs = Bi (QNamed "inc" inc) (QNamed "inc_" inc_)
 
 sepp3s'' = QBiSeal (BiApp (BiApp sepp (QBiSeal (BiApp plurs baa))) bbb)
@@ -152,16 +128,6 @@ getrev w (BiApp bi qa) =
       rb = rev oa ra
    in rb
 
-instance Show (Q a) where
-  show QRoot = "QRoot"
-  show (QNice x) = "(QNice " ++ show x ++ ")"
-  show (QNamed name _) = "(QNamed " ++ name ++ ")"
-  show (QBiSeal bi) = "(QBiSeal " ++ show bi ++ ")"
-
-instance Show (Bi f r) where 
-  show (Bi qf qr) = "(Bi " ++ show qf ++ " " ++ show qr ++ ")"
-  show (BiApp bi qa) = "(BiApp " ++ show bi ++ " " ++ show qa ++ ")"
-
 rd :: W -> Q a -> a
 rd w QRoot = w
 rd w (QNice x) = x
@@ -205,34 +171,6 @@ qs (QBiSeal bi) = SQBiSeal (bs bi)
 bs :: Bi f r -> BS
 bs (Bi f r) = BSBi (qs f) (qs r)
 bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
-
-qbiseal :: Dynamic -> Maybe Dynamic
-qbiseal (Dynamic bit@(App (App bit0 at0) (App rt0 at1)) bi)
-  | Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
-  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
-  , Just HRefl <- at0 `eqTypeRep` at1
-  = Just (Dynamic (App (typeRep @Q) at0) (QBiSeal bi))
-
-bi :: Dynamic -> Dynamic -> Maybe Dynamic
-bi (Dynamic (App qt0 ft0) qf)
-   (Dynamic (App qt1 rt0) qr)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- qt0 `eqTypeRep` qt1
-  = Just (Dynamic (App (App (typeRep @Bi) ft0) rt0) (Bi qf qr))
-
-bsbiapp :: Dynamic -> Dynamic -> Maybe Dynamic
-bsbiapp (Dynamic (App (App bit0 (Fun at0 bt0))
-                                (Fun at1 (Fun (App rt0 at2) ct0))) bi)
-        (Dynamic (App qt0 at3) q)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
-  , Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
-  , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0
-  , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind ct0
-  , Just HRefl <- at0 `eqTypeRep` at1
-  , Just HRefl <- at0 `eqTypeRep` at2
-  , Just HRefl <- at0 `eqTypeRep` at3
-  = Just (Dynamic (App (App bit0 bt0) ct0) (BiApp bi q))
 
 sqd :: S -> Dynamic
 sqd SRoot = toDyn QRoot
