@@ -5,8 +5,8 @@ module Propagate
 
 import Data.Maybe (catMaybes)
 
-import V
 import Ty
+import V
 
 wr :: W -> V b -> b -> Write
 wr w (VBiSeal (Bi qfor qrev)) na =

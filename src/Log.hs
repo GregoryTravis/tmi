@@ -8,12 +8,12 @@ import Data.Dynamic
 
 import Lift
 import Propagate
-import V
-import Veq
 import Storage
 import Testing
 import Ty
 import Util
+import V
+import Veq
 
 -- todo
 -- + dead: VApp, <$$>, faa, inced_
@@ -25,6 +25,8 @@ import Util
 -- + remove most everything else
 -- + modules: propagate, serialization, rd/wr, testlib (roundTrip)
 -- + Rename to V
+-- - rename BS/etc
+-- - general renaming
 -- - V w
 -- - main loop
 --   - Tmi monad (accumulate writes; take Step)

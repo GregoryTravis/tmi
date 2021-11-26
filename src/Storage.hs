@@ -9,14 +9,15 @@ import Data.Dynamic
 import Data.Maybe (fromJust)
 
 import Dyn
-import V
 import Ty
 import Util
+import V
+import Veq
 
 type Reconstitutor = String -> Dynamic
 
 ---- Show, Read. First is shewn, second is type
-data DumDyn = DumDyn String String deriving (Read, Show)
+data DumDyn = DumDyn String String deriving (Eq, Read, Show)
 mkDumDyn :: (Show a, Read a, Typeable a) => a -> DumDyn
 mkDumDyn x = DumDyn (show x) (show (toDyn x))
 
@@ -27,9 +28,9 @@ dumDynToXShowD (DumDyn s ts) = dyn
                          _ -> error $ "dumDynToX " ++ ts
 
 data S = SRoot | SNice DumDyn | SNamed String | SVBiSeal BS
-  deriving (Read, Show)
+  deriving (Eq, Read, Show)
 data BS = BSBi S S | BSBiApp BS S
-  deriving (Read, Show)
+  deriving (Eq, Read, Show)
 
 qs :: V a -> S
 qs VRoot = SRoot

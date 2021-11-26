@@ -13,8 +13,7 @@ roundTrip recon q = do
       ss = show s
       rs = read ss
       q' = sq recon rs
-      -- check = assertM "roundTrip" (q == q' && s == rs) [q, q']
-      check = assertM "roundTrip" True [q, q']
+      check = assertM "roundTrip" (q == q' && s == rs) [q, q']
   msp "===="
   msp q
   msp s
