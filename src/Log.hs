@@ -18,10 +18,10 @@ import Util
 -- + w -> theWorld (cuz it's often a param that I sometimes forget to pass)
 -- + move typerep stuff to another file so we don't have to rebuild all the time
 -- + lifters and use them for sepps
--- - remove most everything else
--- - Eq for Q -- need BiApp
--- - roundTrip asserts they're equal
--- - modules: propagate, serialization, rd/wr
+-- + Eq for Q -- need BiApp
+-- + roundTrip asserts they're equal
+-- + remove most everything else
+-- - modules: propagate, serialization, rd/wr, testlib (roundTrip)
 -- - multi-module registry
 
 recon :: String -> Dynamic
