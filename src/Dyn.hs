@@ -20,7 +20,8 @@ bi (Dynamic (App qt0 ft0) qf)
    (Dynamic (App qt1 rt0) qr)
   | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
   , Just HRefl <- qt0 `eqTypeRep` qt1
-  = Just (Dynamic (App (App (typeRep @Bi) ft0) rt0) (Bi qf qr))
+  = withTypeable ft0 $ withTypeable rt0 $
+      Just (Dynamic (App (App (typeRep @Bi) ft0) rt0) (Bi qf qr))
 
 bsbiapp :: Dynamic -> Dynamic -> Maybe Dynamic
 bsbiapp (Dynamic (App (App bit0 (Fun at0 bt0))
@@ -34,4 +35,7 @@ bsbiapp (Dynamic (App (App bit0 (Fun at0 bt0))
   , Just HRefl <- at0 `eqTypeRep` at1
   , Just HRefl <- at0 `eqTypeRep` at2
   , Just HRefl <- at0 `eqTypeRep` at3
-  = Just (Dynamic (App (App bit0 bt0) ct0) (BiApp bi q))
+  = withTypeable at0 $ withTypeable bt0 $ withTypeable ct0 $
+      Just (Dynamic (App (App bit0 bt0) ct0) (BiApp bi q))
+
+-- withTypeable :: forall k (a :: k) rep (r :: TYPE rep). TypeRep a -> (Typeable a => r) -> r

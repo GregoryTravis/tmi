@@ -16,8 +16,8 @@ data Write = forall a. Write (Q a) a | Writes [Write]
 data R a = R (a -> Write)
 
 data Bi f r where
-  Bi :: Q f -> Q r -> Bi f r
-  BiApp :: Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
+  Bi :: (Typeable f, Typeable r) => Q f -> Q r -> Bi f r
+  BiApp :: (Typeable a, Typeable b, Typeable c) => Bi (a -> b) (a -> R a -> c) -> Q a -> Bi b c
 
 data Q a where
   QRoot :: Q W
