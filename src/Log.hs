@@ -24,7 +24,7 @@ import Util
 -- + roundTrip asserts they're equal
 -- + remove most everything else
 -- + modules: propagate, serialization, rd/wr, testlib (roundTrip)
--- - Rename to V
+-- + Rename to V
 -- - V w
 -- - main loop
 --   - Tmi monad (accumulate writes; take Step)
