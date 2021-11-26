@@ -13,12 +13,12 @@ qbiseal (Dynamic bit@(App (App bit0 at0) (App rt0 at1)) bi)
   | Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
   , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
   , Just HRefl <- at0 `eqTypeRep` at1
-  = Just (Dynamic (App (typeRep @Q) at0) (QBiSeal bi))
+  = Just (Dynamic (App (typeRep @V) at0) (VBiSeal bi))
 
 bi :: Dynamic -> Dynamic -> Maybe Dynamic
 bi (Dynamic (App qt0 ft0) qf)
    (Dynamic (App qt1 rt0) qr)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @V)
   , Just HRefl <- qt0 `eqTypeRep` qt1
   = withTypeable ft0 $ withTypeable rt0 $
       Just (Dynamic (App (App (typeRep @Bi) ft0) rt0) (Bi qf qr))
@@ -27,7 +27,7 @@ bsbiapp :: Dynamic -> Dynamic -> Maybe Dynamic
 bsbiapp (Dynamic (App (App bit0 (Fun at0 bt0))
                                 (Fun at1 (Fun (App rt0 at2) ct0))) bi)
         (Dynamic (App qt0 at3) q)
-  | Just HRefl <- qt0 `eqTypeRep` (typeRep @Q)
+  | Just HRefl <- qt0 `eqTypeRep` (typeRep @V)
   , Just HRefl <- bit0 `eqTypeRep` (typeRep @Bi)
   , Just HRefl <- rt0 `eqTypeRep` (typeRep @R)
   , Just HRefl <- typeRep @Type `eqTypeRep` typeRepKind bt0

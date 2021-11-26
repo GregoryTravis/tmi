@@ -1,6 +1,6 @@
 {-# Language GADTs, NamedFieldPuns, TypeApplications #-}
 
-module Q where
+module V where
 
 import Data.Dynamic
 import Type.Reflection
@@ -17,11 +17,11 @@ instance Show Write where
   show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
   show (Writes ws) = show ws
 
-instance Show (Q a) where
-  show QRoot = "QRoot"
-  show (QNice x) = "(QNice " ++ show x ++ ")"
-  show (QNamed name _) = "(QNamed " ++ name ++ ")"
-  show (QBiSeal bi) = "(QBiSeal " ++ show bi ++ ")"
+instance Show (V a) where
+  show VRoot = "VRoot"
+  show (VNice x) = "(VNice " ++ show x ++ ")"
+  show (VNamed name _) = "(VNamed " ++ name ++ ")"
+  show (VBiSeal bi) = "(VBiSeal " ++ show bi ++ ")"
 
 instance Show (Bi f r) where 
   show (Bi qf qr) = "(Bi " ++ show qf ++ " " ++ show qr ++ ")"

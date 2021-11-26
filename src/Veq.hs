@@ -1,12 +1,12 @@
 {-# Language GADTs, NamedFieldPuns, TypeApplications #-}
 
-module Qeq where
+module Veq where
 
 import Data.Dynamic
 import Type.Reflection
 
 import Ty
-import Q
+import V
 
 instance Eq (Bi f r) where
   Bi qf qr == Bi qf' qr' = qf == qf' && qr == qr'
@@ -14,11 +14,11 @@ instance Eq (Bi f r) where
   BiApp bi q == BiApp bi' q' = bi `biAppEq` bi' && q `qeq` q'
   _ == _ = False
 
-instance Eq (Q a) where
-  QRoot == QRoot = True
-  QNice x == QNice y = x == y
-  QNamed name _ == QNamed name' _ = name == name'
-  QBiSeal bi == QBiSeal bi' = bi == bi'
+instance Eq (V a) where
+  VRoot == VRoot = True
+  VNice x == VNice y = x == y
+  VNamed name _ == VNamed name' _ = name == name'
+  VBiSeal bi == VBiSeal bi' = bi == bi'
   _ == _ = False
 
 biAppEq :: (Typeable a1, Typeable a2) => a1 -> a2 -> Bool
@@ -36,6 +36,6 @@ qeqD :: Dynamic -> Dynamic -> Bool
 qeqD (Dynamic qt q) (Dynamic qt' q')
   | Just HRefl <- qt `eqTypeRep` qt'
   , App qtt x <- qt
-  , Just HRefl <- qtt `eqTypeRep` (typeRep @Q)
+  , Just HRefl <- qtt `eqTypeRep` (typeRep @V)
   = q == q'
 qeqD _ _ = False
