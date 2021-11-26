@@ -18,7 +18,7 @@ executable tmi
   main-is:             Main.hs
   other-modules:       Util, Tmi, Lib, Narrative, Monies, ExecId, UniqueId,
                        V, Appendo, History, Lens, Lift, Propagate, Test, State, NestedState, Log,
-                       Reddit, Dyn, Q, Ty
+                       Reddit, Dyn, Q, Ty, Qeq
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5,

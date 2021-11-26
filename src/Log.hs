@@ -11,6 +11,7 @@ import Dyn
 import Ty
 import Util
 import Q
+import Qeq
 
 -- todo
 -- + dead: QApp, <$$>, faa, inced_
