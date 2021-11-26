@@ -11,6 +11,7 @@ import Propagate
 import Q
 import Qeq
 import Storage
+import Testing
 import Ty
 import Util
 
@@ -86,34 +87,17 @@ root = QRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
 
-roundTrip :: Typeable a => Q a -> IO [Q a]
-roundTrip q = do
-  let s = qs q
-      ss = show s
-      rs = read ss
-      q' = sq recon rs
-      -- check = assertM "roundTrip" (q == q' && s == rs) [q, q']
-      check = assertM "roundTrip" True [q, q']
-  msp "===="
-  msp q
-  msp s
-  msp ss
-  msp rs
-  msp q'
-  msp "===="
-  return check
-
 logMain = do
   -- Works
   msp $ propToRoots theWorld (Write added 140)
   msp $ propToRoots theWorld (Write added' 140)
   msp $ propToRoots theWorld (Write added'' 140)
   msp $ propToRoots theWorld (Write added''' 140)
-  roundTrip QRoot
-  roundTrip added
-  roundTrip added'
-  roundTrip added''
-  roundTrip added'''
+  roundTrip recon QRoot
+  roundTrip recon added
+  roundTrip recon added'
+  roundTrip recon added''
+  roundTrip recon added'''
 
   msp $ added == added
   msp $ added == added'
