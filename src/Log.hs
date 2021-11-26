@@ -5,13 +5,13 @@ module Log
 ) where
 
 import Data.Dynamic
-import Data.Maybe (fromJust, catMaybes)
+import Data.Maybe (catMaybes)
 
-import Dyn
-import Ty
-import Util
 import Q
 import Qeq
+import Storage
+import Ty
+import Util
 
 -- todo
 -- + dead: QApp, <$$>, faa, inced_
@@ -24,16 +24,16 @@ import Qeq
 -- - modules: propagate, serialization, rd/wr
 -- - multi-module registry
 
-reconstituteShowD :: String -> Dynamic
-reconstituteShowD "aa" = toDyn (QNamed "aa" aa)
-reconstituteShowD "aa_" = toDyn (QNamed "aa_" aa_)
-reconstituteShowD "bb" = toDyn (QNamed "bb" bb)
-reconstituteShowD "bb_" = toDyn (QNamed "bb_" bb_)
-reconstituteShowD "inc" = toDyn (QNamed "inc" inc)
-reconstituteShowD "inc_" = toDyn (QNamed "inc_" inc_)
-reconstituteShowD "bplus" = toDyn (QNamed "bplus" bplus)
-reconstituteShowD "bplus_" = toDyn (QNamed "bplus_" bplus_)
-reconstituteShowD s = error $ show ("recon", s)
+recon :: String -> Dynamic
+recon "aa" = toDyn (QNamed "aa" aa)
+recon "aa_" = toDyn (QNamed "aa_" aa_)
+recon "bb" = toDyn (QNamed "bb" bb)
+recon "bb_" = toDyn (QNamed "bb_" bb_)
+recon "inc" = toDyn (QNamed "inc" inc)
+recon "inc_" = toDyn (QNamed "inc_" inc_)
+recon "bplus" = toDyn (QNamed "bplus" bplus)
+recon "bplus_" = toDyn (QNamed "bplus_" bplus_)
+recon s = error $ show ("recon", s)
 
 propWrite :: W -> Write -> Write
 propWrite w (Write qa a) = wr w qa a
@@ -145,60 +145,12 @@ root = QRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
 
----- Show, Read. First is shewn, second is type
-data DumDyn = DumDyn String String deriving (Read, Show)
-mkDumDyn :: (Show a, Read a, Typeable a) => a -> DumDyn
-mkDumDyn x = DumDyn (show x) (show (toDyn x))
-
-dumDynToXShowD :: DumDyn -> Dynamic
-dumDynToXShowD (DumDyn s ts) = dyn
-  where dyn = case ts of "<<Int>>" -> toDyn $ QNice (read s :: Int)
-                         "<<String>>" -> toDyn $ QNice (read s :: String)
-                         _ -> error $ "dumDynToX " ++ ts
-
-data S = SRoot | SNice DumDyn | SNamed String | SQBiSeal BS
-  deriving (Read, Show)
-data BS = BSBi S S | BSBiApp BS S
-  deriving (Read, Show)
-
-qs :: Q a -> S
-qs QRoot = SRoot
-qs (QNice x) = SNice (mkDumDyn x)
-qs (QNamed name _) = SNamed name
-qs (QBiSeal bi) = SQBiSeal (bs bi)
-
-bs :: Bi f r -> BS
-bs (Bi f r) = BSBi (qs f) (qs r)
-bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
-
-sqd :: S -> Dynamic
-sqd SRoot = toDyn QRoot
-sqd (SNice ddyn) = dumDynToXShowD ddyn
-sqd (SNamed name) = reconstituteShowD name
-sqd (SQBiSeal bis) =
-  let dbs = bqd bis
-   in fromJust $ qbiseal dbs
-
--- name should be bsbd
-bqd :: BS -> Dynamic
-bqd (BSBi sf sr) =
-  let dsf = sqd sf
-      dsr = sqd sr
-   in fromJust $ bi dsf dsr
-bqd (BSBiApp bs s) =
-  let dbs = bqd bs
-      ds = sqd s
-   in fromJust $ bsbiapp dbs ds
-
-sq :: Typeable a => S -> Q a
-sq s = fromJustVerbose "sq'" $ fromDynamic $ sqd s
-
 roundTrip :: Typeable a => Q a -> IO [Q a]
 roundTrip q = do
   let s = qs q
       ss = show s
       rs = read ss
-      q' = sq rs
+      q' = sq recon rs
       -- check = assertM "roundTrip" (q == q' && s == rs) [q, q']
       check = assertM "roundTrip" True [q, q']
   msp "===="
