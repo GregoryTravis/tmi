@@ -29,6 +29,8 @@ import Veq
 -- - V w
 --   - rid of Ty.R
 --     - pattern synonyms: https://gitlab.haskell.org/ghc/ghc/-/issues/8753
+--   - then pat syns for the other ones (bi, vroot etc below(
+--   - what about backpack?
 -- - tell ghci to load Dyn + Veq compiled?
 -- - ooo: <> for R (not for its contents) and then you don't have to say rc c = ... (?)
 -- - various lowercase 'q's
