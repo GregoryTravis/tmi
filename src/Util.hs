@@ -394,9 +394,9 @@ readFile' filePath = do
     return $!! contents
     -- return $ length contents `seq` contents
 
-fromJustVerbose :: String -> Maybe a -> a
+fromJustVerbose :: Show s => s -> Maybe a -> a
 fromJustVerbose s (Just x) = x
-fromJustVerbose s Nothing = error ("fromJustVerbose " ++ s)
+fromJustVerbose s Nothing = error ("fromJustVerbose " ++ show s)
 
 boom :: Show a => a -> b -> b
 boom m _ = error $ "boom " ++ show m

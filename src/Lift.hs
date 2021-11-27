@@ -6,8 +6,8 @@ import Data.Dynamic
 
 import Ty
 
-lift1 :: (Typeable a, Typeable b) => Bi (a -> b) (a -> R a -> R b) -> V a -> V b
+lift1 :: (Typeable a, Typeable b, Typeable w) => Bi w (a -> b) (a -> R w a -> R w b) -> V w a -> V w b
 lift1 bi qa = VBiSeal (BiApp bi qa)
 
-lift2 :: (Typeable a, Typeable b, Typeable c) => Bi (a -> b -> c) (a -> R a -> b -> R b -> R c) -> V a -> V b -> V c
+lift2 :: (Typeable a, Typeable b, Typeable c, Typeable w) => Bi w (a -> b -> c) (a -> R w a -> b -> R w b -> R w c) -> V w a -> V w b -> V w c
 lift2 bi qa qb = VBiSeal (BiApp (BiApp bi qa) qb)

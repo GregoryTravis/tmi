@@ -7,7 +7,7 @@ import Storage
 import Ty
 import Util
 
-roundTrip :: Typeable a => Reconstitutor -> V a -> IO [V a]
+roundTrip :: (Typeable a, Typeable w) => Reconstitutor -> V w a -> IO [V w a]
 roundTrip recon q = do
   let s = qs q
       ss = show s
