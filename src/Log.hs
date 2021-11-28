@@ -7,7 +7,9 @@ module Log
 import Data.Dynamic
 
 import Lift
+import Monad
 import Propagate
+import Step
 import Storage
 import Testing
 import Ty hiding (V, Bi, R)
@@ -26,22 +28,28 @@ import Veq
 -- + remove most everything else
 -- + modules: propagate, serialization, rd/wr, testlib (roundTrip)
 -- + Rename to V
--- - V w
---   - rid of Ty.R
+-- + V w
+--   + rid of Ty.R
 --     - pattern synonyms: https://gitlab.haskell.org/ghc/ghc/-/issues/8753
---   - then pat syns for the other ones (bi, vroot etc below
---   - OR don't pattern match the Rs, just add an op to write to it
---   - what about backpack?
+--   x then pat syns for the other ones (bi, vroot etc below
+--   x OR don't pattern match the Rs, just add an op to write to it
+--   x what about backpack?
+-- - try factoring Dyn stuff
+-- - main loop
+--   - apply continuation
+--   - Tmi monad (accumulate writes; take Step)
+--   - Step
+--   - state (init W, Step list, retval list)
+--   - TMI -> TMI w, Step too
+-- - Don't like applyContinuation in Log's recon
+-- - Don't like that I have VNamed names where they're declared and also in recon
 -- - Tmi re-export module
+-- - remove V prefix from V ctors
 -- - tell ghci to load Dyn + Veq compiled?
 -- - ooo: <> for R (not for its contents) and then you don't have to say rc c = ... (?)
 -- - various lowercase 'q's
 -- - rename BS/etc
 -- - general renaming
--- - main loop
---   - Tmi monad (accumulate writes; take Step)
---   - Step
---   - state (init W, Step list, retval list)
 -- - multi-module registry
 
 data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
@@ -65,6 +73,10 @@ recon "inc" = toDyn (vnamed "inc" inc)
 recon "inc_" = toDyn (vnamed "inc_" inc_)
 recon "bplus" = toDyn (vnamed "bplus" bplus)
 recon "bplus_" = toDyn (vnamed "bplus_" bplus_)
+recon "mkAStep" = toDyn (vnamed "mkAStep" mkAStep)
+recon "applyContinuation" = toDyn (vnamed "applyContinuation"
+  (applyContinuation :: Step W -> Retval -> TMI W ()))
+-- recon "nope" = toDyn (vnamed "nope" nope)
 recon s = error $ show ("recon", s)
 
 addEmBi :: Bi (Int -> Int -> Int)
@@ -116,21 +128,38 @@ root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
 
-logMain = do
-  -- Works
-  msp $ propToRoots theWorld (Write added 140)
-  msp $ propToRoots theWorld (Write added' 140)
-  msp $ propToRoots theWorld (Write added'' 140)
-  msp $ propToRoots theWorld (Write added''' 140)
-  roundTrip recon vroot
-  roundTrip recon added
-  roundTrip recon added'
-  roundTrip recon added''
-  roundTrip recon added'''
+mkAStep :: Step W
+mkAStep = Step (return ()) (\_ -> return ())
 
-  msp $ added == added
-  msp $ added == added'
-  msp $ added' == added'
-  msp $ added' == added
+vstep :: V (Step W)
+vstep = VNamed "mkAStep" mkAStep
+
+logMain = do
+  [_, vstep'] <- roundTrip recon vstep
+  let retval = mkRetval ()
+      vRetval = VNice retval
+      vApplyContinuation = VNamed "applyContinuation" applyContinuation
+      biApplyContinuation = uni vApplyContinuation
+      liftedApplyContinuation = lift2 biApplyContinuation
+      vTMI = liftedApplyContinuation vstep' vRetval
+  msp vTMI
+      -- tmi = applyContinuation step retval
+      -- tmi' = applyContinuation step' retval
+
+  -- Works
+  -- msp $ propToRoots theWorld (Write added 140)
+  -- msp $ propToRoots theWorld (Write added' 140)
+  -- msp $ propToRoots theWorld (Write added'' 140)
+  -- msp $ propToRoots theWorld (Write added''' 140)
+  -- roundTrip recon vroot
+  -- roundTrip recon added
+  -- roundTrip recon added'
+  -- roundTrip recon added''
+  -- roundTrip recon added'''
+
+  -- msp $ added == added
+  -- msp $ added == added'
+  -- msp $ added' == added'
+  -- msp $ added' == added
 
   msp "log hi"

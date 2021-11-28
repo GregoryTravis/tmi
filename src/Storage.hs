@@ -10,7 +10,7 @@ import Data.Maybe (fromJust)
 import Data.Proxy
 
 import Dyn
-import Ty
+import Ty hiding (S)
 import Util
 import V
 import Veq
@@ -66,4 +66,4 @@ bqd w recon (BSBiApp bs s) =
 sq :: forall a w. (Typeable a, Typeable w) => Reconstitutor -> S -> V w a
 sq recon s =
   let pw = Proxy :: Proxy w
-   in fromJustVerbose ("sq'", s) $ fromDynamic $ eeesp "heh" $ sqd pw recon s
+   in fromJustVerbose ("sq'", s) $ fromDynamic $ sqd pw recon s

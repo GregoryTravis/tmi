@@ -1,11 +1,8 @@
 {-# Language GADTs #-}
 
-module Ty
-( V(..)
-, Bi(..)
-, R(..)
-, Write(..) ) where
+module Ty where
 
+import Control.Monad.State.Lazy hiding (execState)
 import Type.Reflection (Typeable)
 
 data Write w = forall a. Write (V w a) a | Writes [Write w]
@@ -21,3 +18,17 @@ data V w a where
   VNice :: (Eq a, Show a, Read a, Typeable a) => a -> V w a
   VNamed :: String -> a -> V w a
   VBiSeal :: Bi w a (R w a) -> V w a
+
+data S w = S
+  { initSate :: w
+  , steps :: [Step w]
+  , retvals :: [Retval] }
+
+data Step w = forall a. (Typeable w, Typeable a, Read a, Show a) => Step (IO a) (a -> TMI w ())
+
+data Retval = Retval String
+  deriving (Eq, Show, Read)
+mkRetval :: Show a => a -> Retval
+mkRetval = Retval . show
+
+type TMI w a = StateT (S w) IO a
