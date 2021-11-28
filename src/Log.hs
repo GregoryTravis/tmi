@@ -29,8 +29,10 @@ import Veq
 -- - V w
 --   - rid of Ty.R
 --     - pattern synonyms: https://gitlab.haskell.org/ghc/ghc/-/issues/8753
---   - then pat syns for the other ones (bi, vroot etc below(
+--   - then pat syns for the other ones (bi, vroot etc below
+--   - OR don't pattern match the Rs, just add an op to write to it
 --   - what about backpack?
+-- - Tmi re-export module
 -- - tell ghci to load Dyn + Veq compiled?
 -- - ooo: <> for R (not for its contents) and then you don't have to say rc c = ... (?)
 -- - various lowercase 'q's
@@ -82,32 +84,32 @@ added''' = addEm (plurs baa) (plurs bbb)
 bplus :: Int -> Int -> Int
 bplus = (+)
 bplus_ :: Int -> R Int -> Int -> R Int -> R Int
-bplus_ _ (Ty.R ra) _ (Ty.R rb) = Ty.R rc
+bplus_ _ ra _ rb = mkR rc
   where rc c = let a = c `div` 2
                    b = c - a
-                in ra a <> rb b
+                in write ra a <> write rb b
 
 baa :: V Int
 baa = VBiSeal (BiApp (bi (VNamed "aa" aa) (VNamed "aa_" aa_)) root)
 -- BApp (VNamed "aa" aa) (VNamed "aa_" aa_) root
 -- aa :: W -> Int
 aa_ :: W -> R W -> R Int
-aa_ w (Ty.R wr) = Ty.R ir
-  where ir aa = wr $ w { aa }
+aa_ w wr = mkR ir
+  where ir aa = write wr $ w { aa }
 
 bbb :: V Int
 bbb = VBiSeal (BiApp (bi (VNamed "bb" bb) (VNamed "bb_" bb_)) root)
 -- bbb = BApp (VNamed "bb" bb) (VNamed "bb_" bb_) root
 -- bb :: W -> Int
 bb_ :: W -> R W -> R Int
-bb_ w (Ty.R wr) = Ty.R ir
-  where ir bb = wr $ w { bb }
+bb_ w wr = mkR ir
+  where ir bb = write wr $ w { bb }
 
 inc :: Int -> Int
 inc = (+1)
 inc_ :: Int -> R Int -> R Int
-inc_ _ (Ty.R r) = Ty.R r'
-  where r' i = r (i - 1)
+inc_ _ r = mkR r'
+  where r' i = write r (i - 1)
 
 root :: V W
 root = VRoot

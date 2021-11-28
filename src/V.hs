@@ -13,6 +13,12 @@ emptyWrite = Writes []
 instance Semigroup (Write w) where
   w <> w' = Writes [w, w']
 
+write :: R w a -> a -> Write w
+write (R rec) x = rec x
+
+mkR :: (a -> Write w) -> R w a
+mkR = R
+
 instance Show (Write w) where
   show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
   show (Writes ws) = show ws
