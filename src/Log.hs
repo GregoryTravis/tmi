@@ -1,10 +1,14 @@
-{-# Language GADTs, NamedFieldPuns, TypeApplications #-}
+{-# Language GADTs, KindSignatures, NamedFieldPuns, TypeApplications #-}
 
 module Log
 ( logMain
 ) where
 
 import Data.Dynamic
+import Data.Kind (Type)
+import Data.Maybe
+import Type.Reflection
+import Unsafe.Coerce
 
 import Lift
 import Monad
@@ -135,6 +139,8 @@ vstep :: V (Step W)
 vstep = VNamed "mkAStep" mkAStep
 
 logMain = do
+  dummMain
+
   [_, vstep'] <- roundTrip recon vstep
   let retval = mkRetval ()
       vRetval = VNice retval
@@ -163,3 +169,17 @@ logMain = do
   -- msp $ added' == added
 
   msp "log hi"
+
+data Dumms = Dumms Int
+
+pr :: a -> (a, a)
+pr x = (x, x)
+
+hmm :: Dumms -> a -> b
+hmm wtf x = (unsafeCoerce wtf) x
+
+dummMain = do
+  let dumpr = unsafeCoerce pr :: Dumms
+      n = 12 :: Int
+      nn = hmm dumpr n :: (Int, Int)
+  msp nn

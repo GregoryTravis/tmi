@@ -90,6 +90,7 @@ esp a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ a
   return a
 
+eesp :: Show s => s -> a -> a
 eesp s a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ s
   hFlush stdout
