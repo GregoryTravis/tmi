@@ -2,9 +2,6 @@
 
 module V where
 
-import Data.Dynamic
-import Type.Reflection
-
 import Ty
 
 emptyWrite :: Write w
@@ -20,15 +17,11 @@ mkR :: (a -> Write w) -> R w a
 mkR = R
 
 -- Turned a named forward into a Bi
-uni :: (Typeable a, Typeable b, Typeable w, Typeable c) => V w (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
+uni :: V w (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 uni vf = Bi vf nope
   where nope = VNamed "nope" (error "nope")
 
-nuni ::
-  (Typeable a, Typeable b, Typeable w, Typeable c)
-  => String
-  -> (a -> b)
-  -> Bi w (a -> b) (a -> R w a -> c)
+nuni :: String -> (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 nuni name f = uni (VNamed name f)
 
 instance Show (Write w) where

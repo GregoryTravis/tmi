@@ -62,7 +62,7 @@ data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
 type V = Ty.V W
 type Bi = Ty.Bi W
 type R = Ty.R W
-bi :: (Typeable f, Typeable r) => V f -> V r -> Bi f r
+bi :: V f -> V r -> Bi f r
 bi = Ty.Bi
 vnamed :: String -> a -> Ty.V W a
 vnamed = Ty.VNamed
@@ -139,18 +139,35 @@ mkAStep = Step (return ()) (\_ -> return ())
 vstep :: V (Step W)
 vstep = VNamed "mkAStep" mkAStep
 
+git :: String -> a
+git "biaa" = unsafeCoerce $ Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)
+git "bibb" = unsafeCoerce $ Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)
+git "bibplus" = unsafeCoerce $ Ty.Bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
+
 logMain = do
+  -- works
+  -- msp added -- just aa + bb
+  -- let baaa = BiApp (unsafeCoerce (git "biaa")) VRoot
+  --     slaa = VBiSeal baaa
+  --     babb = BiApp (unsafeCoerce (git "bibb")) VRoot
+  --     slbb = VBiSeal babb
+  --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (git "bibplus")) slaa) slbb)
+  -- msp pl
+  -- msp $ show added == show pl
+  -- msp $ added == pl
+  -- msp $ added == slaa
+
   -- works but can't do v->s->v?
-  [_, vstep'] <- roundTrip recon vstep
-  let retval = mkRetval ()
-      vRetval = VNice retval
-      vApplyContinuation = VNamed "applyContinuation" applyContinuation
-      biApplyContinuation = uni vApplyContinuation
-      liftedApplyContinuation = lift2 biApplyContinuation
-      vTMI = liftedApplyContinuation vstep' vRetval
-  msp vTMI
-      -- tmi = applyContinuation step retval
-      -- tmi' = applyContinuation step' retval
+  -- [_, vstep'] <- roundTrip recon vstep
+  -- let retval = mkRetval ()
+  --     vRetval = VNice retval
+  --     vApplyContinuation = VNamed "applyContinuation" applyContinuation
+  --     biApplyContinuation = uni vApplyContinuation
+  --     liftedApplyContinuation = lift2 biApplyContinuation
+  --     vTMI = liftedApplyContinuation vstep' vRetval
+  -- msp vTMI
+  --     -- tmi = applyContinuation step retval
+  --     -- tmi' = applyContinuation step' retval
 
   -- Works
   -- msp $ propToRoots theWorld (Write added 140)
@@ -167,77 +184,7 @@ logMain = do
   -- msp $ added == added'
   -- msp $ added' == added'
   -- msp $ added' == added
+  -- msp $ added' == added''
+  -- msp $ added' == added'''
 
   msp "log hi"
-
-{-
-data Dumms = Dumms Int
-
-pr :: a -> (a, a)
-pr x = (x, x)
-
-hmm :: Dumms -> a -> b
-hmm wtf x = (unsafeCoerce wtf) x
-
-data Foo a b c = Foo a (b, c) deriving Show
-fooSnd :: Foo a b c -> (b, c)
-fooSnd (Foo _ p) = p
-
-data WW = WW { foo :: Foo Int Float String } deriving Show
-ww = WW { foo = Foo 12 (13.5, "hey") }
-
-git :: String -> a
-git "foo" = unsafeCoerce foo
-git "fooSnd" = unsafeCoerce fooSnd
-git "swap" = unsafeCoerce swap
-
-type VV = Ty.V WW
-wwroot :: VV WW
-wwroot = VRoot
-
-_foo :: VV WW -> VV (Foo Int Float String)
-_foo = lift1 $ Ty.Bi (VNamed "foo" foo) undefined
--- _fooSnd :: VV (Foo Int Float String) -> VV (Float, String)
-_fooSnd :: (Typeable a, Typeable b, Typeable c) => VV (Foo a b c) -> VV (b, c)
-_fooSnd = lift1 $ Ty.Bi (VNamed "fooSnd" fooSnd) undefined
-_swap :: (Typeable a, Typeable b) => VV (a, b) -> VV (b, a)
--- _swap :: VV (a, b) -> VV (b, a)
-_swap = lift1 $ Ty.Bi (VNamed "swap" swap) undefined
-
-vgit :: {-Typeable a =>-} String -> a
-vgit "_foo" = unsafeCoerce _foo
--- vgit "_fooSnd" = unsafeCoerce _fooSnd
--- vgit "_swap" = unsafeCoerce _swap
-
-tid :: Typeable a => a -> a
-tid x = x
-
-dummMain = do
-  -- works
-  -- msp $ rd ww wwroot
-  -- msp $ rd ww (_foo wwroot)
-  -- msp $ rd ww (_fooSnd (_foo wwroot))
-  -- msp $ rd ww (_swap (_fooSnd (_foo wwroot)))
-  let vf = vgit "_foo" wwroot :: VV (Foo Int Float String)
-      vpr = vgit "_fooSnd" $ vgit "_foo" wwroot :: VV (Float, String)
-      -- vprs = vgit "_swap" $ vgit "_fooSnd" $ vgit "_foo" wwroot :: VV (String, Float)
-  msp $ rd ww vf
-  msp $ rd ww vpr
-  -- msp $ rd ww vprs
-
-  -- works
-  -- let fs = git "foo" ww :: Foo Int Float String
-  --     pr = git "fooSnd" $ git "foo" ww :: (Float, String)
-  --     prs = git "swap" $ git "fooSnd" $ git "foo" ww :: (Float, String)
-  --     prs' = git "swap" pr :: (String, Float)
-  -- msp fs
-  -- msp pr
-  -- msp prs
-  -- msp prs'
-
-  -- let dumpr = unsafeCoerce pr :: Dumms
-  --     n = 12 :: Int
-  --     nn = hmm dumpr n :: (Int, Int)
-  -- msp nn
-  msp "ho"
--}
