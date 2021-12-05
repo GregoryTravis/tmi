@@ -2,13 +2,14 @@
 
 module Storage
 ( Reconstitutor
--- , qs
--- , sq )
+, qs
+, unqs
 ) where 
 
--- import Data.Dynamic
+import Data.Dynamic
 import Data.Maybe (fromJust)
 import Data.Proxy
+import Unsafe.Coerce
 
 import Dyn
 import Ty hiding (S)
@@ -30,20 +31,43 @@ type Reconstitutor = forall a. String -> a
 --                          "<<String>>" -> toDyn $ ((VNice (read s :: String)) :: V w String)
 --                          _ -> error $ "dumDynToX " ++ ts
 
--- data S = SRoot | SNice DumDyn | SNamed String | SVBiSeal BS
---   deriving (Eq, Read, Show)
--- data BS = BSBi S S | BSBiApp BS S
---   deriving (Eq, Read, Show)
+  -- let baaa = BiApp (unsafeCoerce (recon "aa")) VRoot
+  --     slaa = VBiSeal baaa
+  --     babb = BiApp (unsafeCoerce (recon "bb")) VRoot
+  --     slbb = VBiSeal babb
+  --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
 
--- qs :: V w a -> S
--- qs VRoot = SRoot
--- qs (VNice x) = SNice (mkDumDyn x)
--- qs (VNamed name _) = SNamed name
--- qs (VBiSeal bi) = SVBiSeal (bs bi)
+dumToShow :: String -> String -> a
+dumToShow s "<<Int>>" = unsafeCoerce (read s :: Int)
+dumToShow s "<<String>>" = unsafeCoerce (read s :: String) -- TODO just return s
 
--- bs :: Bi w f r -> BS
--- bs (Bi f r) = BSBi (qs f) (qs r)
--- bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
+data S = SRoot | SNice String String | SNamed String | SVBiSeal BS
+  deriving (Eq, Read, Show)
+data BS = BSBi S S | BSBiApp BS S
+  deriving (Eq, Read, Show)
+
+qs :: V w a -> S
+qs VRoot = SRoot
+qs (VNice x) = SNice (show x) (show (toDyn x))
+qs (VNamed name _) = SNamed name
+qs (VBiSeal bi) = SVBiSeal (bs bi)
+
+bs :: Bi w f r -> BS
+bs (Bi f r) = BSBi (qs f) (qs r)
+bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
+
+unqs :: Reconstitutor -> S -> V w a
+unqs recon SRoot = unsafeCoerce VRoot
+unqs recon (SNice shown typeS) = dumToShow shown typeS
+unqs recon (SNamed name) = recon name
+unqs recon (SVBiSeal bis) = VBiSeal (unbs recon bis)
+
+unbs :: Reconstitutor -> BS -> Bi w f r
+unbs recon (BSBi sf sv) = Bi (unqs recon sf) (unqs recon sv)
+unbs recon (BSBiApp bs sv) = BiApp (unbs recon bs) (unqs recon sv)
+
+  -- Bi :: V w f -> V w r -> Bi w f r
+  -- BiApp :: Bi w (a -> b) (a -> R w a -> c) -> V w a -> Bi w b c
 
 -- sqd :: forall w. Typeable w => Proxy w -> Reconstitutor -> S -> Dynamic
 -- sqd w recon SRoot = toDyn (VRoot :: V w w)

@@ -2,6 +2,8 @@
 
 module Ty where
 
+import Data.Dynamic (Typeable)
+
 import Control.Monad.State.Lazy hiding (execState)
 
 data Write w = forall a. Write (V w a) a | Writes [Write w]
@@ -14,7 +16,7 @@ data Bi w f r where
 
 data V w a where
   VRoot :: V w w
-  VNice :: (Eq a, Show a, Read a) => a -> V w a
+  VNice :: (Typeable a, Eq a, Show a, Read a) => a -> V w a
   VNamed :: String -> a -> V w a
   VBiSeal :: Bi w a (R w a) -> V w a
 

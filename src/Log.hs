@@ -4,11 +4,11 @@ module Log
 ( logMain
 ) where
 
-import Data.Dynamic
-import Data.Kind (Type)
+-- import Data.Dynamic
+-- import Data.Kind (Type)
 import Data.Maybe
 import Data.Tuple
-import Type.Reflection
+-- import Type.Reflection
 import Unsafe.Coerce
 
 import Lift
@@ -69,20 +69,20 @@ vnamed = Ty.VNamed
 vroot :: V W
 vroot = Ty.VRoot
 
-recon :: String -> Dynamic
-recon "aa" = toDyn (vnamed "aa" aa)
-recon "aa_" = toDyn (vnamed "aa_" aa_)
-recon "bb" = toDyn (vnamed "bb" bb)
-recon "bb_" = toDyn (vnamed "bb_" bb_)
-recon "inc" = toDyn (vnamed "inc" inc)
-recon "inc_" = toDyn (vnamed "inc_" inc_)
-recon "bplus" = toDyn (vnamed "bplus" bplus)
-recon "bplus_" = toDyn (vnamed "bplus_" bplus_)
-recon "mkAStep" = toDyn (vnamed "mkAStep" mkAStep)
-recon "applyContinuation" = toDyn (vnamed "applyContinuation"
-  (applyContinuation :: Step W -> Retval -> TMI W ()))
--- recon "nope" = toDyn (vnamed "nope" nope)
-recon s = error $ show ("recon", s)
+-- recon :: String -> Dynamic
+-- recon "aa" = toDyn (vnamed "aa" aa)
+-- recon "aa_" = toDyn (vnamed "aa_" aa_)
+-- recon "bb" = toDyn (vnamed "bb" bb)
+-- recon "bb_" = toDyn (vnamed "bb_" bb_)
+-- recon "inc" = toDyn (vnamed "inc" inc)
+-- recon "inc_" = toDyn (vnamed "inc_" inc_)
+-- recon "bplus" = toDyn (vnamed "bplus" bplus)
+-- recon "bplus_" = toDyn (vnamed "bplus_" bplus_)
+-- recon "mkAStep" = toDyn (vnamed "mkAStep" mkAStep)
+-- recon "applyContinuation" = toDyn (vnamed "applyContinuation"
+--   (applyContinuation :: Step W -> Retval -> TMI W ()))
+-- -- recon "nope" = toDyn (vnamed "nope" nope)
+-- recon s = error $ show ("recon", s)
 
 addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)
@@ -139,24 +139,21 @@ mkAStep = Step (return ()) (\_ -> return ())
 vstep :: V (Step W)
 vstep = VNamed "mkAStep" mkAStep
 
-git :: String -> a
-git "biaa" = unsafeCoerce $ Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)
-git "bibb" = unsafeCoerce $ Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)
-git "bibplus" = unsafeCoerce $ Ty.Bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
+recon :: String -> a
+recon "aa" = unsafeCoerce $ VNamed "aa" aa
+recon "aa_" = unsafeCoerce $ VNamed "aa_" aa_
+recon "bb" = unsafeCoerce $ VNamed "bb" bb
+recon "bb_" = unsafeCoerce $ VNamed "bb_" bb_
+recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
+recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
+recon "inc" = unsafeCoerce $ VNamed "inc" inc
+recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
+-- recon "aa" = unsafeCoerce $ Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)
+-- recon "bb" = unsafeCoerce $ Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)
+-- recon "bplus_" = unsafeCoerce $ Ty.Bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
+recon s = error $ "recon?? " ++ s
 
 logMain = do
-  -- works
-  -- msp added -- just aa + bb
-  -- let baaa = BiApp (unsafeCoerce (git "biaa")) VRoot
-  --     slaa = VBiSeal baaa
-  --     babb = BiApp (unsafeCoerce (git "bibb")) VRoot
-  --     slbb = VBiSeal babb
-  --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (git "bibplus")) slaa) slbb)
-  -- msp pl
-  -- msp $ show added == show pl
-  -- msp $ added == pl
-  -- msp $ added == slaa
-
   -- works but can't do v->s->v?
   -- [_, vstep'] <- roundTrip recon vstep
   -- let retval = mkRetval ()
@@ -170,21 +167,34 @@ logMain = do
   --     -- tmi' = applyContinuation step' retval
 
   -- Works
-  -- msp $ propToRoots theWorld (Write added 140)
-  -- msp $ propToRoots theWorld (Write added' 140)
-  -- msp $ propToRoots theWorld (Write added'' 140)
-  -- msp $ propToRoots theWorld (Write added''' 140)
-  -- roundTrip recon vroot
-  -- roundTrip recon added
-  -- roundTrip recon added'
-  -- roundTrip recon added''
-  -- roundTrip recon added'''
+  msp $ propToRoots theWorld (Write added 140)
+  msp $ propToRoots theWorld (Write added' 140)
+  msp $ propToRoots theWorld (Write added'' 140)
+  msp $ propToRoots theWorld (Write added''' 140)
+  roundTrip recon vroot
+  roundTrip recon added
+  roundTrip recon added'
+  roundTrip recon added''
+  roundTrip recon added'''
 
-  -- msp $ added == added
-  -- msp $ added == added'
-  -- msp $ added' == added'
-  -- msp $ added' == added
-  -- msp $ added' == added''
-  -- msp $ added' == added'''
+  -- Works
+  msp $ added == added
+  msp $ added == added'
+  msp $ added' == added'
+  msp $ added' == added
+  msp $ added' == added''
+  msp $ added' == added'''
+
+  -- works, or rather did before I split the recon bis
+  -- msp added -- just aa + bb
+  -- let baaa = BiApp (unsafeCoerce (recon "aa")) VRoot
+  --     slaa = VBiSeal baaa
+  --     babb = BiApp (unsafeCoerce (recon "bb")) VRoot
+  --     slbb = VBiSeal babb
+  --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
+  -- msp pl
+  -- msp $ show added == show pl
+  -- msp $ added == pl
+  -- msp $ added == slaa
 
   msp "log hi"

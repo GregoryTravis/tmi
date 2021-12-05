@@ -1,7 +1,7 @@
 {-# Language RankNTypes #-}
 
 module Testing
--- ( roundTrip )
+( roundTrip )
 where
 
 import Data.Dynamic
@@ -10,18 +10,22 @@ import Storage
 import Ty
 import Util
 
--- roundTrip :: Reconstitutor -> V w a -> IO [V w a]
--- roundTrip recon q = do
---   let s = qs q
---       ss = show s
---       rs = read ss
---       q' = sq recon rs
---       check = assertM "roundTrip" (q == q' && s == rs) [q, q']
---   msp "===="
---   msp q
---   msp s
---   msp ss
---   msp rs
---   msp q'
---   msp "===="
---   return check
+-- Only returning the old + new values so they're the same type, because I
+-- don't know how to use (~).
+roundTrip :: Reconstitutor -> V w a -> IO [V w a]
+roundTrip recon q = do
+  let s = qs q
+      ss = show s
+      rs = read ss
+      q' = unqs recon rs
+      same = (q == q' && s == rs)
+      check = assertM "roundTrip" same [q, q']
+  -- msp "===="
+  -- msp q
+  -- msp s
+  -- msp ss
+  -- msp rs
+  -- msp q'
+  -- msp "===="
+  msp $ "same " ++ show same
+  return check
