@@ -148,42 +148,39 @@ recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
 recon "inc" = unsafeCoerce $ VNamed "inc" inc
 recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
--- recon "aa" = unsafeCoerce $ Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)
--- recon "bb" = unsafeCoerce $ Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)
--- recon "bplus_" = unsafeCoerce $ Ty.Bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
+recon "mkAStep" = unsafeCoerce $ VNamed "mkAStep" mkAStep
+recon "applyContinuation" = unsafeCoerce $ VNamed "applyContinuation" applyContinuation
 recon s = error $ "recon?? " ++ s
 
 logMain = do
   -- works but can't do v->s->v?
-  -- [_, vstep'] <- roundTrip recon vstep
-  -- let retval = mkRetval ()
-  --     vRetval = VNice retval
-  --     vApplyContinuation = VNamed "applyContinuation" applyContinuation
-  --     biApplyContinuation = uni vApplyContinuation
-  --     liftedApplyContinuation = lift2 biApplyContinuation
-  --     vTMI = liftedApplyContinuation vstep' vRetval
-  -- msp vTMI
-  --     -- tmi = applyContinuation step retval
-  --     -- tmi' = applyContinuation step' retval
+  [_, vstep'] <- roundTrip recon vstep
+  let retval = mkRetval ()
+      vRetval = VNice retval
+      vApplyContinuation = VNamed "applyContinuation" applyContinuation
+      biApplyContinuation = uni vApplyContinuation
+      liftedApplyContinuation = lift2 biApplyContinuation
+      vTMI = liftedApplyContinuation vstep' vRetval
+  msp vTMI
+      -- tmi = applyContinuation step retval
+      -- tmi' = applyContinuation step' retval
 
   -- Works
-  msp $ propToRoots theWorld (Write added 140)
-  msp $ propToRoots theWorld (Write added' 140)
-  msp $ propToRoots theWorld (Write added'' 140)
-  msp $ propToRoots theWorld (Write added''' 140)
-  roundTrip recon vroot
-  roundTrip recon added
-  roundTrip recon added'
-  roundTrip recon added''
-  roundTrip recon added'''
-
-  -- Works
-  msp $ added == added
-  msp $ added == added'
-  msp $ added' == added'
-  msp $ added' == added
-  msp $ added' == added''
-  msp $ added' == added'''
+  -- msp $ propToRoots theWorld (Write added 140)
+  -- msp $ propToRoots theWorld (Write added' 140)
+  -- msp $ propToRoots theWorld (Write added'' 140)
+  -- msp $ propToRoots theWorld (Write added''' 140)
+  -- roundTrip recon vroot
+  -- roundTrip recon added
+  -- roundTrip recon added'
+  -- roundTrip recon added''
+  -- roundTrip recon added'''
+  -- msp $ added == added
+  -- msp $ added == added'
+  -- msp $ added' == added'
+  -- msp $ added' == added
+  -- msp $ added' == added''
+  -- msp $ added' == added'''
 
   -- works, or rather did before I split the recon bis
   -- msp added -- just aa + bb
