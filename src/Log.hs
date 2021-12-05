@@ -150,6 +150,7 @@ recon "inc" = unsafeCoerce $ VNamed "inc" inc
 recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "mkAStep" = unsafeCoerce $ VNamed "mkAStep" mkAStep
 recon "applyContinuation" = unsafeCoerce $ VNamed "applyContinuation" applyContinuation
+recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
 logMain = do
@@ -161,7 +162,14 @@ logMain = do
       biApplyContinuation = uni vApplyContinuation
       liftedApplyContinuation = lift2 biApplyContinuation
       vTMI = liftedApplyContinuation vstep' vRetval
+  -- msp vRetval
+  -- msp $ qs vRetval
+  -- msp $ ((unqs recon $ qs $ vRetval) :: V Retval)
   msp vTMI
+  roundTrip recon vTMI >>= msp
+  -- ya <- roundTrip recon vRetval :: IO [V Retval]
+  -- msp ya
+
       -- tmi = applyContinuation step retval
       -- tmi' = applyContinuation step' retval
 

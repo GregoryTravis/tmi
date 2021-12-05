@@ -19,7 +19,7 @@ mkR = R
 -- Turned a named forward into a Bi
 uni :: V w (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 uni vf = Bi vf nope
-  where nope = VNamed "nope" (error "nope")
+nope = VNamed "nope" (error "nope")
 
 nuni :: String -> (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 nuni name f = uni (VNamed name f)
@@ -29,6 +29,7 @@ instance Show (Write w) where
   show (Writes ws) = show ws
 
 instance Show (V w a) where
+  show VDummy = "VDummy"
   show VRoot = "VRoot"
   show (VNice x) = "(VNice " ++ show x ++ ")"
   show (VNamed name _) = "(VNamed " ++ name ++ ")"

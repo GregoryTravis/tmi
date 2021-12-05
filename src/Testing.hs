@@ -4,6 +4,7 @@ module Testing
 ( roundTrip )
 where
 
+import Control.Monad (when)
 import Data.Dynamic
 
 import Storage
@@ -18,14 +19,15 @@ roundTrip recon q = do
       ss = show s
       rs = read ss
       q' = unqs recon rs
-      same = (q == q' && s == rs)
+      same = q == q' && s == rs
       check = assertM "roundTrip" same [q, q']
-  -- msp "===="
-  -- msp q
-  -- msp s
-  -- msp ss
-  -- msp rs
-  -- msp q'
-  -- msp "===="
+  when (not same) $ do
+    msp "===="
+    msp q
+    msp s
+    msp ss
+    msp rs
+    msp q'
+    msp "===="
   msp $ "same " ++ show same
   return check

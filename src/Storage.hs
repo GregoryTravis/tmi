@@ -9,6 +9,7 @@ module Storage
 import Data.Dynamic
 import Data.Maybe (fromJust)
 import Data.Proxy
+-- import Data.Typeable (typeOf)
 import Unsafe.Coerce
 
 import Dyn
@@ -37,9 +38,14 @@ type Reconstitutor = forall a. String -> a
   --     slbb = VBiSeal babb
   --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
 
-dumToShow :: String -> String -> a
+dumToShow :: (Eq a, Typeable a) => String -> String -> a
 dumToShow s "<<Int>>" = unsafeCoerce (read s :: Int)
 dumToShow s "<<String>>" = unsafeCoerce (read s :: String) -- TODO just return s
+dumToShow s "<<Retval>>" = unsafeCoerce $ eeesp ("umm", s) (read s :: Retval) -- TODO just return s
+dumToShow s typeS = error $ "dumToShow?? " ++ s ++ " " ++ typeS
+
+-- dumToShowVNice :: (Eq a, Show a, Read a, Typeable a) => String -> String -> V w a
+-- dumToShowVNice s "<<Int>>" = unsafeCoerce $ VNice (read s :: Int)
 
 data S = SRoot | SNice String String | SNamed String | SVBiSeal BS
   deriving (Eq, Read, Show)
@@ -58,7 +64,18 @@ bs (BiApp bi q) = BSBiApp (bs bi) (qs q)
 
 unqs :: Reconstitutor -> S -> V w a
 unqs recon SRoot = unsafeCoerce VRoot
-unqs recon (SNice shown typeS) = dumToShow shown typeS
+
+-- unqs recon (SNice shown typeS) = VNice $ dumToShow shown typeS
+-- unqs recon (SNice shown typeS) =
+--   dumToShowVNice shown typeS :: (Show c, Eq c, Read c, Typeable c) => V w c
+-- should be t.o.
+-- unqs recon (SNice shown typeS) = dumToShowVNice shown typeS
+-- unqs recon (SNice shown typeS) = error "VNice"
+unqs recon (SNice shown "<<Int>>") = unsafeCoerce $ VNice (read shown :: Int)
+unqs recon (SNice shown "<<String>>") = unsafeCoerce $ VNice (read shown :: String)
+unqs recon (SNice shown "<<Retval>>") = unsafeCoerce $ VNice (read shown :: Retval)
+unqs recon (SNice shown typeS) = error $ "unqs type?? " ++ shown ++ " " ++ typeS
+
 unqs recon (SNamed name) = recon name
 unqs recon (SVBiSeal bis) = VBiSeal (unbs recon bis)
 
