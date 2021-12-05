@@ -7,6 +7,7 @@ module Log
 import Data.Dynamic
 import Data.Kind (Type)
 import Data.Maybe
+import Data.Tuple
 import Type.Reflection
 import Unsafe.Coerce
 
@@ -139,8 +140,7 @@ vstep :: V (Step W)
 vstep = VNamed "mkAStep" mkAStep
 
 logMain = do
-  dummMain
-
+  -- works but can't do v->s->v?
   [_, vstep'] <- roundTrip recon vstep
   let retval = mkRetval ()
       vRetval = VNice retval
@@ -170,6 +170,7 @@ logMain = do
 
   msp "log hi"
 
+{-
 data Dumms = Dumms Int
 
 pr :: a -> (a, a)
@@ -178,8 +179,65 @@ pr x = (x, x)
 hmm :: Dumms -> a -> b
 hmm wtf x = (unsafeCoerce wtf) x
 
+data Foo a b c = Foo a (b, c) deriving Show
+fooSnd :: Foo a b c -> (b, c)
+fooSnd (Foo _ p) = p
+
+data WW = WW { foo :: Foo Int Float String } deriving Show
+ww = WW { foo = Foo 12 (13.5, "hey") }
+
+git :: String -> a
+git "foo" = unsafeCoerce foo
+git "fooSnd" = unsafeCoerce fooSnd
+git "swap" = unsafeCoerce swap
+
+type VV = Ty.V WW
+wwroot :: VV WW
+wwroot = VRoot
+
+_foo :: VV WW -> VV (Foo Int Float String)
+_foo = lift1 $ Ty.Bi (VNamed "foo" foo) undefined
+-- _fooSnd :: VV (Foo Int Float String) -> VV (Float, String)
+_fooSnd :: (Typeable a, Typeable b, Typeable c) => VV (Foo a b c) -> VV (b, c)
+_fooSnd = lift1 $ Ty.Bi (VNamed "fooSnd" fooSnd) undefined
+_swap :: (Typeable a, Typeable b) => VV (a, b) -> VV (b, a)
+-- _swap :: VV (a, b) -> VV (b, a)
+_swap = lift1 $ Ty.Bi (VNamed "swap" swap) undefined
+
+vgit :: {-Typeable a =>-} String -> a
+vgit "_foo" = unsafeCoerce _foo
+-- vgit "_fooSnd" = unsafeCoerce _fooSnd
+-- vgit "_swap" = unsafeCoerce _swap
+
+tid :: Typeable a => a -> a
+tid x = x
+
 dummMain = do
-  let dumpr = unsafeCoerce pr :: Dumms
-      n = 12 :: Int
-      nn = hmm dumpr n :: (Int, Int)
-  msp nn
+  -- works
+  -- msp $ rd ww wwroot
+  -- msp $ rd ww (_foo wwroot)
+  -- msp $ rd ww (_fooSnd (_foo wwroot))
+  -- msp $ rd ww (_swap (_fooSnd (_foo wwroot)))
+  let vf = vgit "_foo" wwroot :: VV (Foo Int Float String)
+      vpr = vgit "_fooSnd" $ vgit "_foo" wwroot :: VV (Float, String)
+      -- vprs = vgit "_swap" $ vgit "_fooSnd" $ vgit "_foo" wwroot :: VV (String, Float)
+  msp $ rd ww vf
+  msp $ rd ww vpr
+  -- msp $ rd ww vprs
+
+  -- works
+  -- let fs = git "foo" ww :: Foo Int Float String
+  --     pr = git "fooSnd" $ git "foo" ww :: (Float, String)
+  --     prs = git "swap" $ git "fooSnd" $ git "foo" ww :: (Float, String)
+  --     prs' = git "swap" pr :: (String, Float)
+  -- msp fs
+  -- msp pr
+  -- msp prs
+  -- msp prs'
+
+  -- let dumpr = unsafeCoerce pr :: Dumms
+  --     n = 12 :: Int
+  --     nn = hmm dumpr n :: (Int, Int)
+  -- msp nn
+  msp "ho"
+-}
