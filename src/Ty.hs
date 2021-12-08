@@ -23,7 +23,7 @@ data V w a where
 
 data S w = S
   { initSate :: w
-  , steps :: [Step w]
+  -- , steps :: [Step w]
   , retvals :: [Retval] }
 
 data Step w = forall a. Read a => Step (IO a) (a -> TMI w ())
@@ -34,3 +34,4 @@ mkRetval :: Show a => a -> Retval
 mkRetval = Retval . show
 
 type TMI w a = StateT (S w) IO a
+-- data TMI w a = TMI
