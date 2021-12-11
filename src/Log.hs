@@ -14,7 +14,6 @@ import Unsafe.Coerce
 import Lift
 import Monad
 import Propagate
-import Step
 import Storage
 import Testing
 import Ty hiding (V, Bi, R)
@@ -136,12 +135,6 @@ root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
 
-mkAStep :: Step W
-mkAStep = Step (return ()) (\_ -> return ())
-
-vstep :: V (Step W)
-vstep = VNamed "mkAStep" mkAStep
-
 recon :: String -> a
 recon "aa" = unsafeCoerce $ VNamed "aa" aa
 recon "aa_" = unsafeCoerce $ VNamed "aa_" aa_
@@ -151,107 +144,26 @@ recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
 recon "inc" = unsafeCoerce $ VNamed "inc" inc
 recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
-recon "mkAStep" = unsafeCoerce $ VNamed "mkAStep" mkAStep
-recon "applyContinuation" = unsafeCoerce $ VNamed "applyContinuation" applyContinuation
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
-foo :: Int -> Int
-foo x = x * 2
-
-fooK :: Int -> (Int -> r) -> r
-fooK x k = k (x * 2)
-fooK' :: Int -> (Int -> r) -> r
-fooK' = klift foo
-
-klift :: (a -> b) -> (a -> (b -> r) -> r)
-klift f = \x k -> k (f x)
-
--- here's the method
--- a in double negative position means you can magically produce an a inside an application
--- foo :: (a -> b) -> c
--- foo a2b = a2b (\a -> ... use a to produce c)
-
--- (>>=) :: forall a b. m a -> (a -> m b) -> m b
-data C r a = C ((a -> r) -> r)
--- ((a -> r) -> r) >>= (a -> (b -> r) -> r) :: C r b
-boond :: ((a -> r) -> r) -> (a -> (b -> r) -> r) -> ((b -> r) -> r)
-boond kfa a2kfb = \b2r -> kfa ((flip a2kfb) b2r)
-
-boondC :: C r a -> (a -> C r b) -> C r b
--- yikes
--- boondC (C kfa) a2Crb = C (\b2r -> kfa (\a -> (case (a2Crb a) of C br2r -> br2r) b2r))
--- still yikes
-boondC (C kfa) a2Crb = C foo
-  where foo b2r = kfa bar
-          where bar a = -- (case (a2Crb a) of C br2r -> br2r) b2r
-                  let C br2r = a2Crb a
-                   in br2r b2r
-
--- fmap :: (a -> b) -> f a -> f b
--- fmap :: (a -> b) -> C ((a -> r) -> r) -> C ((b -> r) -> r)
--- so much yikes
-instance Functor (C r) where
-  fmap ab (C ar2r) = C br2r
-    where br2r b2r = ar2r (\a -> b2r (ab a))
-
--- pure :: a -> f a
--- (<*>) :: f (a -> b) -> f a -> f b 
--- (<*>) :: C r (a -> b) -> C r a -> C r b 
--- (<*>) :: C (((a -> b) -> r) -> r) -- a2b2r2r
---       -> C ((a -> r) -> r)        -- a2r2r
---       -> C ((b -> r) -> r)        -- b2r2r
--- yikes out the wazoo
-instance Applicative (C r) where
-  pure x = C (\k -> k x)
-  C a2b2r2r <*> C a2r2r =
-    let b2r2r b2r =  -- return an r
-          a2b2r2r (\a2b -> a2r2r (\a -> b2r (a2b a)))
-          -- a2b2r2r (\a2b2r -> a2b2r (\a2b -> a2r2r (\a -> b2r (a2b a))))
-     in C b2r2r
-
-instance Monad (C r) where
-  (>>=) = boondC
-
 logMain = do
-  msp $ fooK 12 (\x -> show $ "yep " ++ show x)
-  msp $ fooK' 13 (\x -> show $ "yep " ++ show x)
-
-  -- works but can't do v->s->v?
-  [_, vstep'] <- roundTrip recon vstep
-  let retval = mkRetval ()
-      vRetval = VNice retval
-      vApplyContinuation = VNamed "applyContinuation" applyContinuation
-      biApplyContinuation = uni vApplyContinuation
-      liftedApplyContinuation = lift2 biApplyContinuation
-      vTMI = liftedApplyContinuation vstep' vRetval
-  -- msp vRetval
-  -- msp $ qs vRetval
-  -- msp $ ((unqs recon $ qs $ vRetval) :: V Retval)
-  msp vTMI
-  roundTrip recon vTMI >>= msp
-  -- ya <- roundTrip recon vRetval :: IO [V Retval]
-  -- msp ya
-
-      -- tmi = applyContinuation step retval
-      -- tmi' = applyContinuation step' retval
-
   -- Works
-  -- msp $ propToRoots theWorld (Write added 140)
-  -- msp $ propToRoots theWorld (Write added' 140)
-  -- msp $ propToRoots theWorld (Write added'' 140)
-  -- msp $ propToRoots theWorld (Write added''' 140)
-  -- roundTrip recon vroot
-  -- roundTrip recon added
-  -- roundTrip recon added'
-  -- roundTrip recon added''
-  -- roundTrip recon added'''
-  -- msp $ added == added
-  -- msp $ added == added'
-  -- msp $ added' == added'
-  -- msp $ added' == added
-  -- msp $ added' == added''
-  -- msp $ added' == added'''
+  msp $ propToRoots theWorld (Write added 140)
+  msp $ propToRoots theWorld (Write added' 140)
+  msp $ propToRoots theWorld (Write added'' 140)
+  msp $ propToRoots theWorld (Write added''' 140)
+  roundTrip recon vroot
+  roundTrip recon added
+  roundTrip recon added'
+  roundTrip recon added''
+  roundTrip recon added'''
+  msp $ added == added
+  msp $ added == added'
+  msp $ added' == added'
+  msp $ added' == added
+  msp $ added' == added''
+  msp $ added' == added'''
 
   -- works, or rather did before I split the recon bis
   -- msp added -- just aa + bb

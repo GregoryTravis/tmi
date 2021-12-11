@@ -20,18 +20,3 @@ data V w a where
   VNice :: (Typeable a, Eq a, Show a, Read a) => a -> V w a
   VNamed :: String -> a -> V w a
   VBiSeal :: Bi w a (R w a) -> V w a
-
-data S w = S
-  { initSate :: w
-  -- , steps :: [Step w]
-  , retvals :: [Retval] }
-
-data Step w = forall a. Read a => Step (IO a) (a -> TMI w ())
-
-data Retval = Retval String
-  deriving (Eq, Show, Read)
-mkRetval :: Show a => a -> Retval
-mkRetval = Retval . show
-
-type TMI w a = StateT (S w) IO a
--- data TMI w a = TMI

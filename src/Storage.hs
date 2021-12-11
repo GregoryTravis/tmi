@@ -41,7 +41,7 @@ type Reconstitutor = forall a. String -> a
 dumToShow :: (Eq a, Typeable a) => String -> String -> a
 dumToShow s "<<Int>>" = unsafeCoerce (read s :: Int)
 dumToShow s "<<String>>" = unsafeCoerce (read s :: String) -- TODO just return s
-dumToShow s "<<Retval>>" = unsafeCoerce $ eeesp ("umm", s) (read s :: Retval) -- TODO just return s
+-- dumToShow s "<<Retval>>" = unsafeCoerce $ eeesp ("umm", s) (read s :: Retval) -- TODO just return s
 dumToShow s typeS = error $ "dumToShow?? " ++ s ++ " " ++ typeS
 
 -- dumToShowVNice :: (Eq a, Show a, Read a, Typeable a) => String -> String -> V w a
@@ -73,7 +73,7 @@ unqs recon SRoot = unsafeCoerce VRoot
 -- unqs recon (SNice shown typeS) = error "VNice"
 unqs recon (SNice shown "<<Int>>") = unsafeCoerce $ VNice (read shown :: Int)
 unqs recon (SNice shown "<<String>>") = unsafeCoerce $ VNice (read shown :: String)
-unqs recon (SNice shown "<<Retval>>") = unsafeCoerce $ VNice (read shown :: Retval)
+-- unqs recon (SNice shown "<<Retval>>") = unsafeCoerce $ VNice (read shown :: Retval)
 unqs recon (SNice shown typeS) = error $ "unqs type?? " ++ shown ++ " " ++ typeS
 
 unqs recon (SNamed name) = recon name
