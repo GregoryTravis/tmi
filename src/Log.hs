@@ -148,19 +148,25 @@ recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
 program :: Core W
-program = One (Assign (Write baa 140)) (One (Assign (Write bbb 1111)) Done)
+program =
+  (One (Assign (Write baa 140))
+  (One (Call (msp "in here"))
+  (One (Assign (Write bbb 1111)) Done)))
 -- program = Done
 
-runProgram :: Show w => w -> Core w -> w
+runProgram :: Show w => w -> Core w -> IO w
 runProgram world (One step k) =
   case step of Assign write -> let newWorld = one $ propToRoots world write
                                 in runProgram newWorld k
+               Call action -> do () <- action
+                                 runProgram world k
   where one [x] = x
         one xs = error $ "there can be only one " ++ show xs
-runProgram world Done = world
+runProgram world Done = return world
 
 logMain = do
-  msp $ runProgram theWorld program
+  finalWorld <- runProgram theWorld program
+  msp finalWorld
 
   -- Works
   -- msp $ propToRoots theWorld (Write added 140)
