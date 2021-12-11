@@ -9,6 +9,7 @@ module Log
 import Data.Maybe
 import Data.Tuple
 -- import Type.Reflection
+import System.Directory
 import Unsafe.Coerce
 
 import Lift
@@ -148,20 +149,28 @@ recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
 program :: Core W
+-- program =
+--   (One (Assign (Write baa 140))
+--   (One (Call (msp "in here"))
+--   (One (Assign (Write bbb 1111)) Done)))
 program =
-  (One (Assign (Write baa 140))
-  (One (Call (msp "in here"))
-  (One (Assign (Write bbb 1111)) Done)))
+  Assign (Write baa 140) (\() ->
+  Call (msp "hey") (\() ->
+  Call (listDirectory ".") (\files ->
+  Call (msp files) (\() ->
+  Assign (Write bbb 1111) (\() ->
+  Done)))))
 -- program = Done
 
 runProgram :: Show w => w -> Core w -> IO w
-runProgram world (One step k) =
-  case step of Assign write -> let newWorld = one $ propToRoots world write
-                                in runProgram newWorld k
-               Call action -> do () <- action
-                                 runProgram world k
+runProgram world (Assign write k) =
+  let newWorld = one $ propToRoots world write
+   in runProgram newWorld (k ())
   where one [x] = x
         one xs = error $ "there can be only one " ++ show xs
+runProgram world (Call action k) = do
+  x <- action
+  runProgram world (k x)
 runProgram world Done = return world
 
 logMain = do
