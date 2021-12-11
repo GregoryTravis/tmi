@@ -147,23 +147,37 @@ recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
+program :: Core W
+program = One (Assign (Write baa 140)) (One (Assign (Write bbb 1111)) Done)
+-- program = Done
+
+runProgram :: Show w => w -> Core w -> w
+runProgram world (One step k) =
+  case step of Assign write -> let newWorld = one $ propToRoots world write
+                                in runProgram newWorld k
+  where one [x] = x
+        one xs = error $ "there can be only one " ++ show xs
+runProgram world Done = world
+
 logMain = do
+  msp $ runProgram theWorld program
+
   -- Works
-  msp $ propToRoots theWorld (Write added 140)
-  msp $ propToRoots theWorld (Write added' 140)
-  msp $ propToRoots theWorld (Write added'' 140)
-  msp $ propToRoots theWorld (Write added''' 140)
-  roundTrip recon vroot
-  roundTrip recon added
-  roundTrip recon added'
-  roundTrip recon added''
-  roundTrip recon added'''
-  msp $ added == added
-  msp $ added == added'
-  msp $ added' == added'
-  msp $ added' == added
-  msp $ added' == added''
-  msp $ added' == added'''
+  -- msp $ propToRoots theWorld (Write added 140)
+  -- msp $ propToRoots theWorld (Write added' 140)
+  -- msp $ propToRoots theWorld (Write added'' 140)
+  -- msp $ propToRoots theWorld (Write added''' 140)
+  -- roundTrip recon vroot
+  -- roundTrip recon added
+  -- roundTrip recon added'
+  -- roundTrip recon added''
+  -- roundTrip recon added'''
+  -- msp $ added == added
+  -- msp $ added == added'
+  -- msp $ added' == added'
+  -- msp $ added' == added
+  -- msp $ added' == added''
+  -- msp $ added' == added'''
 
   -- works, or rather did before I split the recon bis
   -- msp added -- just aa + bb
