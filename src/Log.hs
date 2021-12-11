@@ -39,6 +39,9 @@ import Veq
 --   x then pat syns for the other ones (bi, vroot etc below
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
+-- - oh shit you need some pragmas etc for unsafePerformIO
+--   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
+--   - scroll down a bit
 -- - try factoring Dyn stuff
 -- - main loop
 --   - apply continuation
