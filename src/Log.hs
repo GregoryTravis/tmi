@@ -1,4 +1,4 @@
-{-# Language GADTs, KindSignatures, NamedFieldPuns, TypeApplications #-}
+{-# Language GADTs, KindSignatures, NamedFieldPuns, RecordWildCards, TypeApplications #-}
 
 module Log
 ( logMain
@@ -6,10 +6,12 @@ module Log
 
 -- import Data.Dynamic
 -- import Data.Kind (Type)
+import Control.Concurrent
 import Data.Maybe
 import Data.Tuple
 -- import Type.Reflection
 import System.Directory
+import System.Environment
 import Unsafe.Coerce
 
 import Lift
@@ -148,34 +150,97 @@ recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
-program :: Core W
--- program =
---   (One (Assign (Write baa 140))
---   (One (Call (msp "in here"))
---   (One (Assign (Write bbb 1111)) Done)))
-program =
-  Assign (Write baa 140) (\() ->
-  Call (msp "hey") (\() ->
-  Call (listDirectory ".") (\files ->
-  Call (msp files) (\() ->
-  Assign (Write bbb 1111) (\() ->
-  Done)))))
--- program = Done
+data Retval = Retval Int String
 
-runProgram :: Show w => w -> Core w -> IO w
-runProgram world (Assign write k) =
-  let newWorld = one $ propToRoots world write
-   in runProgram newWorld (k ())
-  where one [x] = x
-        one xs = error $ "there can be only one " ++ show xs
-runProgram world (Call action k) = do
-  x <- action
-  runProgram world (k x)
-runProgram world Done = return world
+program :: Program W
+program = Program
+  [ Assign (Write baa 140)
+  , Call (Step (msp "hey")
+         (\() -> Program [Call (Step (msp "hey2") (\() -> Program [Done]))]))
+  , Call (Step (listDirectory ".")
+         (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
+  , Assign (Write bbb 1111)
+  ]
+
+data Eternity w = Eternity
+  { retvals :: [Retval]
+  , initW :: w
+  , initStep :: Step w
+  , nextStep :: Int
+  , retvalChan :: Chan Retval
+  }
+
+data History w = History
+  { ws :: [w]
+  , hRetvals :: [Retval]
+  , steps :: [Step w]
+  }
+
+data Generation w = Generation
+  { writes :: [Write w]
+  , newSteps :: [Step w]
+  }
+
+mkEternity :: Chan Retval -> w -> ([String] -> Program w) -> Eternity w
+mkEternity chan initW tmiMain = Eternity
+  { retvals = []
+  , initW = initW
+  , initStep = Step getArgs tmiMain
+  , nextStep = 0
+  , retvalChan = chan
+  }
+
+startHistory :: Eternity w -> History w
+startHistory (Eternity { retvals, initW, initStep }) =
+  History { ws = [initW]
+          , hRetvals = retvals
+          , steps = [initStep]
+          }
+
+endHistory :: Eternity w -> History w -> Eternity w
+endHistory e@(Eternity { nextStep, retvals }) (History { steps, hRetvals }) =
+  e { nextStep = nextStep', retvals = retvals' }
+  where nextStep' = length steps
+        retvals' = hRetvals
+
+startGeneration :: History w -> Generation w
+startGeneration _ = Generation { writes = [], newSteps = [] }
+
+endGeneration :: Show w => History w -> Generation w -> History w
+endGeneration h@(History { ws }) (Generation { writes, newSteps }) =
+  h { ws = ws' }
+  where ws' = ws ++ [newW]
+        newW = propToRoot (last ws) (Writes writes)
+
+runProgram :: Generation w -> Program w -> Generation w
+runProgram gen (Program cores) = runProgramSteps gen cores
+runProgramSteps :: Generation w -> [Core w] -> Generation w
+runProgramSteps gen (c:cs) = runProgramSteps (runProgramStep gen c) cs
+runProgramSteps gen [] = gen
+runProgramStep :: Generation w -> Core w -> Generation w
+runProgramStep gen (Assign write) = gen { writes = writes gen ++ [write] }
+runProgramStep gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
+runProgramStep gen Done = gen
+
+startLoop :: w -> ([String] -> Program w) -> IO ()
+startLoop initW tmiMain = do
+  chan <- newChan
+  args <- getArgs
+  let primalRetval = Retval 0 (show args)
+  writeChan chan primalRetval
+  mainLoop (mkEternity chan initW tmiMain)
+
+mainLoop :: Eternity w -> IO ()
+mainLoop eternity =
+  -- wait for retval, add it to the list
+  -- refresh
+  --   - handle new retvals (propagate)
+  --   - handle new steps (fork)
+  mainLoop eternity
 
 logMain = do
-  finalWorld <- runProgram theWorld program
-  msp finalWorld
+  -- finalWorld <- runProgram theWorld program
+  -- msp finalWorld
 
   -- Works
   -- msp $ propToRoots theWorld (Write added 140)

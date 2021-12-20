@@ -1,13 +1,14 @@
 {-# Language GADTs, NamedFieldPuns #-}
 
 module Propagate
-( propToRoots ) where
+( propToRoot ) where
 
 import Data.Maybe (catMaybes)
 
 import Ty
 import V
 
+-- Pushes a write back one step through a rev?
 wr :: w -> V w b -> b -> Write w
 wr w (VBiSeal (Bi qfor qrev)) na =
   let rev = rd w qrev -- R a
@@ -57,6 +58,11 @@ propToRoots :: w -> Write w -> [w]
 propToRoots w write =
   let writes = propWriteFully w write
    in catMaybes $ map ifRoot writes
+
+propToRoot :: Show w => w -> Write w -> w
+propToRoot w write = one (propToRoots w write)
+  where one [x] = x
+        one xs = error $ "there can be only one " ++ show xs
 
 ifRoot :: Write w -> Maybe w
 ifRoot (Write VRoot w) = Just w
