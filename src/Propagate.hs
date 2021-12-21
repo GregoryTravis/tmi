@@ -60,7 +60,9 @@ propToRoots w write =
    in catMaybes $ map ifRoot writes
 
 propToRoot :: Show w => w -> Write w -> w
-propToRoot w write = one (propToRoots w write)
+propToRoot w write = -- one (propToRoots w write)
+  case propToRoots w write of [w'] -> w
+                              [] -> w
   where one [x] = x
         one xs = error $ "there can be only one " ++ show xs
 

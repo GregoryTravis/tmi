@@ -19,7 +19,12 @@ import Ty
 
 data Step w = forall a. (Show a, Read a) => Step (IO a) (a -> Program w)
 data Core w = Assign (Write w) | Call (Step w) | Done
-data Program w = Program [Core w]
+data Program w = Program [Core w] deriving Show
+
+instance Show (Core w) where
+  show (Assign write) = "(Assign " ++ show write ++ ")"
+  show (Call _) = "(Call)"
+  show Done = "(Done)"
 
 applyContinuation :: Step w -> String -> Program w
 applyContinuation (Step _ k) s = k (read s)
