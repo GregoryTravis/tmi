@@ -1,4 +1,5 @@
-{-# Language GADTs, KindSignatures, NamedFieldPuns, RecordWildCards, TypeApplications #-}
+{-# Language GADTs, FlexibleContexts, KindSignatures, NamedFieldPuns, RecordWildCards,
+   ScopedTypeVariables, TypeApplications #-}
 
 module Log
 ( logMain
@@ -7,6 +8,7 @@ module Log
 -- import Data.Dynamic
 -- import Data.Kind (Type)
 import Control.Concurrent
+import Control.Monad (forM_)
 import Data.Maybe
 import Data.Tuple
 -- import Type.Reflection
@@ -41,6 +43,8 @@ import Veq
 --   x then pat syns for the other ones (bi, vroot etc below
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
+-- - main loop
+--   - wait, why are we passing args to main, this is not Java
 -- - oh shit you need some pragmas etc for unsafePerformIO
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
 --   - scroll down a bit
@@ -150,17 +154,7 @@ recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
-data Retval = Retval Int String
-
-program :: Program W
-program = Program
-  [ Assign (Write baa 140)
-  , Call (Step (msp "hey")
-         (\() -> Program [Call (Step (msp "hey2") (\() -> Program [Done]))]))
-  , Call (Step (listDirectory ".")
-         (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
-  , Assign (Write bbb 1111)
-  ]
+data Retval = Retval Int String deriving Show
 
 data Eternity w = Eternity
   { retvals :: [Retval]
@@ -180,6 +174,13 @@ data Generation w = Generation
   { writes :: [Write w]
   , newSteps :: [Step w]
   }
+
+instance Show w => Show (Eternity w) where
+  show (Eternity {..}) = show ("Eternity", retvals, initW, nextStep)
+instance Show w => Show (History w) where
+  show (History {..}) = show ("History", ws, hRetvals, length steps)
+instance Show (Generation w) where
+  show (Generation {..}) = show ("Generation", writes, length newSteps)
 
 mkEternity :: Chan Retval -> w -> ([String] -> Program w) -> Eternity w
 mkEternity chan initW tmiMain = Eternity
@@ -208,9 +209,10 @@ startGeneration _ = Generation { writes = [], newSteps = [] }
 
 endGeneration :: Show w => History w -> Generation w -> History w
 endGeneration h@(History { ws }) (Generation { writes, newSteps }) =
-  h { ws = ws' }
+  h { ws = ws', steps = newSteps }
   where ws' = ws ++ [newW]
         newW = propToRoot (last ws) (Writes writes)
+        newSteps = steps h ++ newSteps
 
 runProgram :: Generation w -> Program w -> Generation w
 runProgram gen (Program cores) = runProgramSteps gen cores
@@ -222,7 +224,7 @@ runProgramStep gen (Assign write) = gen { writes = writes gen ++ [write] }
 runProgramStep gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
 runProgramStep gen Done = gen
 
-startLoop :: w -> ([String] -> Program w) -> IO ()
+startLoop :: Show w => w -> ([String] -> Program w) -> IO ()
 startLoop initW tmiMain = do
   chan <- newChan
   args <- getArgs
@@ -230,15 +232,69 @@ startLoop initW tmiMain = do
   writeChan chan primalRetval
   mainLoop (mkEternity chan initW tmiMain)
 
-mainLoop :: Eternity w -> IO ()
-mainLoop eternity =
+mainLoop :: forall w. Show w => Eternity w -> IO ()
+mainLoop e = do
   -- wait for retval, add it to the list
+  msp "readChan"
+  newRetval <- readChan (retvalChan e)
+  msp $ "got " ++ show newRetval
   -- refresh
   --   - handle new retvals (propagate)
+  let e' :: Eternity w
+      e' = e { retvals = retvals e ++ [newRetval] }
+  msp $ ("e'", e')
+  let h :: History w
+      h = startHistory e'
+  msp $ ("h", h)
+  let h' = replayHistory h
+  msp $ ("h'", h')
+  handleNewSteps e h'
+  let e'' = endHistory e' h'
+  msp $ ("e''", e'')
   --   - handle new steps (fork)
-  mainLoop eternity
+  -- run monitors
+  -- TODO
+  msp "loop"
+  mainLoop e''
+
+handleNewSteps :: Eternity w -> History w -> IO ()
+handleNewSteps e h = do
+  let newSteps = drop (nextStep e) (steps h)
+      indices = drop (nextStep e) [0..]
+      both = zip indices newSteps
+  forM_ both $ \(index, Step action _) -> wrap index action
+  where wrap :: Show a => Int -> IO a -> IO ()
+        wrap index action = do
+          x <- action
+          let retval = Retval index (show x)
+          writeChan (retvalChan e) retval
+
+replayHistory :: Show w => History w -> History w
+replayHistory h = loop h (hRetvals h)
+  where loop :: Show w => History w -> [Retval] -> History w
+        loop h [] = h
+        loop h (rv:rvs) =
+          let -- w = last (ws h)
+              Retval index s = rv
+              step = vindex "replayHistory" (steps h) index
+              prog = applyContinuation step s
+              g = startGeneration h
+              g' = runProgram g prog
+              h' = endGeneration h g'
+           in loop h' rvs
+
+program :: Program W
+program = Program
+  [ Assign (Write baa 140)
+  -- , Call (Step (msp "hey")
+  --        (\() -> Program [Call (Step (msp "hey2") (\() -> Program [Done]))]))
+  -- , Call (Step (listDirectory ".")
+  --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
+  -- , Assign (Write bbb 1111)
+  ]
 
 logMain = do
+  startLoop theWorld (\args -> program)
   -- finalWorld <- runProgram theWorld program
   -- msp finalWorld
 

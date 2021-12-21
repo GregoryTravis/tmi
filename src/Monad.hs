@@ -3,7 +3,9 @@
 module Monad
 ( Step(..)
 , Core(..)
-, Program(..) ) where
+, Program(..)
+, applyContinuation
+) where
 
 import Util
 import V
@@ -15,8 +17,11 @@ import Ty
 --   Call :: forall a w. IO a -> (a -> Core w) -> Core w
 --   Done :: Core w
 
-data Step w = forall a. Step (IO a) (a -> Program w)
+data Step w = forall a. (Show a, Read a) => Step (IO a) (a -> Program w)
 data Core w = Assign (Write w) | Call (Step w) | Done
 data Program w = Program [Core w]
+
+applyContinuation :: Step w -> String -> Program w
+applyContinuation (Step _ k) s = k (read s)
 
 -- data Step w = forall a. Read a => Step (IO a) (a -> Core w)

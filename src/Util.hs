@@ -63,6 +63,8 @@ module Util
 , readFile'
 , fromJustVerbose
 , boom
+, (!!!)
+, vindex
 ) where
 
 import Control.Exception
@@ -401,3 +403,12 @@ fromJustVerbose s Nothing = error ("fromJustVerbose " ++ show s)
 
 boom :: Show a => a -> b -> b
 boom m _ = error $ "boom " ++ show m
+
+-- Like (!!) but don't be so coy
+(!!!) :: Show a => [a] -> Int -> a
+xs !!! i | i >= 0 && i < length xs = xs !! i
+         | otherwise = error (show xs ++ " !!! " ++ show i) 
+
+vindex :: String -> [a] -> Int -> a
+vindex note xs i | i >= 0 && i < length xs = xs !! i
+                 | otherwise = error ("vindex: " ++ note ++ " " ++ show i)
