@@ -293,8 +293,8 @@ replayHistory h = loop h (hRetvals h)
 program :: Program W
 program = Program
   [ Assign (Write baa 140)
-  , Call (Step (msp "hey")
-         (\() -> Program [Call (Step (msp "hey2") (\() -> Program [Done]))]))
+  , Call (Step (do msp "hey" ; return 3)
+         (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
   -- , Call (Step (listDirectory ".")
   --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
   -- , Assign (Write bbb 1111)
