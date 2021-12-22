@@ -1,7 +1,9 @@
 {-# Language GADTs, NamedFieldPuns #-}
 
 module Propagate
-( propToRoot ) where
+( propToRoot
+, rd
+) where
 
 import Data.Maybe (catMaybes)
 

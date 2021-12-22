@@ -162,17 +162,20 @@ data Eternity w = Eternity
   , initStep :: Step w
   , nextStep :: Int
   , retvalChan :: Chan Retval
+  , monitorings :: [Monitoring w]
   }
 
 data History w = History
   { ws :: [w]
   , hRetvals :: [Retval]
   , steps :: [Step w]
+  , hNewMonitorings :: [Monitoring w]
   }
 
 data Generation w = Generation
   { writes :: [Write w]
   , newSteps :: [Step w]
+  , gNewMonitorings :: [Monitoring w]
   }
 
 instance Show w => Show (Eternity w) where
@@ -189,6 +192,7 @@ mkEternity chan initW tmiMain = Eternity
   , initStep = Step getArgs tmiMain
   , nextStep = 1
   , retvalChan = chan
+  , monitorings = []
   }
 
 startHistory :: Eternity w -> History w
@@ -196,23 +200,27 @@ startHistory (Eternity { retvals, initW, initStep }) =
   History { ws = [initW]
           , hRetvals = retvals
           , steps = [initStep]
+          , hNewMonitorings = []
           }
 
-endHistory :: Eternity w -> History w -> Eternity w
-endHistory e@(Eternity { nextStep, retvals }) (History { steps, hRetvals }) =
-  e { nextStep = nextStep', retvals = retvals' }
-  where nextStep' = length steps
+endHistory :: Eternity w -> History w -> (w, Eternity w)
+endHistory e@(Eternity { nextStep, retvals }) h@(History { steps, hRetvals }) =
+  (last (ws h), e')
+  where e' = e { nextStep = nextStep', retvals = retvals', monitorings = monitorings' }
+        nextStep' = length steps
         retvals' = hRetvals
+        monitorings' = monitorings e ++ hNewMonitorings h
 
 startGeneration :: History w -> Generation w
-startGeneration _ = Generation { writes = [], newSteps = [] }
+startGeneration _ = Generation { writes = [], newSteps = [], gNewMonitorings = [] }
 
 endGeneration :: Show w => History w -> Generation w -> History w
-endGeneration h@(History { ws }) (Generation { writes, newSteps }) =
-  h { ws = ws', steps = newSteps' }
+endGeneration h@(History { ws }) g@(Generation { writes, newSteps }) =
+  h { ws = ws', steps = newSteps', hNewMonitorings = monitorings' }
   where ws' = ws ++ [newW]
         newW = propToRoot (last ws) (Writes writes)
         newSteps' = steps h ++ newSteps
+        monitorings' = hNewMonitorings h ++ gNewMonitorings g
 
 runProgram :: Generation w -> Program w -> Generation w
 runProgram gen (Program cores) = runProgramSteps gen cores
@@ -220,9 +228,11 @@ runProgramSteps :: Generation w -> [Core w] -> Generation w
 runProgramSteps gen (c:cs) = runProgramSteps (runProgramStep gen c) cs
 runProgramSteps gen [] = gen
 runProgramStep :: Generation w -> Core w -> Generation w
-runProgramStep gen step = eesp ("running step", step) $ runProgramStep' gen step
+runProgramStep gen step = runProgramStep' gen step
 runProgramStep' gen (Assign write) = gen { writes = writes gen ++ [write] }
 runProgramStep' gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
+runProgramStep' gen (Mon mon) =
+  gen { gNewMonitorings = gNewMonitorings gen ++ [mon] }
 runProgramStep' gen Done = gen
 
 startLoop :: Show w => w -> ([String] -> Program w) -> IO ()
@@ -243,21 +253,29 @@ mainLoop e = do
   --   - handle new retvals (propagate)
   let e' :: Eternity w
       e' = e { retvals = retvals e ++ [newRetval] }
-  msp $ ("e", e)
-  msp $ ("e'", e')
+  -- msp $ ("e", e)
+  -- msp $ ("e'", e')
   let h :: History w
       h = startHistory e'
-  msp $ ("h", h)
+  -- msp $ ("h", h)
   let h' = replayHistory h
-  msp $ ("h'", h')
+  -- msp $ ("h'", h')
   --   - handle new steps (fork)
   handleNewSteps e h'
-  let e'' = endHistory e' h'
-  msp $ ("e''", e'')
+  let (lastW, e'') = endHistory e' h'
+  -- msp $ ("e''", e'')
   -- run monitors
+  runMonitors lastW e''
   -- TODO
-  msp "loop"
+  -- msp "loop"
   mainLoop e''
+
+runMonitors :: w -> Eternity w -> IO ()
+runMonitors w e = forM_ (monitorings e) (runMonitor w)
+runMonitor :: w -> Monitoring w -> IO ()
+runMonitor w (Monitoring v mon) = do
+  let x = rd w v
+  mon x
 
 -- TODO not forking yet, running inline
 handleNewSteps :: Eternity w -> History w -> IO ()
@@ -265,10 +283,10 @@ handleNewSteps e h = do
   let newSteps = drop (nextStep e) (steps h)
       indices = drop (nextStep e) [0..]
       both = zip indices newSteps
-  msp $ "nextStep " ++ show (nextStep e) ++ " steps " ++ show (length (steps h))
-  msp $ "running " ++ show (length newSteps) ++ " steps"
+  -- msp $ "nextStep " ++ show (nextStep e) ++ " steps " ++ show (length (steps h))
+  -- msp $ "running " ++ show (length newSteps) ++ " steps"
   forM_ both $ \(index, Step action _) -> do
-    msp $ "run step " ++ show index
+    -- msp $ "run step " ++ show index
     wrap index action
   where wrap :: Show a => Int -> IO a -> IO ()
         wrap index action = do
@@ -284,21 +302,25 @@ replayHistory h = loop h (hRetvals h)
           let -- w = last (ws h)
               Retval index s = rv
               step = vindex "replayHistory" (steps h) index
-              prog = eesp "rH aC" $ applyContinuation step s
+              prog = applyContinuation step s
               g = startGeneration h
               g' = runProgram g prog
-              h' = endGeneration h $ eeesp ("gen newSteps", length (newSteps g')) g'
+              h' = endGeneration h g'
            in loop h' rvs
 
 program :: Program W
 program = Program
-  [ Assign (Write baa 140)
+  [ Mon (Monitoring root monnie)
+  , Assign (Write baa 140)
   , Call (Step (do msp "hey" ; return 3)
          (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
   -- , Call (Step (listDirectory ".")
   --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
   -- , Assign (Write bbb 1111)
   ]
+
+monnie :: W -> IO ()
+monnie w = msp $ "MON " ++ show w
 
 logMain = do
   startLoop theWorld (\args -> program)
