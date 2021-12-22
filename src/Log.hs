@@ -263,6 +263,7 @@ mainLoop e = do
   --   - handle new steps (fork)
   handleNewSteps e h'
   let (lastW, e'') = endHistory e' h'
+  msp ("wut", length (monitorings e''))
   -- msp $ ("e''", e'')
   -- run monitors
   runMonitors lastW e''
@@ -308,12 +309,18 @@ replayHistory h = loop h (hRetvals h)
               h' = endGeneration h g'
            in loop h' rvs
 
+countDown :: Int -> Core W
+countDown (-1) = Done
+countDown n = Call (Step (do msp ("countDown " ++ show n); return (n - 1))
+                         (\n -> Program [countDown n]))
+
 program :: Program W
 program = Program
   [ Mon (Monitoring root monnie)
   , Assign (Write baa 140)
   , Call (Step (do msp "hey" ; return 3)
          (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
+  , countDown 5
   -- , Call (Step (listDirectory ".")
   --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
   -- , Assign (Write bbb 1111)
