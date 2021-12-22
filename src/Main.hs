@@ -1,5 +1,9 @@
 module Main where
 
+import System.IO
+
 import Log
 
-main = logMain
+main = do
+  hSetBuffering stdout NoBuffering
+  logMain
