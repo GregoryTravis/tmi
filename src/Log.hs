@@ -311,8 +311,10 @@ replayHistory h = loop h (hRetvals h)
 
 countDown :: Int -> Core W
 countDown (-1) = Done
-countDown n = Call (Step (do msp ("countDown " ++ show n); return (n - 1))
-                         (\n -> Program [countDown n]))
+countDown n = Call (Step (threadDelay 1000000)
+                         (\() -> Program [
+                                   Call (Step (do msp ("countDown " ++ show n); return (n - 1))
+                                        (\n -> Program [countDown n]))]))
 
 program :: Program W
 program = Program
