@@ -316,13 +316,38 @@ countDown n = Call (Step (threadDelay 1000000)
                                    Call (Step (do msp ("countDown " ++ show n); return (n - 1))
                                         (\n -> Program [countDown n]))]))
 
+mapCall :: Core w -> [a] -> (a -> IO ()) -> Core w
+mapCall k [] _ = k
+mapCall k (x:xs) corer =
+  Call (Step (corer x)
+             (\() -> Program [mapCall k xs corer]))
+
+writeAFile :: FilePath -> Int -> IO ()
+writeAFile dir n = do
+  let ns = show n
+  writeFile (dir ++ "/" ++ ns) (ns ++ "\n")
+
+cleanDir :: Core w -> FilePath -> Core w
+cleanDir k dir =
+  let k' = Call (Step (removeDirectory dir) (\() -> Program [k]))
+      remover f = removeFile (dir ++ "/" ++ f)
+  in Call (Step (listDirectory dir)
+                (\files -> Program [
+                  mapCall k' files remover]))
+
+filesThing :: Int -> FilePath -> Core W
+filesThing num dir =
+  Call (Step (createDirectory dir)
+             (\() -> Program [mapCall (cleanDir Done dir) [0..num-1] (writeAFile dir)]))
+
 program :: Program W
 program = Program
   [ Mon (Monitoring root monnie)
   , Assign (Write baa 140)
-  , Call (Step (do msp "hey" ; return 3)
-         (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
-  , countDown 5
+  , filesThing 20 "dirr"
+  -- , countDown 5
+  -- , Call (Step (do msp "hey" ; return 3)
+  --        (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
   -- , Call (Step (listDirectory ".")
   --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
   -- , Assign (Write bbb 1111)
@@ -332,6 +357,7 @@ monnie :: W -> IO ()
 monnie w = msp $ "MON " ++ show w
 
 logMain = do
+  -- msp $ cleanDir Done "dirr"
   startLoop theWorld (\args -> program)
   -- finalWorld <- runProgram theWorld program
   -- msp finalWorld
