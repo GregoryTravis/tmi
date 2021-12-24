@@ -1,5 +1,5 @@
-{-# Language GADTs, FlexibleContexts, KindSignatures, NamedFieldPuns, RecordWildCards,
-   ScopedTypeVariables, TypeApplications #-}
+{-# Language GADTs, FlexibleContexts, KindSignatures, NamedFieldPuns, NumericUnderscores,
+   RecordWildCards, ScopedTypeVariables, TypeApplications #-}
 
 module Log
 ( logMain
@@ -14,6 +14,7 @@ import Data.Tuple
 -- import Type.Reflection
 import System.Directory
 import System.Environment
+import System.Random
 import Unsafe.Coerce
 
 import Lift
@@ -309,6 +310,16 @@ replayHistory h = loop h (hRetvals h)
               h' = endGeneration h g'
            in loop h' rvs
 
+sleepRand :: Double -> Double -> IO ()
+sleepRand lo hi = do
+  duration <- getStdRandom (randomR (lo, hi))
+  msp $ "sleeping " ++ show duration
+  threadDelay $ floor $ duration * 1_000_000
+  msp $ "slept " ++ show duration
+
+sleepAfter :: Double -> Double -> Core w -> Core w
+sleepAfter lo hi k = Call (Step (sleepRand lo hi) (\() -> Program [k]))
+
 countDown :: Int -> Core W
 countDown (-1) = Done
 countDown n = Call (Step (threadDelay 1000000)
@@ -333,18 +344,19 @@ cleanDir k dir =
       remover f = removeFile (dir ++ "/" ++ f)
   in Call (Step (listDirectory dir)
                 (\files -> Program [
-                  mapCall k' files remover]))
+                  mapCall k' files (\f -> do sleepRand 1 3; remover f)]))
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
   Call (Step (createDirectory dir)
-             (\() -> Program [mapCall (cleanDir Done dir) [0..num-1] (writeAFile dir)]))
+             (\() -> Program [mapCall (cleanDir Done dir) [0..num-1]
+                                      (\f -> (do sleepRand 1 3; writeAFile dir f))]))
 
 program :: Program W
 program = Program
   [ Mon (Monitoring root monnie)
   , Assign (Write baa 140)
-  , filesThing 20 "dirr"
+  , filesThing 4 "dirr"
   -- , countDown 5
   -- , Call (Step (do msp "hey" ; return 3)
   --        (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
