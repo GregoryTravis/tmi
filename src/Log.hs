@@ -292,9 +292,11 @@ handleNewSteps e h = do
     wrap index action
   where wrap :: Show a => Int -> IO a -> IO ()
         wrap index action = do
-          x <- action
-          let retval = Retval index (show x)
-          writeChan (retvalChan e) retval
+          forkIO $ do
+            x <- action
+            let retval = Retval index (show x)
+            writeChan (retvalChan e) retval
+          return ()
 
 replayHistory :: Show w => History w -> History w
 replayHistory h = loop h (hRetvals h)
@@ -317,8 +319,8 @@ sleepRand lo hi = do
   threadDelay $ floor $ duration * 1_000_000
   msp $ "slept " ++ show duration
 
-sleepAfter :: Double -> Double -> Core w -> Core w
-sleepAfter lo hi k = Call (Step (sleepRand lo hi) (\() -> Program [k]))
+-- sleepAfter :: Double -> Double -> Core w -> Core w
+-- sleepAfter lo hi k = Call (Step (sleepRand lo hi) (\() -> Program [k]))
 
 countDown :: Int -> Core W
 countDown (-1) = Done
@@ -338,25 +340,27 @@ writeAFile dir n = do
   let ns = show n
   writeFile (dir ++ "/" ++ ns) (ns ++ "\n")
 
+slp = sleepRand 0.2 0.4
+
 cleanDir :: Core w -> FilePath -> Core w
 cleanDir k dir =
   let k' = Call (Step (removeDirectory dir) (\() -> Program [k]))
       remover f = removeFile (dir ++ "/" ++ f)
   in Call (Step (listDirectory dir)
                 (\files -> Program [
-                  mapCall k' files (\f -> do sleepRand 1 3; remover f)]))
+                  mapCall k' files (\f -> do slp; remover f)]))
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
   Call (Step (createDirectory dir)
              (\() -> Program [mapCall (cleanDir Done dir) [0..num-1]
-                                      (\f -> (do sleepRand 1 3; writeAFile dir f))]))
+                                      (\f -> (do slp; writeAFile dir f))]))
 
 program :: Program W
 program = Program
   [ Mon (Monitoring root monnie)
   , Assign (Write baa 140)
-  , filesThing 4 "dirr"
+  , filesThing 40 "dirr"
   -- , countDown 5
   -- , Call (Step (do msp "hey" ; return 3)
   --        (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
