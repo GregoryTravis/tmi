@@ -379,15 +379,22 @@ writeAFile dir n = do
   let ns = show n
   writeFile (dir ++ "/" ++ ns) (ns ++ "\n")
 
-slp = sleepRand 0.2 0.4
+slp = sleepRand 2 4
 
-cleanDir :: Core w -> FilePath -> Core w
+cleanDir :: Core W -> FilePath -> Core W
 cleanDir k dir =
   let k' = Call (Step (removeDirectory dir) (\() -> Program [k]))
       remover f = removeFile (dir ++ "/" ++ f)
   in Call (Step (listDirectory dir)
                 (\files -> Program [
-                  mapCallCPS k' files (\f -> do slp; remover f)]))
+                  -- mapCallCPS k' files (\f -> do slp; remover f)]))
+                  mapCallFanIn bFanInCount
+                    (flip map files $ \f ->
+                      (\k -> Call (Step (do slp; remover f)
+                                        (\() -> Program [k]))))
+                    k']))
+
+-- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
@@ -399,8 +406,6 @@ filesThing num dir =
                                              (\k -> Call (Step (do slp; writeAFile dir f)
                                                                (\() -> Program [k]))))
                                            (cleanDir Done dir)]))
-
--- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 
 program :: Program W
 program = Program
