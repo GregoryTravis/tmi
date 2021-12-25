@@ -6,7 +6,7 @@ import Data.Dynamic (Typeable)
 
 import Control.Monad.State.Lazy hiding (execState)
 
-data Write w = forall a. Write (V w a) a | Writes [Write w]
+data Write w = forall a. Write (V w a) a | forall a. VWrite (V w a) (V w a) | Writes [Write w]
 
 data R w a = R (a -> Write w)
 

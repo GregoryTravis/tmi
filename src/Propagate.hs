@@ -47,13 +47,18 @@ rdb w (BiApp bi qa) =
 
 propWrite :: w -> Write w -> Write w
 propWrite w (Write qa a) = wr w qa a
+propWrite w (VWrite qa qa') = propWrite w (Write qa (rd w qa'))
 
 propWriteSome :: w -> Write w -> [Write w]
+-- Use propWrite here
 propWriteSome w (Write qa a) = [wr w qa a]
+-- Use propWrite here
+propWriteSome w (VWrite qa qa') = [propWrite w (Write qa (rd w qa'))]
 propWriteSome w (Writes ws) = concat $ map (propWriteSome w) ws
 
 propWriteFully :: w -> Write w -> [Write w]
 propWriteFully w write@(Write VRoot _) = [write]
+propWriteFully w write@(VWrite VRoot _) = error "propWriteFully: really?"
 propWriteFully w write = write : (concat $ map (propWriteFully w) (propWriteSome w write))
 
 propToRoots :: w -> Write w -> [w]
@@ -70,4 +75,5 @@ propToRoot w write = -- one (propToRoots w write)
 
 ifRoot :: Write w -> Maybe w
 ifRoot (Write VRoot w) = Just w
+ifRoot (VWrite VRoot w) = error "ifRoot: really?"
 ifRoot _ = Nothing

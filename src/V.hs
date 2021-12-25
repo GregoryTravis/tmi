@@ -26,6 +26,7 @@ nuni name f = uni (VNamed name f)
 
 instance Show (Write w) where
   show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
+  show (VWrite qa qa') = "(VWrite " ++ show qa ++ " " ++ show qa' ++ ")"
   show (Writes ws) = show ws
 
 instance Show (V w a) where

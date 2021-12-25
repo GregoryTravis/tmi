@@ -10,6 +10,7 @@ module Log
 import Control.Concurrent
 import Control.Monad (forM_)
 import Data.Maybe
+-- import Data.Traversable (for)
 import Data.Tuple
 -- import Type.Reflection
 import System.Directory
@@ -67,7 +68,8 @@ import Veq
 -- - general renaming
 -- - multi-module registry
 
-data W = W { aa :: Int, bb :: Int } deriving (Read, Show)
+
+data W = W { aa :: Int, bb :: Int, fanInCount :: Int } deriving (Read, Show)
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -98,6 +100,11 @@ addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)
 addEmBi = bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
 addEm = lift2 addEmBi
+
+eqBi :: Eq a => Bi (a -> a -> Bool) (a -> R a -> a -> R a -> R Bool)
+eqBi = nuni "eq" (==)
+eqV :: Eq a => V a -> V a -> V Bool
+eqV = lift2 eqBi
 
 plursBi :: Bi (Int -> Int) (Int -> R Int -> R Int)
 plursBi = bi (VNamed "inc" inc) (VNamed "inc_" inc_)
@@ -132,6 +139,14 @@ bb_ :: W -> R W -> R Int
 bb_ w wr = mkR ir
   where ir bb = write wr $ w { bb }
 
+bFanInCount :: V Int
+-- TODO Shouldn't this use a lifter?
+bFanInCount = VBiSeal (BiApp (bi (VNamed "fanInCount" fanInCount)
+                                 (VNamed "fanInCount_" fanInCount_)) root)
+fanInCount_ :: W -> R W -> R Int
+fanInCount_ w wr = mkR ir
+  where ir fanInCount = write wr $ w { fanInCount }
+
 inc :: Int -> Int
 inc = (+1)
 inc_ :: Int -> R Int -> R Int
@@ -141,7 +156,7 @@ inc_ _ r = mkR r'
 root :: V W
 root = VRoot
 theWorld :: W
-theWorld = W { aa = 13, bb = 100 }
+theWorld = W { aa = 13, bb = 100, fanInCount = 112 }
 
 recon :: String -> a
 recon "aa" = unsafeCoerce $ VNamed "aa" aa
@@ -223,18 +238,23 @@ endGeneration h@(History { ws }) g@(Generation { writes, newSteps }) =
         newSteps' = steps h ++ newSteps
         monitorings' = hNewMonitorings h ++ gNewMonitorings g
 
-runProgram :: Generation w -> Program w -> Generation w
-runProgram gen (Program cores) = runProgramSteps gen cores
-runProgramSteps :: Generation w -> [Core w] -> Generation w
-runProgramSteps gen (c:cs) = runProgramSteps (runProgramStep gen c) cs
-runProgramSteps gen [] = gen
-runProgramStep :: Generation w -> Core w -> Generation w
-runProgramStep gen step = runProgramStep' gen step
-runProgramStep' gen (Assign write) = gen { writes = writes gen ++ [write] }
-runProgramStep' gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
-runProgramStep' gen (Mon mon) =
+runProgram :: w -> Generation w -> Program w -> Generation w
+runProgram w gen (Program cores) = runProgramSteps w gen cores
+runProgramSteps :: w -> Generation w -> [Core w] -> Generation w
+runProgramSteps w gen (c:cs) = runProgramSteps w (runProgramStep w gen c) cs
+runProgramSteps w gen [] = gen
+runProgramStep :: w -> Generation w -> Core w -> Generation w
+runProgramStep w gen step = runProgramStep' w gen step
+runProgramStep' w gen (Assign write) = gen { writes = writes gen ++ [write] }
+runProgramStep' w gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
+runProgramStep' w gen (Sub (Program steps)) = runProgramSteps w gen steps
+runProgramStep' w gen (Cond vbool th el) =
+  let b = rd w vbool
+      next = if b then th else el
+   in runProgramStep w gen next
+runProgramStep' w gen (Mon mon) =
   gen { gNewMonitorings = gNewMonitorings gen ++ [mon] }
-runProgramStep' gen Done = gen
+runProgramStep' w gen Done = gen
 
 startLoop :: Show w => w -> ([String] -> Program w) -> IO ()
 startLoop initW tmiMain = do
@@ -307,8 +327,9 @@ replayHistory h = loop h (hRetvals h)
               Retval index s = rv
               step = vindex "replayHistory" (steps h) index
               prog = applyContinuation step s
+              latestW = last (ws h)
               g = startGeneration h
-              g' = runProgram g prog
+              g' = runProgram latestW g prog
               h' = endGeneration h g'
            in loop h' rvs
 
@@ -329,11 +350,29 @@ countDown n = Call (Step (threadDelay 1000000)
                                    Call (Step (do msp ("countDown " ++ show n); return (n - 1))
                                         (\n -> Program [countDown n]))]))
 
-mapCall :: Core w -> [a] -> (a -> IO ()) -> Core w
-mapCall k [] _ = k
-mapCall k (x:xs) corer =
+-- Initializes the counter, runs each cps-based core and when they're all done, runs
+-- the main k.
+mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
+mapCallFanIn counter kjobs k =
+  let n = length kjobs
+      -- countk :: () -> Core w
+      countk = Sub (Program
+        [ Assign (VWrite counter (addEm counter (VNice (1::Int))))
+        , Cond (eqV counter (VNice (n-1)))
+               k
+               Done])
+      jobs = map ($ countk) kjobs
+  in Sub (Program
+          [ Assign (Write counter 0)
+          , Sub (Program jobs)
+          ])
+  
+
+mapCallCPS :: Core w -> [a] -> (a -> IO ()) -> Core w
+mapCallCPS k [] _ = k
+mapCallCPS k (x:xs) corer =
   Call (Step (corer x)
-             (\() -> Program [mapCall k xs corer]))
+             (\() -> Program [mapCallCPS k xs corer]))
 
 writeAFile :: FilePath -> Int -> IO ()
 writeAFile dir n = do
@@ -348,13 +387,20 @@ cleanDir k dir =
       remover f = removeFile (dir ++ "/" ++ f)
   in Call (Step (listDirectory dir)
                 (\files -> Program [
-                  mapCall k' files (\f -> do slp; remover f)]))
+                  mapCallCPS k' files (\f -> do slp; remover f)]))
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
   Call (Step (createDirectory dir)
-             (\() -> Program [mapCall (cleanDir Done dir) [0..num-1]
-                                      (\f -> (do slp; writeAFile dir f))]))
+             -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
+             --                             (\f -> (do slp; writeAFile dir f))]))
+             (\() -> Program [mapCallFanIn bFanInCount
+                                           (flip map [0..num-1] $ \f ->
+                                             (\k -> Call (Step (do slp; writeAFile dir f)
+                                                               (\() -> Program [k]))))
+                                           (cleanDir Done dir)]))
+
+-- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 
 program :: Program W
 program = Program
