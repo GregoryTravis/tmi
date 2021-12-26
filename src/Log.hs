@@ -18,6 +18,7 @@ import System.Environment
 import System.Random
 import Unsafe.Coerce
 
+import Ext
 import Lift
 import Monad
 import Propagate
@@ -377,14 +378,14 @@ mapCallCPS k (x:xs) corer =
 writeAFile :: FilePath -> Int -> IO ()
 writeAFile dir n = do
   let ns = show n
-  writeFile (dir ++ "/" ++ ns) (ns ++ "\n")
+  writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
 slp = sleepRand 2 4
 
 cleanDir :: Core W -> FilePath -> Core W
 cleanDir k dir =
-  let k' = Call (Step (removeDirectory dir) (\() -> Program [k]))
-      remover f = removeFile (dir ++ "/" ++ f)
+  let k' = Call (Step (removeDirectoryExt dir) (\() -> Program [k]))
+      remover f = removeFileExt (dir ++ "/" ++ f)
   in Call (Step (listDirectory dir)
                 (\files -> Program [
                   -- mapCallCPS k' files (\f -> do slp; remover f)]))
@@ -398,7 +399,7 @@ cleanDir k dir =
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
-  Call (Step (createDirectory dir)
+  Call (Step (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
              (\() -> Program [mapCallFanIn bFanInCount
