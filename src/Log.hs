@@ -47,6 +47,8 @@ import Veq
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
 -- - main loop
+--   - move monitors out of eternity
+--   - save eternity to checkpoint file in db dir and read on startup
 --   - wait, why are we passing args to main, this is not Java
 -- - oh shit you need some pragmas etc for unsafePerformIO
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
@@ -256,6 +258,12 @@ runProgramStep' w gen (Cond vbool th el) =
 runProgramStep' w gen (Mon mon) =
   gen { gNewMonitorings = gNewMonitorings gen ++ [mon] }
 runProgramStep' w gen Done = gen
+
+readOrCreateEternity :: FilePath -> Eternity w
+readOrCreateEternity = undefined
+
+checkpointEternity :: FilePath -> Eternity w -> IO ()
+checkpointEternity = undefined
 
 startLoop :: Show w => w -> ([String] -> Program w) -> IO ()
 startLoop initW tmiMain = do
