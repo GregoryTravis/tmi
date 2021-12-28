@@ -8,8 +8,9 @@ module Log
 -- import Data.Dynamic
 -- import Data.Kind (Type)
 import Control.Concurrent
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Data.Maybe
+import Data.Proxy
 -- import Data.Traversable (for)
 import Data.Tuple
 -- import Type.Reflection
@@ -173,175 +174,6 @@ recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon s = error $ "recon?? " ++ s
 
-data Retval = Retval Int String deriving Show
-
-data Eternity w = Eternity
-  { retvals :: [Retval]
-  , initW :: w
-  , initStep :: Step w
-  , nextStep :: Int
-  , retvalChan :: Chan Retval
-  , monitorings :: [Monitoring w]
-  }
-
-data History w = History
-  { ws :: [w]
-  , hRetvals :: [Retval]
-  , steps :: [Step w]
-  , hNewMonitorings :: [Monitoring w]
-  }
-
-data Generation w = Generation
-  { writes :: [Write w]
-  , newSteps :: [Step w]
-  , gNewMonitorings :: [Monitoring w]
-  }
-
-instance Show w => Show (Eternity w) where
-  show (Eternity {..}) = show ("Eternity", retvals, initW, nextStep)
-instance Show w => Show (History w) where
-  show (History {..}) = show ("History", hRetvals, ws, length steps)
-instance Show (Generation w) where
-  show (Generation {..}) = show ("Generation", writes, length newSteps)
-
-mkEternity :: Chan Retval -> w -> ([String] -> Program w) -> Eternity w
-mkEternity chan initW tmiMain = Eternity
-  { retvals = []
-  , initW = initW
-  , initStep = Step getArgs tmiMain
-  , nextStep = 1
-  , retvalChan = chan
-  , monitorings = []
-  }
-
-startHistory :: Eternity w -> History w
-startHistory (Eternity { retvals, initW, initStep }) =
-  History { ws = [initW]
-          , hRetvals = retvals
-          , steps = [initStep]
-          , hNewMonitorings = []
-          }
-
-endHistory :: Eternity w -> History w -> (w, Eternity w)
-endHistory e@(Eternity { nextStep, retvals }) h@(History { steps, hRetvals }) =
-  (last (ws h), e')
-  where e' = e { nextStep = nextStep', retvals = retvals', monitorings = monitorings' }
-        nextStep' = length steps
-        retvals' = hRetvals
-        monitorings' = monitorings e ++ hNewMonitorings h
-
-startGeneration :: History w -> Generation w
-startGeneration _ = Generation { writes = [], newSteps = [], gNewMonitorings = [] }
-
-endGeneration :: Show w => History w -> Generation w -> History w
-endGeneration h@(History { ws }) g@(Generation { writes, newSteps }) =
-  h { ws = ws', steps = newSteps', hNewMonitorings = monitorings' }
-  where ws' = ws ++ [newW]
-        newW = propToRoot (last ws) (Writes writes)
-        newSteps' = steps h ++ newSteps
-        monitorings' = hNewMonitorings h ++ gNewMonitorings g
-
-runProgram :: w -> Generation w -> Program w -> Generation w
-runProgram w gen (Program cores) = runProgramSteps w gen cores
-runProgramSteps :: w -> Generation w -> [Core w] -> Generation w
-runProgramSteps w gen (c:cs) = runProgramSteps w (runProgramStep w gen c) cs
-runProgramSteps w gen [] = gen
-runProgramStep :: w -> Generation w -> Core w -> Generation w
-runProgramStep w gen step = runProgramStep' w gen step
-runProgramStep' w gen (Assign write) = gen { writes = writes gen ++ [write] }
-runProgramStep' w gen (Call step) = gen { newSteps = newSteps gen ++ [step] }
-runProgramStep' w gen (Sub (Program steps)) = runProgramSteps w gen steps
-runProgramStep' w gen (Cond vbool th el) =
-  let b = rd w vbool
-      next = if b then th else el
-   in runProgramStep w gen next
-runProgramStep' w gen (Mon mon) =
-  gen { gNewMonitorings = gNewMonitorings gen ++ [mon] }
-runProgramStep' w gen Done = gen
-
-readOrCreateEternity :: FilePath -> Eternity w
-readOrCreateEternity = undefined
-
-checkpointEternity :: FilePath -> Eternity w -> IO ()
-checkpointEternity = undefined
-
-startLoop :: Show w => w -> ([String] -> Program w) -> IO ()
-startLoop initW tmiMain = do
-  chan <- newChan
-  args <- getArgs
-  let primalRetval = Retval 0 (show args)
-  writeChan chan primalRetval
-  mainLoop (mkEternity chan initW tmiMain)
-
-mainLoop :: forall w. Show w => Eternity w -> IO ()
-mainLoop e = do
-  -- wait for retval, add it to the list
-  msp "readChan"
-  newRetval <- readChan (retvalChan e)
-  msp $ "got " ++ show newRetval
-  -- refresh
-  --   - handle new retvals (propagate)
-  let e' :: Eternity w
-      e' = e { retvals = retvals e ++ [newRetval] }
-  -- msp $ ("e", e)
-  -- msp $ ("e'", e')
-  let h :: History w
-      h = startHistory e'
-  -- msp $ ("h", h)
-  let h' = replayHistory h
-  -- msp $ ("h'", h')
-  --   - handle new steps (fork)
-  handleNewSteps e h'
-  let (lastW, e'') = endHistory e' h'
-  msp ("wut", length (monitorings e''))
-  -- msp $ ("e''", e'')
-  -- run monitors
-  runMonitors lastW e''
-  -- TODO
-  -- msp "loop"
-  mainLoop e''
-
-runMonitors :: w -> Eternity w -> IO ()
-runMonitors w e = forM_ (monitorings e) (runMonitor w)
-runMonitor :: w -> Monitoring w -> IO ()
-runMonitor w (Monitoring v mon) = do
-  let x = rd w v
-  mon x
-
--- TODO not forking yet, running inline
-handleNewSteps :: Eternity w -> History w -> IO ()
-handleNewSteps e h = do
-  let newSteps = drop (nextStep e) (steps h)
-      indices = drop (nextStep e) [0..]
-      both = zip indices newSteps
-  -- msp $ "nextStep " ++ show (nextStep e) ++ " steps " ++ show (length (steps h))
-  -- msp $ "running " ++ show (length newSteps) ++ " steps"
-  forM_ both $ \(index, Step action _) -> do
-    -- msp $ "run step " ++ show index
-    wrap index action
-  where wrap :: Show a => Int -> IO a -> IO ()
-        wrap index action = do
-          forkIO $ do
-            x <- action
-            let retval = Retval index (show x)
-            writeChan (retvalChan e) retval
-          return ()
-
-replayHistory :: Show w => History w -> History w
-replayHistory h = loop h (hRetvals h)
-  where loop :: Show w => History w -> [Retval] -> History w
-        loop h [] = h
-        loop h (rv:rvs) =
-          let -- w = last (ws h)
-              Retval index s = rv
-              step = vindex "replayHistory" (steps h) index
-              prog = applyContinuation step s
-              latestW = last (ws h)
-              g = startGeneration h
-              g' = runProgram latestW g prog
-              h' = endGeneration h g'
-           in loop h' rvs
-
 sleepRand :: Double -> Double -> IO ()
 sleepRand lo hi = do
   duration <- getStdRandom (randomR (lo, hi))
@@ -350,13 +182,13 @@ sleepRand lo hi = do
   msp $ "slept " ++ show duration
 
 -- sleepAfter :: Double -> Double -> Core w -> Core w
--- sleepAfter lo hi k = Call (Step (sleepRand lo hi) (\() -> Program [k]))
+-- sleepAfter lo hi k = Call (InternalCall (sleepRand lo hi) (\() -> Program [k]))
 
 countDown :: Int -> Core W
 countDown (-1) = Done
-countDown n = Call (Step (threadDelay 1000000)
+countDown n = Call (InternalCall (threadDelay 1000000)
                          (\() -> Program [
-                                   Call (Step (do msp ("countDown " ++ show n); return (n - 1))
+                                   Call (InternalCall (do msp ("countDown " ++ show n); return (n - 1))
                                         (\n -> Program [countDown n]))]))
 
 -- Initializes the counter, runs each cps-based core and when they're all done, runs
@@ -380,7 +212,7 @@ mapCallFanIn counter kjobs k =
 mapCallCPS :: Core w -> [a] -> (a -> IO ()) -> Core w
 mapCallCPS k [] _ = k
 mapCallCPS k (x:xs) corer =
-  Call (Step (corer x)
+  Call (InternalCall (corer x)
              (\() -> Program [mapCallCPS k xs corer]))
 
 writeAFile :: FilePath -> Int -> IO ()
@@ -392,14 +224,14 @@ slp = sleepRand 2 4
 
 cleanDir :: Core W -> FilePath -> Core W
 cleanDir k dir =
-  let k' = Call (Step (removeDirectoryExt dir) (\() -> Program [k]))
+  let k' = Call (InternalCall (removeDirectoryExt dir) (\() -> Program [k]))
       remover f = removeFileExt (dir ++ "/" ++ f)
-  in Call (Step (listDirectory dir)
+  in Call (InternalCall (listDirectory dir)
                 (\files -> Program [
                   -- mapCallCPS k' files (\f -> do slp; remover f)]))
                   mapCallFanIn bFanInCount
                     (flip map files $ \f ->
-                      (\k -> Call (Step (do slp; remover f)
+                      (\k -> Call (InternalCall (do slp; remover f)
                                         (\() -> Program [k]))))
                     k']))
 
@@ -407,36 +239,159 @@ cleanDir k dir =
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
-  Call (Step (createDirectoryExt dir)
+  Call (InternalCall (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
              (\() -> Program [mapCallFanIn bFanInCount
                                            (flip map [0..num-1] $ \f ->
-                                             (\k -> Call (Step (do slp; writeAFile dir f)
+                                             (\k -> Call (InternalCall (do slp; writeAFile dir f)
                                                                (\() -> Program [k]))))
                                            (cleanDir Done dir)]))
 
 program :: Program W
 program = Program
-  [ Mon (Monitoring root monnie)
-  , Assign (Write baa 140)
+  [ Assign (Write baa 140)
   , filesThing 40 "dirr"
-  -- , countDown 5
-  -- , Call (Step (do msp "hey" ; return 3)
-  --        (\n -> Program [Call (Step (msp $ "hey2 " ++ show n) (\() -> Program [Done]))]))
-  -- , Call (Step (listDirectory ".")
-  --        (\files -> Program [Call (Step (msp files) (\() -> Program [Done]))]))
-  -- , Assign (Write bbb 1111)
   ]
 
 monnie :: W -> IO ()
 monnie w = msp $ "MON " ++ show w
 
+data Checkpoint w = Checkpoint
+  { eventLog :: [Event w] }
+  deriving (Show, Read)
+emptyCK :: Checkpoint w
+emptyCK = Checkpoint { eventLog = [] }
+
+removeDbDir :: FilePath -> IO ()
+removeDbDir dbdir = do
+  de <- doesDirectoryExist dbdir
+  when de $ removeDirectoryRecursive dbdir
+
+-- Create the db with empty checkpoint if it doesn't exist.
+ensureDbDir :: Show w => FilePath -> w -> IO ()
+ensureDbDir dbdir initW = do
+  de <- doesDirectoryExist dbdir
+  if not de
+    then do
+      let initWFile = dbdir ++ "/initW"
+          initCKFile = dbdir ++ "/ck"
+      createDirectory dbdir
+      writeFile initWFile (show initW)
+      writeFile initCKFile (show emptyCK)
+    else return ()
+
+readDbFile :: Read a => Proxy w -> FilePath -> FilePath -> IO a
+readDbFile proxy dbdir file = do
+  s <- readFile' (dbdir ++ "/" ++ file)
+  return $ read s
+readCK :: (Show w, Read w) => Proxy w -> FilePath -> IO (Checkpoint w)
+readCK proxy dbdir = readDbFile proxy dbdir "ck"
+readInitW :: (Show w, Read w) => Proxy w -> FilePath -> IO w
+readInitW proxy dbdir = readDbFile proxy dbdir "initW"
+writeCK :: (Show w, Read w) => Proxy w -> FilePath -> Checkpoint w -> IO ()
+writeCK proxy dbdir ck = writeFile (dbdir ++ "/ck") (show ck)
+
+injectEvent :: (Show w, Read w) => Proxy w -> FilePath -> Event w -> IO ()
+injectEvent proxy dbdir e = do
+  ck <- readCK proxy dbdir
+  -- initW <- readInitW dbdir
+  let ck' = ck { eventLog = eventLog ck ++ [e] }
+  writeCK proxy dbdir ck'
+
+run :: (Read w, Show w) => LookerUpper w -> Proxy w -> FilePath -> IO ()
+run lookerUpper proxy dbdir = do
+  ck <- readCK proxy dbdir
+  initW <- readInitW proxy dbdir
+  let (w', calls) = processEvents lookerUpper proxy initW (eventLog ck)
+  msp "before"
+  msp initW
+  msp "after"
+  msp w'
+  processCalls calls (eventLog ck)
+  return ()
+
+-- Get all calls that don't have a retval yet and run them
+-- no wait
+processCalls :: [Call w] -> [Event w] -> IO ()
+processCalls calls events = do
+  return ()
+
+-- TODO this and others don't need proxy, if they have w in there?
+-- Iterate through the event list. Each one produces a Program which gives us a new w
+-- and some steps to add to the step list.
+-- A new InternalCall has an IO which only run if the retval list doesn't already have
+-- a value (which is a witness for that IO having already been run).
+processEvents :: (Show w) => LookerUpper w -> Proxy w -> w -> [Event w] -> (w, [Call w])
+processEvents lookerUpper proxy w events = processEvents' lookerUpper proxy w events []
+
+-- TODO remove proxy?
+processEvents' :: (Show w) => LookerUpper w -> Proxy w -> w -> [Event w] -> [Call w] -> (w, [Call w])
+processEvents' lookerUpper proxy w [] calls = (w, calls)
+processEvents' lookerUpper proxy w (e:es) calls = do
+  let (w', calls') = processEvent lookerUpper w e calls
+  processEvents' lookerUpper proxy w' es calls'
+
+processEvent :: (Show w) => LookerUpper w -> w -> Event w -> [Call w] -> (w, [Call w])
+processEvent lookerUpper w e calls = do
+  let prog = eventToProgram lookerUpper e calls
+   in runProgram w prog
+
+eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
+eventToProgram lookerUpper (Command command) _ = lookerUpper command
+eventToProgram lookerUpper (Retval index rs) calls =
+  let call = vindex "eventToProgram" calls index
+   in applyContinuation call rs
+
+-- data Event w = Retval Int String | Command [String] deriving (Show, Read)
+
+-- TODO do these need IO?
+runProgram :: (Show w) => w -> Program w -> (w, [Call w])
+runProgram w (Program cores) =
+  let (writes, calls) = runCores w cores [] []
+      w' = propToRoot w (Writes writes)
+   in (w', calls)
+
+runCores :: w -> [Core w] -> [Write w] -> [Call w] -> ([Write w], [Call w])
+runCores w (core:cores) writes calls =
+  let (newWrites, newCalls) = runCore w core
+   in runCores w cores (writes ++ newWrites) (calls ++ newCalls)
+runCores w [] writes calls = (writes, calls)
+
+runCore :: w -> Core w -> ([Write w], [Call w])
+runCore w (Assign write) = ([write], [])
+runCore w (Call call) = ([], [call])
+-- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
+-- runCore w (Assign write) writes calls = (writes ++ [write], calls)
+-- runCore w (Call) writes calls = (writes, calls ++ [call])
+
+-- data Core w = Assign (Write w) | Call (Call w) | Sub (Program w)
+--             | Cond (V w Bool) (Core w) (Core w) | Done
+
+type LookerUpper w = [String] -> Program w
+lookupCommand :: LookerUpper W
+lookupCommand ["program"] = program
+
+tmiMetaMain :: (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
+tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
+  injectEvent proxy dbdir (Retval (read indexS) val)
+tmiMetaMain proxy dbdir ("injectCommand" : command) =
+  injectEvent proxy dbdir (Command command)
+-- tmiMetaMain proxy dbdir ["run"] = run proxy dbdir
+
 logMain = do
-  -- msp $ cleanDir Done "dirr"
-  startLoop theWorld (\args -> program)
-  -- finalWorld <- runProgram theWorld program
-  -- msp finalWorld
+  let dir = "db"
+  -- removeDbDir dir
+  let proxy = Proxy :: Proxy W
+  ensureDbDir dir theWorld
+  run lookupCommand proxy dir
+  -- tmiMetaMain "db" ["injectRetval", "12", "hey"]
+  -- tmiMetaMain "db" ["injectCommand", "program"]
+
+  -- -- msp $ cleanDir Done "dirr"
+  -- startLoop theWorld (\args -> program)
+  -- -- finalWorld <- runProgram theWorld program
+  -- -- msp finalWorld
 
   -- Works
   -- msp $ propToRoots theWorld (Write added 140)
