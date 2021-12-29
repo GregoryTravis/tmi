@@ -249,12 +249,6 @@ filesThing num dir =
                                                                (\() -> Program [k]))))
                                            (cleanDir Done dir)]))
 
-program :: Program W
-program = Program
-  [ Assign (Write baa 140)
-  -- , filesThing 40 "dirr"
-  ]
-
 monnie :: W -> IO ()
 monnie w = msp $ "MON " ++ show w
 
@@ -360,7 +354,7 @@ eventToProgram lookerUpper (Retval index rs) calls =
 runProgram :: (Show w) => w -> Program w -> (w, [Call w])
 runProgram w (Program cores) =
   let (writes, calls) = runCores w cores [] []
-      w' = propToRoot w (Writes writes)
+      w' = propWrite w (Writes writes)
    in (w', calls)
 
 runCores :: w -> [Core w] -> [Write w] -> [Call w] -> ([Write w], [Call w])
@@ -389,6 +383,13 @@ tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
 tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
+
+program :: Program W
+program = Program
+  [ Assign (Write baa 140)
+  , Assign (Write bbb 230)
+  -- , filesThing 40 "dirr"
+  ]
 
 logMain = do
   let proxy = Proxy :: Proxy W
