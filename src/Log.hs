@@ -302,18 +302,19 @@ run lookerUpper dbdir = do
   let loop = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
+        msp ("ck start", ck)
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-        msp "before"
-        msp ("evlog", length (eventLog ck))
-        msp initW
-        msp "after"
-        msp w'
+        msp ("initW", initW)
+        msp ("last w", w')
         -- processCalls calls (eventLog ck)
+        msp ("write to ICR", length calls, (eventLog ck))
         writeChan ceChan (calls, eventLog ck)
         msp "retval wait"
         r <- readChan chan
+        msp $ "retval wait got " ++ show r
         let ck' = ck { eventLog = eventLog ck ++ [r] }
         writeCK dbdir ck'
+        msp ("ck end", ck')
         loop
         -- return ()
   loop
