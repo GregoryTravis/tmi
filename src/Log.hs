@@ -281,29 +281,29 @@ ensureDbDir dbdir initW = do
       writeFile initCKFile (show emptyCK)
     else return ()
 
-readDbFile :: Read a => Proxy w -> FilePath -> FilePath -> IO a
-readDbFile proxy dbdir file = do
+readDbFile :: Read a => FilePath -> FilePath -> IO a
+readDbFile dbdir file = do
   s <- readFile' (dbdir ++ "/" ++ file)
   return $ read s
-readCK :: (Show w, Read w) => Proxy w -> FilePath -> IO (Checkpoint w)
-readCK proxy dbdir = readDbFile proxy dbdir "ck"
-readInitW :: (Show w, Read w) => Proxy w -> FilePath -> IO w
-readInitW proxy dbdir = readDbFile proxy dbdir "initW"
+readCK :: (Show w, Read w) => FilePath -> IO (Checkpoint w)
+readCK dbdir = readDbFile dbdir "ck"
+readInitW :: (Show w, Read w) => FilePath -> IO w
+readInitW dbdir = readDbFile dbdir "initW"
 writeCK :: (Show w, Read w) => Proxy w -> FilePath -> Checkpoint w -> IO ()
 writeCK proxy dbdir ck = writeFile (dbdir ++ "/ck") (show ck)
 
 injectEvent :: (Show w, Read w) => Proxy w -> FilePath -> Event w -> IO ()
 injectEvent proxy dbdir e = do
-  ck <- readCK proxy dbdir
+  ck <- readCK dbdir
   -- initW <- readInitW dbdir
   let ck' = ck { eventLog = eventLog ck ++ [e] }
   writeCK proxy dbdir ck'
 
 run :: (Read w, Show w) => LookerUpper w -> Proxy w -> FilePath -> IO ()
 run lookerUpper proxy dbdir = do
-  ck <- readCK proxy dbdir
-  initW <- readInitW proxy dbdir
-  let (w', calls) = processEvents lookerUpper proxy initW (eventLog ck)
+  ck <- readCK dbdir
+  initW <- readInitW dbdir
+  let (w', calls) = processEvents lookerUpper initW (eventLog ck)
   msp "before"
   msp initW
   msp "after"
@@ -317,20 +317,18 @@ processCalls :: [Call w] -> [Event w] -> IO ()
 processCalls calls events = do
   return ()
 
--- TODO this and others don't need proxy, if they have w in there?
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
 -- A new InternalCall has an IO which only run if the retval list doesn't already have
 -- a value (which is a witness for that IO having already been run).
-processEvents :: (Show w) => LookerUpper w -> Proxy w -> w -> [Event w] -> (w, [Call w])
-processEvents lookerUpper proxy w events = processEvents' lookerUpper proxy w events []
+processEvents :: (Show w) => LookerUpper w -> w -> [Event w] -> (w, [Call w])
+processEvents lookerUpper w events = processEvents' lookerUpper w events []
 
--- TODO remove proxy?
-processEvents' :: (Show w) => LookerUpper w -> Proxy w -> w -> [Event w] -> [Call w] -> (w, [Call w])
-processEvents' lookerUpper proxy w [] calls = (w, calls)
-processEvents' lookerUpper proxy w (e:es) calls = do
+processEvents' :: (Show w) => LookerUpper w -> w -> [Event w] -> [Call w] -> (w, [Call w])
+processEvents' lookerUpper w [] calls = (w, calls)
+processEvents' lookerUpper w (e:es) calls = do
   let (w', calls') = processEvent lookerUpper w e calls
-  processEvents' lookerUpper proxy w' es calls'
+  processEvents' lookerUpper w' es calls'
 
 processEvent :: (Show w) => LookerUpper w -> w -> Event w -> [Call w] -> (w, [Call w])
 processEvent lookerUpper w e calls = do
