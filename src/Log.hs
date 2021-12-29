@@ -299,8 +299,8 @@ injectEvent dbdir e = do
   let ck' = ck { eventLog = eventLog ck ++ [e] }
   writeCK dbdir ck'
 
-run :: (Read w, Show w) => LookerUpper w -> Proxy w -> FilePath -> IO ()
-run lookerUpper proxy dbdir = do
+run :: (Read w, Show w) => LookerUpper w -> FilePath -> IO ()
+run lookerUpper dbdir = do
   ck <- readCK dbdir
   initW <- readInitW dbdir
   let (w', calls) = processEvents lookerUpper initW (eventLog ck)
@@ -375,14 +375,14 @@ tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
   injectEvent dbdir ((Retval (read indexS) val) :: Event w)
 tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
--- tmiMetaMain proxy dbdir ["run"] = run proxy dbdir
+-- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
 logMain = do
   let dir = "db"
   -- removeDbDir dir
   let proxy = Proxy :: Proxy W
   ensureDbDir dir theWorld
-  run lookupCommand proxy dir
+  run lookupCommand dir
   -- tmiMetaMain "db" ["injectRetval", "12", "hey"]
   -- tmiMetaMain "db" ["injectCommand", "program"]
 
