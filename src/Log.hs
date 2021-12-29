@@ -20,6 +20,7 @@ import System.Random
 import Unsafe.Coerce
 
 import Ext
+import InternalCallRunner
 import Lift
 import Monad
 import Propagate
@@ -251,7 +252,7 @@ filesThing num dir =
 program :: Program W
 program = Program
   [ Assign (Write baa 140)
-  , filesThing 40 "dirr"
+  -- , filesThing 40 "dirr"
   ]
 
 monnie :: W -> IO ()
@@ -301,21 +302,33 @@ injectEvent dbdir e = do
 
 run :: (Read w, Show w) => LookerUpper w -> FilePath -> IO ()
 run lookerUpper dbdir = do
-  ck <- readCK dbdir
-  initW <- readInitW dbdir
-  let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-  msp "before"
-  msp initW
-  msp "after"
-  msp w'
-  processCalls calls (eventLog ck)
-  return ()
+  chan <- newChan
+  ceChan <- mkInternalCallRunner chan
+  let loop = do
+        ck <- readCK dbdir
+        initW <- readInitW dbdir
+        let (w', calls) = processEvents lookerUpper initW (eventLog ck)
+        msp "before"
+        msp ("evlog", length (eventLog ck))
+        msp initW
+        msp "after"
+        msp w'
+        -- processCalls calls (eventLog ck)
+        writeChan ceChan (calls, eventLog ck)
+        r <- readChan chan
+        let ck' = ck { eventLog = eventLog ck ++ [r] }
+        writeCK dbdir ck'
+        loop
+        -- return ()
+  loop
 
--- Get all calls that don't have a retval yet and run them
--- no wait
-processCalls :: [Call w] -> [Event w] -> IO ()
-processCalls calls events = do
-  return ()
+-- mkInternalCallRunner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))
+
+-- -- Get all calls that don't have a retval yet and run them
+-- -- no wait
+-- processCalls :: [Call w] -> [Event w] -> IO ()
+-- processCalls calls events = do
+--   return ()
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
@@ -338,7 +351,7 @@ processEvent lookerUpper w e calls = do
 eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
 eventToProgram lookerUpper (Command command) _ = lookerUpper command
 eventToProgram lookerUpper (Retval index rs) calls =
-  let call = vindex "eventToProgram" calls index
+  let call = vindex "eventToProgram" (eesp ("oy", length calls, index) calls) index
    in applyContinuation call rs
 
 -- data Event w = Retval Int String | Command [String] deriving (Show, Read)
@@ -378,13 +391,16 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
 logMain = do
-  let dir = "db"
-  -- removeDbDir dir
   let proxy = Proxy :: Proxy W
+  let dir = "db"
+
+  -- removeDbDir dir
+
   ensureDbDir dir theWorld
+
+  -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
+  -- tmiMetaMain proxy "db" ["injectCommand", "program"]
   run lookupCommand dir
-  -- tmiMetaMain "db" ["injectRetval", "12", "hey"]
-  -- tmiMetaMain "db" ["injectCommand", "program"]
 
   -- -- msp $ cleanDir Done "dirr"
   -- startLoop theWorld (\args -> program)
