@@ -411,13 +411,14 @@ logMain = do
   let proxy = Proxy :: Proxy W
   let dir = "db"
 
-  -- removeDbDir dir
-
+  -- Full reset
+  removeDbDir dir
   ensureDbDir dir theWorld
+  tmiMetaMain proxy "db" ["injectCommand", "program"]
+
+  run lookupCommand dir
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
-  -- tmiMetaMain proxy "db" ["injectCommand", "program"]
-  run lookupCommand dir
 
   -- -- msp $ cleanDir Done "dirr"
   -- startLoop theWorld (\args -> program)
