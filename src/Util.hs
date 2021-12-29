@@ -65,6 +65,8 @@ module Util
 , boom
 , (!!!)
 , vindex
+, runList
+, runList_
 ) where
 
 import Control.Exception
@@ -412,3 +414,13 @@ xs !!! i | i >= 0 && i < length xs = xs !! i
 vindex :: String -> [a] -> Int -> a
 vindex note xs i | i >= 0 && i < length xs = xs !! i
                  | otherwise = error ("vindex: " ++ note ++ " " ++ show i)
+
+runList :: [IO a] -> IO [a]
+runList (io : ios) = do
+  (:) <$> io <*> runList ios
+runList [] = return []
+
+runList_ :: [IO a] -> IO ()
+runList_ xs = do
+  runList xs
+  return ()

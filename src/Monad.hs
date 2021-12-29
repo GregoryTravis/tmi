@@ -8,7 +8,10 @@ module Monad
 , applyContinuation
 , Monitor(..)
 , Monitoring(..)
+, wrapAction
 ) where
+
+import Control.Concurrent
 
 import Util
 import V
@@ -34,3 +37,14 @@ instance Show (Core w) where
 applyContinuation :: Call w -> String -> Program w
 applyContinuation (InternalCall _ k) s = k (read s)
 applyContinuation (ExternalCall k) s = k (read s)
+
+-- Wrap an action to 'show' its value into a retval and send it down a channel.
+-- Only for InternalCalls.
+wrapAction :: Chan (Event w) -> Int -> Call w -> IO ()
+wrapAction chan index (InternalCall io _) = do
+  a <- io
+  let as = show a
+      retval = Retval index as
+  writeChan chan retval
+  return ()
+wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
