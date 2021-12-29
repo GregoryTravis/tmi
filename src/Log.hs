@@ -221,7 +221,8 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
-slp = sleepRand 2 4
+-- slp = sleepRand 2 4
+slp = sleepRand 0.2 0.4
 
 cleanDir :: Core W -> FilePath -> Core W
 cleanDir k dir =
@@ -309,6 +310,7 @@ run lookerUpper dbdir = do
         msp w'
         -- processCalls calls (eventLog ck)
         writeChan ceChan (calls, eventLog ck)
+        msp "retval wait"
         r <- readChan chan
         let ck' = ck { eventLog = eventLog ck ++ [r] }
         writeCK dbdir ck'
@@ -344,8 +346,8 @@ processEvent lookerUpper w e calls = do
 
 eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
 eventToProgram lookerUpper (Command command) _ = lookerUpper command
-eventToProgram lookerUpper (Retval index rs) calls =
-  let call = vindex "eventToProgram" (eesp ("oy", length calls, index) calls) index
+eventToProgram lookerUpper r@(Retval index rs) calls =
+  let call = vindex "eventToProgram" (eesp ("oy", length calls, index, r) calls) index
    in applyContinuation call rs
 
 -- data Event w = Retval Int String | Command [String] deriving (Show, Read)
@@ -357,6 +359,7 @@ runProgram w (Program cores) =
       w' = propWrite w (Writes writes)
    in (w', calls)
 
+-- TODO: appends very slow
 runCores :: w -> [Core w] -> [Write w] -> [Call w] -> ([Write w], [Call w])
 runCores w (core:cores) writes calls =
   let (newWrites, newCalls) = runCore w core
@@ -364,8 +367,18 @@ runCores w (core:cores) writes calls =
 runCores w [] writes calls = (writes, calls)
 
 runCore :: w -> Core w -> ([Write w], [Call w])
-runCore w (Assign write) = ([write], [])
-runCore w (Call call) = ([], [call])
+runCore w c = eesp ("running core", c) $ runCore' w c
+-- runCore w c = runCore' w c
+runCore' :: w -> Core w -> ([Write w], [Call w])
+runCore' w (Assign write) = ([write], [])
+runCore' w (Call call) = ([], [call])
+runCore' w (Sub (Program cores)) = runCores w cores [] []
+runCore' w (Cond vbool th el) =
+  let b = rd w vbool
+      next = if b then th else el
+   in runCore w next
+runCore' w Done = ([], [])
+-- runCore w x = error $ "??? " ++ show x
 -- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
 -- runCore w (Assign write) writes calls = (writes ++ [write], calls)
 -- runCore w (Call) writes calls = (writes, calls ++ [call])
@@ -386,8 +399,10 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
 
 program :: Program W
 program = Program
-  [ Assign (Write baa 140)
-  , Assign (Write bbb 230)
+  [
+  --Assign (Write baa 140)
+  Call (InternalCall (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
+  -- , Assign (Write bbb 230)
   -- , filesThing 40 "dirr"
   ]
 

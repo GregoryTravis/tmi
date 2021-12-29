@@ -20,14 +20,22 @@ startLoop = loop S.empty
 -- Read a ce, pick short calls to run, start them, repeat.
 loop :: S.Set Int -> Chan (Event w) -> Chan ([Call w], [Event w]) -> IO ()
 loop started eventChan ceChan = do
+  msp "ICR wait"
   (calls, events) <- readChan ceChan
+  msp ("ICR done waiting", length calls, length events)
   let (callsAndIndices, started') = needToRun started calls events
   runCalls eventChan callsAndIndices
   loop started' eventChan ceChan
 
 runCalls :: Chan (Event w) -> [(Int, Call w)] -> IO ()
 runCalls chan callsAndIndices = runList_ ios
-  where ios = map (\(i, call) -> wrapAction chan i call) callsAndIndices
+  where ios = map (\(i, call) -> wrapFork $ wrapAction chan i call) callsAndIndices
+
+wrapFork :: IO () -> IO ()
+wrapFork io = do
+  msp "forking wwwwwwwwwwwwwwwwwwww"
+  forkIO io
+  return ()
 
 -- From the provided calls list, remove:
 -- - Calls that already have retvals in the list
@@ -49,7 +57,9 @@ needToRun started calls events =
       doIndices = map fst doCallsAndIndices
       -- Add the ones we're starting; remove the ones in retvals
       started' = (started `S.union` S.fromList doIndices) `S.difference` S.fromList retvalIndices
-      info = [ ("retvalIndices", show retvalIndices)
+      info = [ ("retvals", show events)
+             , ("num calls", show $ length calls)
+             , ("retvalIndices", show retvalIndices)
              , ("dontDoIndices", show dontDoIndices)
              , ("doIndices", show doIndices)
              , ("started", show started)

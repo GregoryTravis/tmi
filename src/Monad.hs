@@ -45,6 +45,7 @@ wrapAction chan index (InternalCall io _) = do
   a <- io
   let as = show a
       retval = Retval index as
+  msp $ "wrapAction chan write: " ++ show retval
   writeChan chan retval
   return ()
 wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"

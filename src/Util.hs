@@ -144,7 +144,13 @@ eeesp s a = unsafePerformIO $ do
 -- Fake ones for quickly disabling
 feesp s a = a
 
-evalString s = seq (length s) s
+-- Yeah I'm trying to be strict yeah
+foldString :: [Char] -> Char
+foldString ('a':cs) = foldString cs
+foldString (_:cs) = foldString cs
+foldString [] = 'a'
+evalString s = seq (foldString s, length s) s
+-- evalString s = seq (length s) s
 
 sp :: Show a => a -> String
 sp x = unpack $ toStrict $ pShowNoColor $ x
