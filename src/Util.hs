@@ -22,6 +22,9 @@ module Util
 , ttsp
 , tesp
 , ttesp
+, tseesp
+, tseeesp
+, tsmsp
 , fromLeftReal
 , mappily
 , mcompose
@@ -69,6 +72,7 @@ module Util
 , runList_
 ) where
 
+import Control.Concurrent.Chan
 import Control.Exception
 import Data.Containers.ListUtils (nubOrd)
 import Control.DeepSeq
@@ -94,8 +98,11 @@ esp a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ a
   return a
 
+useTS = True
+
 eesp :: Show s => s -> a -> a
-eesp s a = unsafePerformIO $ do
+eesp = if useTS then tseesp else oeesp
+oeesp s a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ s
   hFlush stdout
   return a
@@ -137,7 +144,8 @@ leesp logFile s a = unsafePerformIO $ do
   return a
 
 eeesp :: (Show s, Show a) => s -> a -> a
-eeesp s a = unsafePerformIO $ do
+eeesp = if useTS then tseeesp else oeeesp
+oeeesp s a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ (s, a)
   return a
 
@@ -157,7 +165,8 @@ sp x = unpack $ toStrict $ pShowNoColor $ x
 --sp x = show x
 
 msp :: Show a => a -> IO ()
-msp x = putStrLn $ evalString $ sp x
+msp = if useTS then tsmsp else omsp
+omsp x = putStrLn $ evalString $ sp x
 
 lmsp :: Show a => String -> a -> IO ()
 lmsp label x = putStrLn $ label ++ ": " ++ (evalString $ sp x)
@@ -166,6 +175,29 @@ tsp x = putStrLn $ (sp x) ++ " :: " ++ (sp (typeOf x))
 ttsp x = putStrLn $ "_ :: " ++ (sp (typeOf x))
 tesp x = eesp (sp x ++ " :: " ++ (sp (typeOf x))) x
 ttesp x = eesp ("_ :: " ++ (sp (typeOf x))) x
+
+tseesp :: Show s => s -> a -> a
+tseesp s a = unsafePerformIO $ do
+  tsmsp s
+  return a
+
+tseeesp :: (Show s, Show a) => s -> a -> a
+tseeesp s a = tseesp (s, a) a
+
+tsmsp :: Show s => s -> IO ()
+tsmsp s = writeChan tsspChan (sp s)
+
+tsspChan :: Chan String
+tsspChan = unsafePerformIO $ do
+  chan <- newChan
+  forkIO $ do
+    let loop = do
+          s <- readChan chan
+          putStrLn s
+          hFlush stdout
+          loop
+     in loop
+  return chan
 
 -- Really surprised this doesn't exist
 fromLeftReal (Left a) = a
