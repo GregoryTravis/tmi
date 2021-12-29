@@ -402,7 +402,14 @@ program :: Program W
 program = Program
   [
   --Assign (Write baa 140)
-  Call (InternalCall (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
+
+  -- Call (InternalCall (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
+  Call (InternalCall
+         (msp "zzzzzzzzzzzzzzzzzzzzzz")
+         (\() -> Program [Call (InternalCall
+                                 (msp "yyyyyyyyyyy")
+                                 (\() -> Program [Done]))]))
+
   -- , Assign (Write bbb 230)
   -- , filesThing 40 "dirr"
   ]
