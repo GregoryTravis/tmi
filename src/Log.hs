@@ -289,15 +289,15 @@ readCK :: (Show w, Read w) => FilePath -> IO (Checkpoint w)
 readCK dbdir = readDbFile dbdir "ck"
 readInitW :: (Show w, Read w) => FilePath -> IO w
 readInitW dbdir = readDbFile dbdir "initW"
-writeCK :: (Show w, Read w) => Proxy w -> FilePath -> Checkpoint w -> IO ()
-writeCK proxy dbdir ck = writeFile (dbdir ++ "/ck") (show ck)
+writeCK :: (Show w, Read w) => FilePath -> Checkpoint w -> IO ()
+writeCK dbdir ck = writeFile (dbdir ++ "/ck") (show ck)
 
-injectEvent :: (Show w, Read w) => Proxy w -> FilePath -> Event w -> IO ()
-injectEvent proxy dbdir e = do
+injectEvent :: (Show w, Read w) => FilePath -> Event w -> IO ()
+injectEvent dbdir e = do
   ck <- readCK dbdir
   -- initW <- readInitW dbdir
   let ck' = ck { eventLog = eventLog ck ++ [e] }
-  writeCK proxy dbdir ck'
+  writeCK dbdir ck'
 
 run :: (Read w, Show w) => LookerUpper w -> Proxy w -> FilePath -> IO ()
 run lookerUpper proxy dbdir = do
@@ -370,11 +370,11 @@ type LookerUpper w = [String] -> Program w
 lookupCommand :: LookerUpper W
 lookupCommand ["program"] = program
 
-tmiMetaMain :: (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
+tmiMetaMain :: forall w. (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
 tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
-  injectEvent proxy dbdir (Retval (read indexS) val)
+  injectEvent dbdir ((Retval (read indexS) val) :: Event w)
 tmiMetaMain proxy dbdir ("injectCommand" : command) =
-  injectEvent proxy dbdir (Command command)
+  injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run proxy dbdir
 
 logMain = do
