@@ -429,18 +429,19 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
--- data Ruh a = Ruh (IO a)
+data Ruh a = Ruh (IO a) | RuhDone
 
 glack :: (Show t, Show a, Read t, Read a) =>
-     IO t -> (t -> IO a) -> Program w
-glack io a2io = Program
+     Ruh t -> (t -> Ruh a) -> Program w
+glack (Ruh io) a2io = Program
   [ Call (InternalCall "" io
-          (\x -> Program [Call (InternalCall "" (a2io x) (\n -> Program [Done]))]))
+          (\x ->
+            case a2io x of Ruh io -> Program [Call (InternalCall "" io (\n -> Program [Done]))]))
   ]
 
 foo :: Program w
-foo = glack (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12)  -- IO Int
-            (\n -> (do msp ("yyyyyyyyyyy", n); return 13)) -- Int -> IO Int
+foo = glack (Ruh (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12))  -- IO Int
+            (\n -> Ruh (do msp ("yyyyyyyyyyy", n); return 13)) -- Int -> IO Int
 
 program :: Int -> Program W
 program num = Program
