@@ -457,7 +457,7 @@ logMain = do
         ensureDbDir dir theWorld
         tmiMetaMain proxy "db" ["injectCommand", "program", (show n)]
         run lookupCommand dir
-  mapM_ runIt [10, 20]
+  mapM_ runIt [1200]
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 
