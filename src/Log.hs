@@ -429,7 +429,59 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
+-- data Brah a = Brah (IO a)
+-- brahToCall :: (Read a, Show a) => Brah a -> Program w
+-- brahToCall (Brah io) = Program [Call (InternalCall "" io (\_ -> Program [Done]))]
+
+-- vluh :: Brah a -> (a -> Brah b) -> Brah b
+
+type CPSFun a b r = ((b -> r) -> a -> r)
+
+luft :: (a -> b) -> ((b -> r) -> a -> r)
+luft f = \k a -> k (f a)
+
+afun :: (b -> r) -> a -> r
+afun = undefined
+bfun :: (c -> r) -> b -> r
+bfun = undefined
+-- lala :: ((c -> r) -> b -> r) -> ((b -> r) -> a -> r) -> ((c -> r) -> a -> r)
+lala :: CPSFun b c r -> CPSFun a b r -> CPSFun a c r
+lala c2r2b2r b2r2a2r c2r a =
+  let b2r = c2r2b2r c2r
+      a2r = b2r2a2r b2r
+   in a2r a
+
+runCPS :: CPSFun a b b -> a -> b
+runCPS cpsf a = cpsf id a
+
+  -- \b2r a ->
+  --   let a2r = b2r2a2r b2r
+  --    in c2r2b2r (\c2r -> undefined)
+
+data Brah w a = Brah { toCall :: Call w -> Call w }
+ioToBrah :: (Read a, Show a) => IO a -> Brah w a
+ioToBrah io = Brah { toCall = (\k -> InternalCall "" io (\_ -> Program [Call k])) }
+
+flee :: Brah w a -> (a -> Brah w b) -> Brah w b
+-- flee :: (Call w -> Call w) -> (b -> Call w -> Call w) -> (Call w -> Call w)
+flee brahA a2BrahB = undefined
+
+type Gee w a = ((IO a -> Call w) -> Call w)
+
+data Eh w a = Eh (a -> Program w)
+whatIsThis :: Eh w (IO a) -> (a -> Eh w (IO b)) -> Eh w (IO b)
+-- whatIsThis :: (IO a -> Program w) -> (a -> IO b -> Program w) -> (IO b -> Program w)
+-- whatIsThis :: Eh w (IO a) -> (Eh w (a -> IO b)) -> Eh w (IO b)
+-- -- whatIsThis :: (IO a -> Program w) -> ((a -> IO b) -> Program w) -> (IO b -> Program w)
+whatIsThis = undefined
+
 data Ruh a = Ruh (IO a) | RuhDone
+
+runMe :: (Read a, Show a) => Ruh a -> (a -> Program w) -> Program w
+-- runMe = undefined
+runMe (Ruh io) k = Program [Call (InternalCall "" io k)]
+
+-- data Call w = forall a. (Show a, Read a) => InternalCall String (IO a) (a -> Program w)
 
 glack :: (Show t, Show a, Read t, Read a) =>
      Ruh t -> (t -> Ruh a) -> Program w
@@ -464,6 +516,7 @@ program num = Program
   ]
 
 logMain = do
+  -- works
   let proxy = Proxy :: Proxy W
   let dir = "db"
 
@@ -474,6 +527,7 @@ logMain = do
         tmiMetaMain proxy "db" ["injectCommand", "program", (show n)]
         run lookupCommand dir
   mapM_ runIt [20]
+
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 
