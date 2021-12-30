@@ -12,11 +12,11 @@ import Control.Monad (forM_, when)
 import Data.Maybe
 import Data.Proxy
 -- import Data.Traversable (for)
--- import Data.Time.Clock (diffUTCTime)
--- import Data.Time.Clock.System (getSystemTime, systemToUTCTime)
+import Data.Time.Clock (diffUTCTime)
+import Data.Time.Clock.System (getSystemTime, systemToUTCTime)
 import Data.Tuple
 -- import Type.Reflection
-import System.CPUTime (getCPUTime)
+-- import System.CPUTime (getCPUTime, cpuTimePrecision)
 import System.Directory
 import System.Environment
 import System.Random
@@ -222,33 +222,14 @@ mapCallFanIn counter kjobs k =
   
 timeCall :: (Core W -> Core W) -> Core W
 timeCall kjob = Sub (Program
-  [ Call (InternalCall "time start" getCPUTime
+  [ Call (InternalCall "time start" (do t <- getSystemTime; return $ systemToUTCTime t)
     (\start ->
       let k = Call (
-                InternalCall "time end" getCPUTime
-                (\end -> let diff = (fromIntegral (end - start)) / 1_000_000_000_000.0
+                InternalCall "time end" (do t <- getSystemTime; return $ systemToUTCTime t)
+                (\end -> let diff = end `diffUTCTime` start
                           in Program [Call (InternalCall "time show" (msp $ "duration " ++ show diff)
                                         (\() -> Program [Done]))]))
        in Program [kjob k])) ])
-
--- -- Return duration in seconds
--- cpuTime :: IO a -> IO (a, Double)
--- cpuTime action = do
---   beforePicoseconds <- getCPUTime
---   x <- action
---   afterPicoseconds <- getCPUTime
---   let duration = (fromIntegral (afterPicoseconds - beforePicoseconds)) / 1_000_000_000_000.0
---   return (x, duration)
-
-    -- start <- getCPUTime
-    -- v <- a
-    -- end   <- getCPUTime
-    -- let diff = (fromIntegral (end - start)) / (10^12)
-
-    -- start <- getSystemTime
-    -- v <- a
-    -- end <- getSystemTime
-    -- let diff = (systemToUTCTime end) `diffUTCTime` (systemToUTCTime start)
 
 mapCallCPS :: Core w -> [a] -> (a -> IO ()) -> Core w
 mapCallCPS k [] _ = k
@@ -261,7 +242,8 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
-slp = sleepRand 2 4
+-- slp = sleepRand 2 4
+slp = sleepRand 8 12
 -- slp = sleepRand 0.2 0.4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
