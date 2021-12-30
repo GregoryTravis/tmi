@@ -12,8 +12,11 @@ import Control.Monad (forM_, when)
 import Data.Maybe
 import Data.Proxy
 -- import Data.Traversable (for)
+-- import Data.Time.Clock (diffUTCTime)
+-- import Data.Time.Clock.System (getSystemTime, systemToUTCTime)
 import Data.Tuple
 -- import Type.Reflection
+import System.CPUTime (getCPUTime)
 import System.Directory
 import System.Environment
 import System.Random
@@ -217,6 +220,35 @@ mapCallFanIn counter kjobs k =
           , Sub (Program jobs)
           ])
   
+timeCall :: (Core W -> Core W) -> Core W
+timeCall kjob = Sub (Program
+  [ Call (InternalCall "time start" getCPUTime
+    (\start ->
+      let k = Call (
+                InternalCall "time end" getCPUTime
+                (\end -> let diff = (fromIntegral (end - start)) / 1_000_000_000_000.0
+                          in Program [Call (InternalCall "time show" (msp $ "duration " ++ show diff)
+                                        (\() -> Program [Done]))]))
+       in Program [kjob k])) ])
+
+-- -- Return duration in seconds
+-- cpuTime :: IO a -> IO (a, Double)
+-- cpuTime action = do
+--   beforePicoseconds <- getCPUTime
+--   x <- action
+--   afterPicoseconds <- getCPUTime
+--   let duration = (fromIntegral (afterPicoseconds - beforePicoseconds)) / 1_000_000_000_000.0
+--   return (x, duration)
+
+    -- start <- getCPUTime
+    -- v <- a
+    -- end   <- getCPUTime
+    -- let diff = (fromIntegral (end - start)) / (10^12)
+
+    -- start <- getSystemTime
+    -- v <- a
+    -- end <- getSystemTime
+    -- let diff = (systemToUTCTime end) `diffUTCTime` (systemToUTCTime start)
 
 mapCallCPS :: Core w -> [a] -> (a -> IO ()) -> Core w
 mapCallCPS k [] _ = k
@@ -247,8 +279,8 @@ cleanDir counter k dir =
 
 -- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 
-filesThing :: V Int -> Int -> FilePath -> Core W
-filesThing counter num dir =
+filesThing :: V Int -> Int -> FilePath -> Core W -> Core W
+filesThing counter num dir k =
   Call (InternalCall "createDirectoryExt" (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
@@ -256,7 +288,7 @@ filesThing counter num dir =
                                            (flip map [0..num-1] $ \f ->
                                              (\k -> Call (InternalCall "slp+writeAFile" (do slp; writeAFile dir f)
                                                                (\() -> Program [k]))))
-                                           (cleanDir counter Done dir)]))
+                                           (cleanDir counter k dir)]))
                                            -- Done]))
 
 monnie :: W -> IO ()
@@ -427,8 +459,8 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-    filesThing bFanInCount 80 "dirr"
-  , filesThing bFanInCount2 160 "dirr2"
+    timeCall (filesThing bFanInCount 10 "dirr")
+  -- , filesThing bFanInCount2 160 "dirr2" Done
   ]
 
 logMain = do
