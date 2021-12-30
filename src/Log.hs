@@ -220,14 +220,15 @@ mapCallFanIn counter kjobs k =
           , Sub (Program jobs)
           ])
   
-timeCall :: (Core W -> Core W) -> Core W
-timeCall kjob = Sub (Program
+timeCall :: String -> (Core W -> Core W) -> Core W
+timeCall note kjob = Sub (Program
   [ Call (InternalCall "time start" (do t <- getSystemTime; return $ systemToUTCTime t)
     (\start ->
       let k = Call (
                 InternalCall "time end" (do t <- getSystemTime; return $ systemToUTCTime t)
                 (\end -> let diff = end `diffUTCTime` start
-                          in Program [Call (InternalCall "time show" (msp $ "duration " ++ show diff)
+                          in Program [Call (InternalCall "time show" (msp $ "duration " ++ note ++
+                                                                            " " ++ show diff)
                                         (\() -> Program [Done]))]))
        in Program [kjob k])) ])
 
@@ -243,8 +244,8 @@ writeAFile dir n = do
   writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
 -- slp = sleepRand 2 4
-slp = sleepRand 8 12
--- slp = sleepRand 0.2 0.4
+-- slp = sleepRand 8 12
+slp = sleepRand 0.2 0.4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
@@ -419,7 +420,7 @@ runCore' w Done = ([], [])
 
 type LookerUpper w = [String] -> Program w
 lookupCommand :: LookerUpper W
-lookupCommand ["program"] = program
+lookupCommand ["program", numS] = program (read numS)
 
 tmiMetaMain :: forall w. (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
 tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
@@ -428,8 +429,8 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
-program :: Program W
-program = Program
+program :: Int -> Program W
+program num = Program
   [
   --Assign (Write baa 140)
 
@@ -441,8 +442,9 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-    timeCall (filesThing bFanInCount 10 "dirr")
+    -- timeCall (filesThing bFanInCount 10 "dirr")
   -- , filesThing bFanInCount2 160 "dirr2" Done
+    timeCall (show num) (filesThing bFanInCount num "dirr")
   ]
 
 logMain = do
@@ -450,11 +452,12 @@ logMain = do
   let dir = "db"
 
   -- Full reset
-  removeDbDir dir
-  ensureDbDir dir theWorld
-  tmiMetaMain proxy "db" ["injectCommand", "program"]
-
-  run lookupCommand dir
+  let runIt n = do
+        removeDbDir dir
+        ensureDbDir dir theWorld
+        tmiMetaMain proxy "db" ["injectCommand", "program", (show n)]
+        run lookupCommand dir
+  mapM_ runIt [10, 20]
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 
