@@ -183,13 +183,13 @@ sleepRand lo hi = do
   msp $ "slept " ++ show duration
 
 -- sleepAfter :: Double -> Double -> Core w -> Core w
--- sleepAfter lo hi k = Call (InternalCall (sleepRand lo hi) (\() -> Program [k]))
+-- sleepAfter lo hi k = Call (InternalCall "yo" (sleepRand lo hi) (\() -> Program [k]))
 
 countDown :: Int -> Core W
 countDown (-1) = Done
-countDown n = Call (InternalCall (threadDelay 1000000)
+countDown n = Call (InternalCall "yo" (threadDelay 1000000)
                          (\() -> Program [
-                                   Call (InternalCall (do msp ("countDown " ++ show n); return (n - 1))
+                                   Call (InternalCall "yo" (do msp ("countDown " ++ show n); return (n - 1))
                                         (\n -> Program [countDown n]))]))
 
 -- Initializes the counter, runs each cps-based core and when they're all done, runs
@@ -213,7 +213,7 @@ mapCallFanIn counter kjobs k =
 mapCallCPS :: Core w -> [a] -> (a -> IO ()) -> Core w
 mapCallCPS k [] _ = k
 mapCallCPS k (x:xs) corer =
-  Call (InternalCall (corer x)
+  Call (InternalCall "mapCallCPS" (corer x)
              (\() -> Program [mapCallCPS k xs corer]))
 
 writeAFile :: FilePath -> Int -> IO ()
@@ -221,19 +221,19 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
--- slp = sleepRand 2 4
-slp = sleepRand 0.2 0.4
+slp = sleepRand 2 4
+-- slp = sleepRand 0.2 0.4
 
 cleanDir :: Core W -> FilePath -> Core W
 cleanDir k dir =
-  let k' = Call (InternalCall (removeDirectoryExt dir) (\() -> Program [k]))
+  let k' = Call (InternalCall "removeDirectoryExt" (removeDirectoryExt dir) (\() -> Program [k]))
       remover f = removeFileExt (dir ++ "/" ++ f)
-  in Call (InternalCall (listDirectory dir)
+  in Call (InternalCall "listDirectory" (listDirectory dir)
                 (\files -> Program [
                   -- mapCallCPS k' files (\f -> do slp; remover f)]))
                   mapCallFanIn bFanInCount
                     (flip map files $ \f ->
-                      (\k -> Call (InternalCall (do slp; remover f)
+                      (\k -> Call (InternalCall "slp" (do slp; remover f)
                                         (\() -> Program [k]))))
                     k']))
 
@@ -241,14 +241,15 @@ cleanDir k dir =
 
 filesThing :: Int -> FilePath -> Core W
 filesThing num dir =
-  Call (InternalCall (createDirectoryExt dir)
+  Call (InternalCall "createDirectoryExt" (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
              (\() -> Program [mapCallFanIn bFanInCount
                                            (flip map [0..num-1] $ \f ->
-                                             (\k -> Call (InternalCall (do slp; writeAFile dir f)
+                                             (\k -> Call (InternalCall "slp+writeAFile" (do slp; writeAFile dir f)
                                                                (\() -> Program [k]))))
                                            (cleanDir Done dir)]))
+                                           -- Done]))
 
 monnie :: W -> IO ()
 monnie w = msp $ "MON " ++ show w
@@ -306,6 +307,7 @@ run lookerUpper dbdir = do
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
         msp ("initW", initW)
         msp ("last w", w')
+        msp ("processedEvents, got", length calls)
         -- processCalls calls (eventLog ck)
         msp ("write to ICR", length calls, (eventLog ck))
         writeChan ceChan (calls, eventLog ck)
@@ -319,7 +321,7 @@ run lookerUpper dbdir = do
         -- return ()
   loop
 
--- mkInternalCallRunner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))
+-- mkInternalCall "yo"Runner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))
 
 -- -- Get all calls that don't have a retval yet and run them
 -- -- no wait
@@ -329,26 +331,30 @@ run lookerUpper dbdir = do
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
--- A new InternalCall has an IO which only run if the retval list doesn't already have
+-- A new InternalCall "yo" has an IO which only run if the retval list doesn't already have
 -- a value (which is a witness for that IO having already been run).
 processEvents :: (Show w) => LookerUpper w -> w -> [Event w] -> (w, [Call w])
 processEvents lookerUpper w events = processEvents' lookerUpper w events []
 
 processEvents' :: (Show w) => LookerUpper w -> w -> [Event w] -> [Call w] -> (w, [Call w])
 processEvents' lookerUpper w [] calls = (w, calls)
-processEvents' lookerUpper w (e:es) calls = do
-  let (w', calls') = processEvent lookerUpper w e calls
-  processEvents' lookerUpper w' es calls'
+processEvents' lookerUpper w (e:es) calls =
+  let (w', newCalls) = processEvent lookerUpper w e calls
+      calls' = calls ++ newCalls
+   in eesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls'
 
 processEvent :: (Show w) => LookerUpper w -> w -> Event w -> [Call w] -> (w, [Call w])
-processEvent lookerUpper w e calls = do
+processEvent lookerUpper w e calls =
   let prog = eventToProgram lookerUpper e calls
-   in runProgram w prog
+      (w', newCalls) = runProgram w prog
+      -- allCalls = calls ++ newCalls
+   in eesp ("processEvent runProgram", e, calls, newCalls) $ (w', newCalls)
+   -- in eesp ("processEvent", e) $ runProgram w prog
 
 eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
 eventToProgram lookerUpper (Command command) _ = lookerUpper command
 eventToProgram lookerUpper r@(Retval index rs) calls =
-  let call = vindex "eventToProgram" (eesp ("oy", length calls, index, r) calls) index
+  let call = vindex "eventToProgram" (eesp ("eventToProgram", length calls, index, r) calls) index
    in applyContinuation call rs
 
 -- data Event w = Retval Int String | Command [String] deriving (Show, Read)
@@ -378,6 +384,7 @@ runCore' w (Cond vbool th el) =
   let b = rd w vbool
       next = if b then th else el
    in runCore w next
+-- runCore' w (Named s c) = runCore w c
 runCore' w Done = ([], [])
 -- runCore w x = error $ "??? " ++ show x
 -- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
@@ -403,15 +410,15 @@ program = Program
   [
   --Assign (Write baa 140)
 
-  -- Call (InternalCall (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
-  Call (InternalCall
-         (msp "zzzzzzzzzzzzzzzzzzzzzz")
-         (\() -> Program [Call (InternalCall
-                                 (msp "yyyyyyyyyyy")
-                                 (\() -> Program [Done]))]))
+  -- Call (InternalCall "yo" (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
+  -- Call (InternalCall "step1"
+  --        (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12)
+  --        (\n -> Program [Call (InternalCall "step2"
+  --                                (do msp ("yyyyyyyyyyy", n); return 13)
+  --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-  -- , filesThing 40 "dirr"
+  filesThing 40 "dirr"
   ]
 
 logMain = do

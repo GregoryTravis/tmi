@@ -22,13 +22,15 @@ loop :: S.Set Int -> Chan (Event w) -> Chan ([Call w], [Event w]) -> IO ()
 loop started eventChan ceChan = do
   msp "ICR wait"
   (calls, events) <- readChan ceChan
-  msp ("ICR done waiting", length calls, length events)
+  msp ("ICR done waiting", length calls, events)
   let (callsAndIndices, started') = needToRun started calls events
   runCalls eventChan callsAndIndices
   loop started' eventChan ceChan
 
 runCalls :: Chan (Event w) -> [(Int, Call w)] -> IO ()
-runCalls chan callsAndIndices = runList_ ios
+runCalls chan callsAndIndices = do
+  msp ("runCalls", map fst callsAndIndices)
+  runList_ ios
   where ios = map (\(i, call) -> wrapFork $ wrapAction chan i call) callsAndIndices
 
 wrapFork :: IO () -> IO ()
@@ -57,8 +59,10 @@ needToRun started calls events =
       doIndices = map fst doCallsAndIndices
       -- Add the ones we're starting; remove the ones in retvals
       started' = (started `S.union` S.fromList doIndices) `S.difference` S.fromList retvalIndices
-      info = [ ("retvals", show events)
+      info = [ ("events", show events)
+             , ("retvals", show retvals)
              , ("num calls", show $ length calls)
+             , ("calls", show calls)
              , ("retvalIndices", show retvalIndices)
              , ("dontDoIndices", show dontDoIndices)
              , ("doIndices", show doIndices)
