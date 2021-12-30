@@ -180,7 +180,7 @@ sleepRand lo hi = do
   duration <- getStdRandom (randomR (lo, hi))
   msp $ "sleeping " ++ show duration
   threadDelay $ floor $ duration * 1_000_000
-  msp $ "slept " ++ show duration
+  -- msp $ "slept " ++ show duration
 
 -- sleepAfter :: Double -> Double -> Core w -> Core w
 -- sleepAfter lo hi k = Call (InternalCall "yo" (sleepRand lo hi) (\() -> Program [k]))
@@ -303,20 +303,20 @@ run lookerUpper dbdir = do
   let loop = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
-        msp ("ck start", ck)
+        -- msp ("ck start", ck)
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-        msp ("initW", initW)
-        msp ("last w", w')
+        -- msp ("initW", initW)
+        -- msp ("last w", w')
         msp ("processedEvents, got", length calls)
         -- processCalls calls (eventLog ck)
-        msp ("write to ICR", length calls, (eventLog ck))
+        -- msp ("write to ICR", length calls, (eventLog ck))
         writeChan ceChan (calls, eventLog ck)
         msp "retval wait"
         r <- readChan chan
         msp $ "retval wait got " ++ show r
         let ck' = ck { eventLog = eventLog ck ++ [r] }
         writeCK dbdir ck'
-        msp ("ck end", ck')
+        -- msp ("ck end", ck')
         loop
         -- return ()
   loop
@@ -418,8 +418,8 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-    filesThing 10 "dirr"
-  , filesThing 10 "dirr2"
+    filesThing 2 "dirr"
+  , filesThing 2 "dirr2"
   ]
 
 logMain = do

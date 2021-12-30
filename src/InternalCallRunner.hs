@@ -20,9 +20,9 @@ startLoop = loop S.empty
 -- Read a ce, pick short calls to run, start them, repeat.
 loop :: S.Set Int -> Chan (Event w) -> Chan ([Call w], [Event w]) -> IO ()
 loop started eventChan ceChan = do
-  msp "ICR wait"
+  -- msp "ICR wait"
   (calls, events) <- readChan ceChan
-  msp ("ICR done waiting", length calls, events)
+  -- msp ("ICR done waiting", length calls, events)
   let (callsAndIndices, started') = needToRun started calls events
   runCalls eventChan callsAndIndices
   loop started' eventChan ceChan
@@ -68,4 +68,4 @@ needToRun started calls events =
              , ("doIndices", show doIndices)
              , ("started", show started)
              , ("started'", show started')]
-  in eesp info (doCallsAndIndices, started')
+  in noeesp info (doCallsAndIndices, started')
