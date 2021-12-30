@@ -243,9 +243,9 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
 
--- slp = sleepRand 2 4
+slp = sleepRand 4 8
 -- slp = sleepRand 8 12
-slp = sleepRand 0.2 0.4
+-- slp = sleepRand 0.2 0.4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
@@ -256,7 +256,7 @@ cleanDir counter k dir =
                   -- mapCallCPS k' files (\f -> do slp; remover f)]))
                   mapCallFanIn counter
                     (flip map files $ \f ->
-                      (\k -> Call (InternalCall "slp" (do slp; remover f)
+                      (\k -> Call (InternalCall "slp+remove" (do slp; remover f)
                                         (\() -> Program [k]))))
                     k']))
 
@@ -457,7 +457,7 @@ logMain = do
         ensureDbDir dir theWorld
         tmiMetaMain proxy "db" ["injectCommand", "program", (show n)]
         run lookupCommand dir
-  mapM_ runIt [1200]
+  mapM_ runIt [20]
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 

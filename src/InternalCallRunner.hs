@@ -3,6 +3,7 @@ module InternalCallRunner
 ) where
 
 import Control.Concurrent
+import Control.Monad (when)
 import qualified Data.Set as S
 
 import Monad
@@ -29,13 +30,13 @@ loop started eventChan ceChan = do
 
 runCalls :: Chan (Event w) -> [(Int, Call w)] -> IO ()
 runCalls chan callsAndIndices = do
-  -- msp ("runCalls", map fst callsAndIndices)
+  when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
   runList_ ios
   where ios = map (\(i, call) -> wrapFork $ wrapAction chan i call) callsAndIndices
 
 wrapFork :: IO () -> IO ()
 wrapFork io = do
-  msp "forking"
+  -- msp "forking"
   forkIO io
   return ()
 
