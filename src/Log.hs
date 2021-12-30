@@ -74,7 +74,7 @@ import Veq
 -- - multi-module registry
 
 
-data W = W { aa :: Int, bb :: Int, fanInCount :: Int } deriving (Read, Show)
+data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int } deriving (Read, Show)
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -152,6 +152,14 @@ fanInCount_ :: W -> R W -> R Int
 fanInCount_ w wr = mkR ir
   where ir fanInCount = write wr $ w { fanInCount }
 
+bFanInCount2 :: V Int
+-- TODO Shouldn't this use a lifter?
+bFanInCount2 = VBiSeal (BiApp (bi (VNamed "fanInCount2" fanInCount2)
+                                 (VNamed "fanInCount2_" fanInCount2_)) root)
+fanInCount2_ :: W -> R W -> R Int
+fanInCount2_ w wr = mkR ir
+  where ir fanInCount2 = write wr $ w { fanInCount2 }
+
 inc :: Int -> Int
 inc = (+1)
 inc_ :: Int -> R Int -> R Int
@@ -161,7 +169,7 @@ inc_ _ r = mkR r'
 root :: V W
 root = VRoot
 theWorld :: W
-theWorld = W { aa = 13, bb = 100, fanInCount = 112 }
+theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223 }
 
 recon :: String -> a
 recon "aa" = unsafeCoerce $ VNamed "aa" aa
@@ -178,7 +186,7 @@ recon s = error $ "recon?? " ++ s
 sleepRand :: Double -> Double -> IO ()
 sleepRand lo hi = do
   duration <- getStdRandom (randomR (lo, hi))
-  msp $ "sleeping " ++ show duration
+  -- msp $ "sleeping " ++ show duration
   threadDelay $ floor $ duration * 1_000_000
   -- msp $ "slept " ++ show duration
 
@@ -224,14 +232,14 @@ writeAFile dir n = do
 slp = sleepRand 2 4
 -- slp = sleepRand 0.2 0.4
 
-cleanDir :: Core W -> FilePath -> Core W
-cleanDir k dir =
+cleanDir :: V Int -> Core W -> FilePath -> Core W
+cleanDir counter k dir =
   let k' = Call (InternalCall "removeDirectoryExt" (removeDirectoryExt dir) (\() -> Program [k]))
       remover f = removeFileExt (dir ++ "/" ++ f)
   in Call (InternalCall "listDirectory" (listDirectory dir)
                 (\files -> Program [
                   -- mapCallCPS k' files (\f -> do slp; remover f)]))
-                  mapCallFanIn bFanInCount
+                  mapCallFanIn counter
                     (flip map files $ \f ->
                       (\k -> Call (InternalCall "slp" (do slp; remover f)
                                         (\() -> Program [k]))))
@@ -239,16 +247,16 @@ cleanDir k dir =
 
 -- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 
-filesThing :: Int -> FilePath -> Core W
-filesThing num dir =
+filesThing :: V Int -> Int -> FilePath -> Core W
+filesThing counter num dir =
   Call (InternalCall "createDirectoryExt" (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
-             (\() -> Program [mapCallFanIn bFanInCount
+             (\() -> Program [mapCallFanIn counter
                                            (flip map [0..num-1] $ \f ->
                                              (\k -> Call (InternalCall "slp+writeAFile" (do slp; writeAFile dir f)
                                                                (\() -> Program [k]))))
-                                           (cleanDir Done dir)]))
+                                           (cleanDir counter Done dir)]))
                                            -- Done]))
 
 monnie :: W -> IO ()
@@ -355,7 +363,8 @@ eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
 eventToProgram lookerUpper (Command command) _ = lookerUpper command
 eventToProgram lookerUpper r@(Retval index rs) calls =
   let call = vindex "eventToProgram" (noeesp ("eventToProgram", length calls, index, r) calls) index
-   in applyContinuation call rs
+      program = applyContinuation call rs
+   in noeesp ("applyContinuation", r, call, program) $ program
 
 -- data Event w = Retval Int String | Command [String] deriving (Show, Read)
 
@@ -418,8 +427,8 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-    filesThing 2 "dirr"
-  , filesThing 2 "dirr2"
+    filesThing bFanInCount 40 "dirr"
+  , filesThing bFanInCount2 80 "dirr2"
   ]
 
 logMain = do
