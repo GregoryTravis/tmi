@@ -418,7 +418,8 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-  filesThing 40 "dirr"
+    filesThing 10 "dirr"
+  , filesThing 10 "dirr2"
   ]
 
 logMain = do
