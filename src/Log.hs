@@ -315,13 +315,13 @@ run lookerUpper dbdir = do
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
         -- msp ("initW", initW)
         -- msp ("last w", w')
-        msp ("processedEvents, got", length calls)
+        -- msp ("processedEvents, got", length calls)
         -- processCalls calls (eventLog ck)
         -- msp ("write to ICR", length calls, (eventLog ck))
         writeChan ceChan (calls, eventLog ck)
-        msp "retval wait"
+        -- msp "retval wait"
         r <- readChan chan
-        msp $ "retval wait got " ++ show r
+        -- msp $ "retval wait got " ++ show r
         let ck' = ck { eventLog = eventLog ck ++ [r] }
         writeCK dbdir ck'
         -- msp ("ck end", ck')
@@ -427,8 +427,8 @@ program = Program
   --                                (\n -> Program [Done]))]))
 
   -- , Assign (Write bbb 230)
-    filesThing bFanInCount 40 "dirr"
-  , filesThing bFanInCount2 80 "dirr2"
+    filesThing bFanInCount 80 "dirr"
+  , filesThing bFanInCount2 160 "dirr2"
   ]
 
 logMain = do
