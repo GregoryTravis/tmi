@@ -341,20 +341,20 @@ processEvents' lookerUpper w [] calls = (w, calls)
 processEvents' lookerUpper w (e:es) calls =
   let (w', newCalls) = processEvent lookerUpper w e calls
       calls' = calls ++ newCalls
-   in eesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls'
+   in noeesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls'
 
 processEvent :: (Show w) => LookerUpper w -> w -> Event w -> [Call w] -> (w, [Call w])
 processEvent lookerUpper w e calls =
   let prog = eventToProgram lookerUpper e calls
       (w', newCalls) = runProgram w prog
       -- allCalls = calls ++ newCalls
-   in eesp ("processEvent runProgram", e, calls, newCalls) $ (w', newCalls)
+   in noeesp ("processEvent runProgram", e, calls, newCalls) $ (w', newCalls)
    -- in eesp ("processEvent", e) $ runProgram w prog
 
 eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
 eventToProgram lookerUpper (Command command) _ = lookerUpper command
 eventToProgram lookerUpper r@(Retval index rs) calls =
-  let call = vindex "eventToProgram" (eesp ("eventToProgram", length calls, index, r) calls) index
+  let call = vindex "eventToProgram" (noeesp ("eventToProgram", length calls, index, r) calls) index
    in applyContinuation call rs
 
 -- data Event w = Retval Int String | Command [String] deriving (Show, Read)
@@ -374,7 +374,7 @@ runCores w (core:cores) writes calls =
 runCores w [] writes calls = (writes, calls)
 
 runCore :: w -> Core w -> ([Write w], [Call w])
-runCore w c = eesp ("running core", c) $ runCore' w c
+runCore w c = noeesp ("running core", c) $ runCore' w c
 -- runCore w c = runCore' w c
 runCore' :: w -> Core w -> ([Write w], [Call w])
 runCore' w (Assign write) = ([write], [])

@@ -29,13 +29,13 @@ loop started eventChan ceChan = do
 
 runCalls :: Chan (Event w) -> [(Int, Call w)] -> IO ()
 runCalls chan callsAndIndices = do
-  msp ("runCalls", map fst callsAndIndices)
+  -- msp ("runCalls", map fst callsAndIndices)
   runList_ ios
   where ios = map (\(i, call) -> wrapFork $ wrapAction chan i call) callsAndIndices
 
 wrapFork :: IO () -> IO ()
 wrapFork io = do
-  msp "forking wwwwwwwwwwwwwwwwwwww"
+  msp "forking"
   forkIO io
   return ()
 

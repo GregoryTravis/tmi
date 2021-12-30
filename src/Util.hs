@@ -6,6 +6,7 @@ module Util
 , massert
 , esp
 , eesp
+, noeesp
 , fesp
 , sfesp
 , faresp
@@ -106,6 +107,9 @@ oeesp s a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ s
   hFlush stdout
   return a
+
+noeesp :: Show s => s -> a -> a
+noeesp _ x = x
 
 fesp :: Show b => (a -> b) -> a -> a
 fesp f a = unsafePerformIO $ do
