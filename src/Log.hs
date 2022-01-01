@@ -429,59 +429,7 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
--- data Brah a = Brah (IO a)
--- brahToCall :: (Read a, Show a) => Brah a -> Program w
--- brahToCall (Brah io) = Program [Call (InternalCall "" io (\_ -> Program [Done]))]
-
--- vluh :: Brah a -> (a -> Brah b) -> Brah b
-
-type CPSFun a b r = ((b -> r) -> a -> r)
-
-luft :: (a -> b) -> ((b -> r) -> a -> r)
-luft f = \k a -> k (f a)
-
-afun :: (b -> r) -> a -> r
-afun = undefined
-bfun :: (c -> r) -> b -> r
-bfun = undefined
--- lala :: ((c -> r) -> b -> r) -> ((b -> r) -> a -> r) -> ((c -> r) -> a -> r)
-lala :: CPSFun b c r -> CPSFun a b r -> CPSFun a c r
-lala c2r2b2r b2r2a2r c2r a =
-  let b2r = c2r2b2r c2r
-      a2r = b2r2a2r b2r
-   in a2r a
-
-runCPS :: CPSFun a b b -> a -> b
-runCPS cpsf a = cpsf id a
-
-  -- \b2r a ->
-  --   let a2r = b2r2a2r b2r
-  --    in c2r2b2r (\c2r -> undefined)
-
-data Brah w a = Brah { toCall :: Call w -> Call w }
-ioToBrah :: (Read a, Show a) => IO a -> Brah w a
-ioToBrah io = Brah { toCall = (\k -> InternalCall "" io (\_ -> Program [Call k])) }
-
-flee :: Brah w a -> (a -> Brah w b) -> Brah w b
--- flee :: (Call w -> Call w) -> (b -> Call w -> Call w) -> (Call w -> Call w)
-flee brahA a2BrahB = undefined
-
-type Gee w a = ((IO a -> Call w) -> Call w)
-
-data Eh w a = Eh (a -> Program w)
-whatIsThis :: Eh w (IO a) -> (a -> Eh w (IO b)) -> Eh w (IO b)
--- whatIsThis :: (IO a -> Program w) -> (a -> IO b -> Program w) -> (IO b -> Program w)
--- whatIsThis :: Eh w (IO a) -> (Eh w (a -> IO b)) -> Eh w (IO b)
--- -- whatIsThis :: (IO a -> Program w) -> ((a -> IO b) -> Program w) -> (IO b -> Program w)
-whatIsThis = undefined
-
 data Ruh a = Ruh (IO a) | RuhDone
-
-runMe :: (Read a, Show a) => Ruh a -> (a -> Program w) -> Program w
--- runMe = undefined
-runMe (Ruh io) k = Program [Call (InternalCall "" io k)]
-
--- data Call w = forall a. (Show a, Read a) => InternalCall String (IO a) (a -> Program w)
 
 glack :: (Show t, Show a, Read t, Read a) =>
      Ruh t -> (t -> Ruh a) -> Program w
@@ -491,14 +439,71 @@ glack (Ruh io) a2io = Program
             case a2io x of Ruh io -> Program [Call (InternalCall "" io (\n -> Program [Done]))]))
   ]
 
+data Blef a = Blef (IO a) | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
+boond :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
+-- TODO make a constructor that only allows the correct usage pattern, infixl
+boond = Blefs
+
+-- left ((1 - 2) - 3) - 4
+-- right 1 : (2 : (3 : []))
+-- (>>=) is infixl
+
+toCall :: (Show a, Read a) => (a -> Call w) -> Blef a -> Call w
+-- toCall k (Blef io) = InternalCall "" io (\_ -> Program [Call k])
+toCall k (Blefs (Blef io) a2Blef) =
+  InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> Program [Call (k a)]))])
+
+toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
+toProg k (Blef io) =
+  Program [Call $ InternalCall "" io k]
+toProg k (Blefs (Blef io) a2Blef) =
+  Program [Call $ InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))])]
+toProg k (Blefs blef a2Blef) =
+  toProg (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))]) blef
+
+blef0 :: Blef Int
+blef0 = Blef (return 12)
+a2Blef1 :: Int -> Blef String
+a2Blef1 n = Blef (do msp ("a2Blef1", n); return $ show (n + 1))
+a2Blef2 :: String -> Blef Double
+a2Blef2 ns = Blef (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
+
+qq :: Blef Double
+qq = boond (boond blef0 a2Blef1) a2Blef2
+
+qq' :: Blef Double
+qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
+-- qq' = Bs (Bs B nB) nB
+
+foo' :: Program w
+foo' = toProg sdone qq
+
+done :: a -> Program w
+done _ = Program [Done]
+sdone :: Show a => a -> Program w
+sdone a = Program [Call $ InternalCall "" (msp ("sdone", a)) done]
+
 foo :: Program w
 foo = glack (Ruh (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12))  -- IO Int
             (\n -> Ruh (do msp ("yyyyyyyyyyy", n); return 13)) -- Int -> IO Int
 
+-- Call (InternalCall "step1"
+--        (return 12)
+--        (\n -> Program [Call
+--          (InternalCall "step2"
+--            (return 13)
+--            (\n -> Program [Done]))]))
+
+-- bah :: (Show a, Read a) => IO a -> Call w -> Call w
+-- bah io k = InternalCall "" io (\a -> Program [Call k])
+
+-- piff :: (Call w -> Call w) -> (Call w -> Call w) -> (Call w -> Call w)
+-- piff cc0 cc1 c = cc0 (cc1 c)
+
 program :: Int -> Program W
 program num = Program
   [
-  Sub foo
+  Sub foo'
 
   --Assign (Write baa 140)
 
