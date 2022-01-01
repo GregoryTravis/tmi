@@ -22,10 +22,10 @@ import System.Environment
 import System.Random
 import Unsafe.Coerce
 
+import Core
 import Ext
 import InternalCallRunner
 import Lift
-import Monad
 import Propagate
 import Storage
 import Testing

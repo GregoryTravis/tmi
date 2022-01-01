@@ -6,7 +6,7 @@ import Control.Concurrent
 import Control.Monad (when)
 import qualified Data.Set as S
 
-import Monad
+import Core
 import Util
 
 mkInternalCallRunner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))

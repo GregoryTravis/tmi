@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, RankNTypes #-}
 
-module Monad
+module Core
 ( Call(..)
 , Event(..)
 , Core(..)
