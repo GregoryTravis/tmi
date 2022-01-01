@@ -444,20 +444,25 @@ boond :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
+-- instance Functor Blef where
+--   fmap f (Blef io) = Blef (fmap f io)
+--   -- fmap f (Blefs blef a2Blef) = Blefs (fmap f blef) (\a -> fmap f (a2Blef a))
+--   fmap f (Blefs blef a2Blef) = Blefs blef (\a -> fmap f (a2Blef a))
+
 -- left ((1 - 2) - 3) - 4
 -- right 1 : (2 : (3 : []))
 -- (>>=) is infixl
 
-toCall :: (Show a, Read a) => (a -> Call w) -> Blef a -> Call w
--- toCall k (Blef io) = InternalCall "" io (\_ -> Program [Call k])
-toCall k (Blefs (Blef io) a2Blef) =
-  InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> Program [Call (k a)]))])
+-- toCall :: (Show a, Read a) => (a -> Call w) -> Blef a -> Call w
+-- -- toCall k (Blef io) = InternalCall "" io (\_ -> Program [Call k])
+-- toCall k (Blefs (Blef io) a2Blef) =
+--   InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> Program [Call (k a)]))])
 
 toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
 toProg k (Blef io) =
   Program [Call $ InternalCall "" io k]
-toProg k (Blefs (Blef io) a2Blef) =
-  Program [Call $ InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))])]
+-- toProg k (Blefs (Blef io) a2Blef) =
+--   Program [Call $ InternalCall "" io (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))])]
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))]) blef
 
@@ -471,9 +476,9 @@ a2Blef2 ns = Blef (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
 qq :: Blef Double
 qq = boond (boond blef0 a2Blef1) a2Blef2
 
-qq' :: Blef Double
-qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
--- qq' = Bs (Bs B nB) nB
+-- qq' :: Blef Double
+-- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
+-- -- qq' = Bs (Bs B nB) nB
 
 foo' :: Program w
 foo' = toProg sdone qq
