@@ -1,5 +1,5 @@
 {-# Language GADTs, FlexibleContexts, KindSignatures, NamedFieldPuns, NumericUnderscores,
-   RecordWildCards, ScopedTypeVariables, TypeApplications #-}
+   QualifiedDo, RecordWildCards, ScopedTypeVariables, TypeApplications #-}
 
 module Log
 ( logMain
@@ -26,6 +26,7 @@ import Core
 import Ext
 import InternalCallRunner
 import Lift
+import qualified Monad as M
 import Propagate
 import Storage
 import Testing
@@ -429,40 +430,28 @@ tmiMetaMain proxy dbdir ("injectCommand" : command) =
   injectEvent dbdir ((Command command) :: Event w)
 -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
-data Blef a = Blef (IO a) | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
-boond :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
--- TODO make a constructor that only allows the correct usage pattern, infixl
-boond = Blefs
-
--- Presumably this machinery could be somehow folded in to the type so it doesn't
--- have to be free-ish.
-toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
-toProg k (Blef io) =
-  Program [Call $ InternalCall "" io k]
-toProg k (Blefs blef a2Blef) =
-  toProg (\a -> case a2Blef a of Blef io' -> Program [Call (InternalCall "" io' (\a -> (k a)))]) blef
-
 blef0 :: Blef Int
-blef0 = Blef (return 12)
+blef0 = Blef "blef0" (return 12)
 a2Blef1 :: Int -> Blef String
-a2Blef1 n = Blef (do msp ("a2Blef1", n); return $ show (n + 1))
+a2Blef1 n = Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
 a2Blef2 :: String -> Blef Double
-a2Blef2 ns = Blef (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
+a2Blef2 ns = Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
 
 qq :: Blef Double
-qq = boond (boond blef0 a2Blef1) a2Blef2
+-- qq = boond (boond blef0 a2Blef1) a2Blef2
+oqq = blef0 M.>>= a2Blef1 M.>>= a2Blef2
+qq = M.do
+  n <- Blef "blef0" (return 12)
+  ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
+  n' <- Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
+  M.return (return 2.3) -- n'
 
 -- qq' :: Blef Double
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
 -- -- qq' = Bs (Bs B nB) nB
 
 foo :: Program w
-foo = toProg sdone qq
-
-done :: a -> Program w
-done _ = Program [Done]
-sdone :: Show a => a -> Program w
-sdone a = Program [Call $ InternalCall "" (msp ("sdone", a)) done]
+foo = toProg sdone oqq
 
 program :: Int -> Program W
 program num = Program
@@ -485,6 +474,9 @@ program num = Program
   ]
 
 logMain = do
+  msp oqq
+  msp qq
+  msp "----"
   -- works
   let proxy = Proxy :: Proxy W
   let dir = "db"

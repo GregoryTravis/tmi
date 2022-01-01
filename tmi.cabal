@@ -17,7 +17,7 @@ executable tmi
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
-                       InternalCallRunner
+                       InternalCallRunner, Monad
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5,
