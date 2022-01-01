@@ -434,6 +434,8 @@ boond :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
+-- Presumably this machinery could be somehow folded in to the type so it doesn't
+-- have to be free-ish.
 toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
 toProg k (Blef io) =
   Program [Call $ InternalCall "" io k]
