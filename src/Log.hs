@@ -435,12 +435,20 @@ blef0 = Blef "blef0" (return 12)
 a2Blef1 :: Int -> Blef String
 a2Blef1 n = Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
 a2Blef2 :: String -> Blef Double
-a2Blef2 ns = Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
+a2Blef2 ns = Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
+a2Blef3 :: Double -> Blef Double
+a2Blef3 n = Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)
 
 qq :: Blef Double
 -- qq = boond (boond blef0 a2Blef1) a2Blef2
-oqq = blef0 M.>>= a2Blef1 M.>>= a2Blef2
-qq = M.do
+qq = blef0 M.>>= a2Blef1 M.>>= a2Blef2 M.>>= a2Blef3
+
+_qq = (Blef "blef0" (return 12)) M.>>=
+     (\n -> (Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))) M.>>=
+            (\ns -> (Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))) M.>>=
+                    (\n -> (Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)))))
+
+__qq = M.do
   n <- Blef "blef0" (return 12)
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
   n' <- Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
@@ -451,7 +459,7 @@ qq = M.do
 -- -- qq' = Bs (Bs B nB) nB
 
 foo :: Program w
-foo = toProg sdone oqq
+foo = toProg sdone qq
 
 program :: Int -> Program W
 program num = Program
@@ -474,7 +482,7 @@ program num = Program
   ]
 
 logMain = do
-  msp oqq
+  msp qq
   msp qq
   msp "----"
   -- works
