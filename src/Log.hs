@@ -245,9 +245,9 @@ writeAFile dir n = do
   writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
 -- slp = sleepRand 4 8
-slp = sleepRand 0.4 0.8
+-- slp = sleepRand 0.4 0.8
 -- slp = sleepRand 8 12
--- slp = sleepRand 0.2 0.4
+slp = sleepRand 0.2 0.4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
@@ -471,16 +471,24 @@ bsp a = Blef "bsp" (msp a)
 io :: IO a -> Blef a
 io action = Blef "" action
 
+mapBlef :: (a -> IO ()) -> [a] -> Blef ()
+mapBlef f [] = M.return (return ())
+mapBlef f (x:xs) = M.do
+  io $ slp
+  Blef "removeFileExt" (f x)
+  mapBlef f xs
+
 cleanDirSeq :: FilePath -> Blef ()
 cleanDirSeq dir = M.do
   files <- Blef "listDirectory" (listDirectory dir)
   Blef "msp" (msp ("files", files))
-  let removeEm [] = M.return (return ())
-      removeEm (f:fs) = M.do
+  let remover f = removeFileExt (dir ++ "/" ++ f)
+  let removeEm doer [] = M.return (return ())
+      removeEm doer (f:fs) = M.do
         io $ slp
-        Blef "removeFileExt" (removeFileExt (dir ++ "/" ++ f))
-        removeEm fs
-  removeEm files
+        Blef "removeFileExt" (doer f)
+        removeEm remover fs
+  removeEm remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
   M.return (return ())
 
