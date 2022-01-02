@@ -504,13 +504,14 @@ filesThingSeq num dir = M.do
   cleanDirSeq dir
   M.return (return ())
 
-filesThingProg :: Program W
-filesThingProg = toProg sdone (filesThingSeq 10 "dirr")
+filesThingProg :: FilePath -> Int -> Program W
+filesThingProg dir num = toProg sdone (filesThingSeq num dir)
 
 program :: Int -> Program W
 program num = Program
   [
-  Sub filesThingProg
+    Sub (filesThingProg "dirr" 10)
+  , Sub (filesThingProg "dirr2" 15)
 
   --Assign (Write baa 140)
 
