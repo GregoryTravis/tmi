@@ -448,11 +448,13 @@ __qq = (Blef "blef0" (return 12)) M.>>=
             (\ns -> (Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))) M.>>=
                     (\n -> (Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)))))
 
+-- TODO: Perhaps we could leave off M. on the operator if this were in a separate module
+-- that was hiding the standard bind?
 qq = M.do
   n <- Blef "blef0" (return 12)
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
   n' <- Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
-  n'' <- Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')
+  n'' <- (Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')) M.>>= (\x -> Blef "x" (do msp ("x", x); return $ x + 1))
   M.return (return n'')
 
 -- qq' :: Blef Double
