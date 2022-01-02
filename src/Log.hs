@@ -507,6 +507,17 @@ filesThingSeq num dir = M.do
 filesThingProg :: FilePath -> Int -> Program W
 filesThingProg dir num = toProg sdone (filesThingSeq num dir)
 
+-- par :: (Show a, Read a) => [Blef a] -> Blef [a]
+-- par blefs = M.do
+--   mv <- io $ newMVar []
+--   runBlef blef = M.do
+--     r <- blef
+--     rs <- io $ takeMVar mv
+--     io $ putMVar mv (r : rs)
+--   flip mapBlef_ blef runBlef
+                         
+-- par [] = M.return (return [])
+
 program :: Int -> Program W
 program num = Program
   [

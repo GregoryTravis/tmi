@@ -61,8 +61,12 @@ wrapAction chan index (InternalCall _ io _) = do
   return ()
 wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 
--- Monad stuff
--- Hmm it actually desugars to being right associative??
+---- Monad stuff
+
+-- TODO: get rid of this existential free-ish thing and somehow just merge
+-- toProg with this; then maybe we wouldn't need Show/Read on the data
+-- declaration, but instead only on the actual coordination code. Then this could
+-- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef a = Blef String (IO a) | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
 
 instance Show (Blef a) where
@@ -82,7 +86,7 @@ toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
 toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (Blefs blef a2Blef) =
-  toProg (\a -> toProg k (a2Blef a)) blef
+toProg (\a -> toProg k (a2Blef a)) blef
 
 done :: a -> Program w
 done _ = Program [Done]
