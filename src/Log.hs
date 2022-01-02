@@ -441,18 +441,19 @@ a2Blef3 n = Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)
 
 qq :: Blef Double
 -- qq = boond (boond blef0 a2Blef1) a2Blef2
-qq = blef0 M.>>= a2Blef1 M.>>= a2Blef2 M.>>= a2Blef3
+_qq = blef0 M.>>= a2Blef1 M.>>= a2Blef2 M.>>= a2Blef3
 
-_qq = (Blef "blef0" (return 12)) M.>>=
+__qq = (Blef "blef0" (return 12)) M.>>=
      (\n -> (Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))) M.>>=
             (\ns -> (Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))) M.>>=
                     (\n -> (Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)))))
 
-__qq = M.do
+qq = M.do
   n <- Blef "blef0" (return 12)
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
-  n' <- Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))
-  M.return (return 2.3) -- n'
+  n' <- Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
+  n'' <- Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')
+  M.return (return n'')
 
 -- qq' :: Blef Double
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
