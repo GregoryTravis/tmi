@@ -67,7 +67,9 @@ wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 -- toProg with this; then maybe we wouldn't need Show/Read on the data
 -- declaration, but instead only on the actual coordination code. Then this could
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
-data Blef a = Blef String (IO a) | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
+data Blef a = Blef String (IO a)
+            | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
+            | forall b. (Show a, Read a, Show b, Read b) => ParBlefs [Blef b] ([b] -> Blef a)
 
 instance Show (Blef a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"
@@ -87,6 +89,36 @@ toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> toProg k (a2Blef a)) blef
+-- toProg k (ParBlefs blefs next) = do
+--   mv <- newMVar []
+--   let n = length blefs
+--       -- accum :: a -> Program w
+--       accum x = do
+--         xs <- takeMVar mv
+--         let xs' = x : xs
+--         putMVar mv (x:xs')
+--         if length xs' == n
+--           then return k
+--           else return (\_ -> Done)
+--       subProgs = map (toProg accum) blefs
+--       runEmParallel = Program [subProgs]
+--    in runEmParallel
+
+-- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
+-- mapCallFanIn counter kjobs k =
+--   let n = length kjobs
+--       -- countk :: () -> Core w
+--       countk = Sub (Program
+--         [ Assign (VWrite counter (addEm counter (VNice (1::Int))))
+--         , Cond (eqV counter (VNice (n-1)))
+--                k
+--                Done])
+--       jobs = map ($ countk) kjobs
+--   in Sub (Program
+--           [ Assign (Write counter 0)
+--           , Sub (Program jobs)
+--           ])
+
 
 done :: a -> Program w
 done _ = Program [Done]

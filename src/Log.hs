@@ -220,7 +220,7 @@ mapCallFanIn counter kjobs k =
           [ Assign (Write counter 0)
           , Sub (Program jobs)
           ])
-  
+
 timeCall :: String -> (Core W -> Core W) -> Core W
 timeCall note kjob = Sub (Program
   [ Call (InternalCall "time start" (do t <- getSystemTime; return $ systemToUTCTime t)
@@ -462,8 +462,8 @@ qq = M.do
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
 -- -- qq' = Bs (Bs B nB) nB
 
-foo :: Program w
-foo = toProg sdone qq
+-- foo :: Program w
+-- foo = toProg sdone qq
 
 bsp :: Show a => a -> Blef ()
 bsp a = Blef "bsp" (msp a)
