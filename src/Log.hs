@@ -471,24 +471,24 @@ bsp a = Blef "bsp" (msp a)
 io :: IO a -> Blef a
 io action = Blef "" action
 
-mapBlef :: (a -> IO ()) -> [a] -> Blef ()
-mapBlef f [] = M.return (return ())
-mapBlef f (x:xs) = M.do
-  io $ slp
-  Blef "removeFileExt" (f x)
-  mapBlef f xs
+mapBlef :: (Read b, Show b) => (a -> Blef b) -> [a] -> Blef [b]
+mapBlef bf [] = M.return (return [])
+mapBlef bf (a:as) = M.do
+  b <- bf a
+  bs <- mapBlef bf as
+  M.return (return (b:bs))
+
+mapBlef_ :: (Read b, Show b) => (a -> Blef b) -> [a] -> Blef ()
+mapBlef_ bf as = M.do
+  mapBlef bf as
+  M.return (return ())
 
 cleanDirSeq :: FilePath -> Blef ()
 cleanDirSeq dir = M.do
   files <- Blef "listDirectory" (listDirectory dir)
   Blef "msp" (msp ("files", files))
-  let remover f = removeFileExt (dir ++ "/" ++ f)
-  let removeEm doer [] = M.return (return ())
-      removeEm doer (f:fs) = M.do
-        io $ slp
-        Blef "removeFileExt" (doer f)
-        removeEm remover fs
-  removeEm remover files
+  let remover f = Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
+  () <- mapBlef_ remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
   M.return (return ())
 
