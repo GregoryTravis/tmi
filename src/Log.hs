@@ -242,9 +242,10 @@ mapCallCPS k (x:xs) corer =
 writeAFile :: FilePath -> Int -> IO ()
 writeAFile dir n = do
   let ns = show n
-  writeFileExt (dir ++ "/" ++ ns) (ns ++ "\n")
+  writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
-slp = sleepRand 4 8
+-- slp = sleepRand 4 8
+slp = sleepRand 0.4 0.8
 -- slp = sleepRand 8 12
 -- slp = sleepRand 0.2 0.4
 
@@ -464,10 +465,45 @@ qq = M.do
 foo :: Program w
 foo = toProg sdone qq
 
+bsp :: Show a => a -> Blef ()
+bsp a = Blef "bsp" (msp a)
+
+io :: IO a -> Blef a
+io action = Blef "" action
+
+cleanDirSeq :: FilePath -> Blef ()
+cleanDirSeq dir = M.do
+  files <- Blef "listDirectory" (listDirectory dir)
+  Blef "msp" (msp ("files", files))
+  let removeEm [] = M.return (return ())
+      removeEm (f:fs) = M.do
+        io $ slp
+        Blef "removeFileExt" (removeFileExt (dir ++ "/" ++ f))
+        removeEm fs
+  removeEm files
+  Blef "removeDirectoryExt" (removeDirectoryExt dir)
+  M.return (return ())
+
+filesThingSeq :: Int -> FilePath -> Blef ()
+filesThingSeq num dir = M.do
+  Blef "createDirectoryExt" (createDirectoryExt dir)
+  let createEm [] = M.return (return ())
+      createEm all@(n:ns) = M.do
+        bsp ("um", all)
+        io $ slp
+        Blef "writeAFile" (writeAFile dir n)
+        createEm ns
+  createEm [0..num-1]
+  cleanDirSeq dir
+  M.return (return ())
+
+filesThingProg :: Program W
+filesThingProg = toProg sdone (filesThingSeq 10 "dirr")
+
 program :: Int -> Program W
 program num = Program
   [
-  Sub foo
+  Sub filesThingProg
 
   --Assign (Write baa 140)
 
@@ -491,6 +527,8 @@ logMain = do
   -- works
   let proxy = Proxy :: Proxy W
   let dir = "db"
+
+--   removeDirectoryRecursive "dirr"
 
   -- Full reset
   let runIt n = do
