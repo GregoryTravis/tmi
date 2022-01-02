@@ -86,7 +86,7 @@ toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
 toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (Blefs blef a2Blef) =
-toProg (\a -> toProg k (a2Blef a)) blef
+  toProg (\a -> toProg k (a2Blef a)) blef
 
 done :: a -> Program w
 done _ = Program [Done]
