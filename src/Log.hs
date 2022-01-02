@@ -487,7 +487,9 @@ cleanDirSeq :: FilePath -> Blef ()
 cleanDirSeq dir = M.do
   files <- Blef "listDirectory" (listDirectory dir)
   Blef "msp" (msp ("files", files))
-  let remover f = Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
+  let remover f = M.do
+        io slp
+        Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
   () <- mapBlef_ remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
   M.return (return ())
@@ -495,13 +497,10 @@ cleanDirSeq dir = M.do
 filesThingSeq :: Int -> FilePath -> Blef ()
 filesThingSeq num dir = M.do
   Blef "createDirectoryExt" (createDirectoryExt dir)
-  let createEm [] = M.return (return ())
-      createEm all@(n:ns) = M.do
-        bsp ("um", all)
-        io $ slp
+  let createIt n = M.do
+        io slp
         Blef "writeAFile" (writeAFile dir n)
-        createEm ns
-  createEm [0..num-1]
+  mapBlef_ createIt [0..num-1]
   cleanDirSeq dir
   M.return (return ())
 
