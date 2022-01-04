@@ -19,6 +19,7 @@ import Data.Tuple
 -- import System.CPUTime (getCPUTime, cpuTimePrecision)
 import System.Directory
 import System.Environment
+import System.IO.Unsafe
 import System.Random
 import Unsafe.Coerce
 
@@ -185,6 +186,7 @@ recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
 recon "inc" = unsafeCoerce $ VNamed "inc" inc
 recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 recon "nope" = unsafeCoerce $ VNamed "nope" nope
+recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
 sleepRand :: Double -> Double -> IO ()
@@ -507,6 +509,24 @@ filesThingSeq num dir = M.do
 filesThingProg :: FilePath -> Int -> Program W
 filesThingProg dir num = toProg sdone (filesThingSeq num dir)
 
+-- Very ugly proof that a Blef is Nice
+smallProg :: Program W
+smallProg = toProg sdone (smallProgBlef 133)
+-- TODO rid of dummy param
+smallProgBlef :: Int -> Blef ()
+smallProgBlef _ = M.do
+  x <- M.return (return 12)
+  Blef "msp" (msp x)
+smallProgV = VNamed "smallProg" smallProgBlef
+smallProgU = uni smallProgV
+smallProgL = lift1 smallProgU
+smallProggedV = smallProgL (VNice (144::Int))
+smallProggedV' :: Ty.V W (Blef ())
+smallProggedV' = head $ tail $ unsafePerformIO (roundTrip recon smallProggedV)
+smallProggedRead = rd theWorld smallProggedV'
+smallProg' :: Program w
+smallProg' = toProg sdone smallProggedRead
+
 -- par :: (Show a, Read a) => [Blef a] -> Blef [a]
 -- par blefs = M.do
 --   mv <- io $ newMVar []
@@ -521,6 +541,7 @@ filesThingProg dir num = toProg sdone (filesThingSeq num dir)
 program :: Int -> Program W
 program num = Program
   [
+  -- Sub (smallProg')
     Sub (filesThingProg "dirr" 10)
   , Sub (filesThingProg "dirr2" 15)
 
