@@ -53,31 +53,20 @@ import Veq
 --   x then pat syns for the other ones (bi, vroot etc below
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
--- - main loop
---   - move monitors out of eternity
---   - save eternity to checkpoint file in db dir and read on startup
---   - wait, why are we passing args to main, this is not Java
--- - oh shit you need some pragmas etc for unsafePerformIO
---   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
---   - scroll down a bit
--- - try factoring Dyn stuff
--- - main loop
---   - apply continuation
---   - Tmi monad (accumulate writes; take Step)
---   - Step
---   - state (init W, Step list, retval list)
---   - TMI -> TMI w, Step too
+-- ==== cleanup
 -- - Don't like applyContinuation in Log's recon
 -- - Don't like that I have VNamed names where they're declared and also in recon
 -- - Tmi re-export module
 -- - remove V prefix from V ctors
--- - tell ghci to load Dyn + Veq compiled?
 -- - ooo: <> for R (not for its contents) and then you don't have to say rc c = ... (?)
 -- - various lowercase 'q's
 -- - rename BS/etc
 -- - general renaming
+-- ====
 -- - multi-module registry
-
+-- - oh shit you need some pragmas etc for unsafePerformIO
+--   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
+--   - scroll down a bit
 
 data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int } deriving (Read, Show)
 
