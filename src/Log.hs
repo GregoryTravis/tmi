@@ -54,6 +54,10 @@ import Veq
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
 -- ==== cleanup
+-- - fix segfault
+-- - move old tests into a test file
+-- - dir for dbs and ignore it
+-- - sho -> scripts
 -- - Don't like applyContinuation in Log's recon
 -- - Don't like that I have VNamed names where they're declared and also in recon
 -- - Tmi re-export module
@@ -75,25 +79,8 @@ type Bi = Ty.Bi W
 type R = Ty.R W
 bi :: V f -> V r -> Bi f r
 bi = Ty.Bi
-vnamed :: String -> a -> Ty.V W a
-vnamed = Ty.VNamed
 vroot :: V W
 vroot = Ty.VRoot
-
--- recon :: String -> Dynamic
--- recon "aa" = toDyn (vnamed "aa" aa)
--- recon "aa_" = toDyn (vnamed "aa_" aa_)
--- recon "bb" = toDyn (vnamed "bb" bb)
--- recon "bb_" = toDyn (vnamed "bb_" bb_)
--- recon "inc" = toDyn (vnamed "inc" inc)
--- recon "inc_" = toDyn (vnamed "inc_" inc_)
--- recon "bplus" = toDyn (vnamed "bplus" bplus)
--- recon "bplus_" = toDyn (vnamed "bplus_" bplus_)
--- recon "mkAStep" = toDyn (vnamed "mkAStep" mkAStep)
--- recon "applyContinuation" = toDyn (vnamed "applyContinuation"
---   (applyContinuation :: Step W -> Retval -> TMI W ()))
--- -- recon "nope" = toDyn (vnamed "nope" nope)
--- recon s = error $ show ("recon", s)
 
 addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)
@@ -549,7 +536,7 @@ program num = Program
     -- timeCall (show num) (filesThing bFanInCount num "dirr")
   ]
 
-logMain = do
+_logMain = do
   msp qq
   msp qq
   msp "----"
@@ -567,41 +554,32 @@ logMain = do
         run lookupCommand dir
   mapM_ runIt [20]
 
-
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 
-  -- -- msp $ cleanDir Done "dirr"
-  -- startLoop theWorld (\args -> program)
-  -- -- finalWorld <- runProgram theWorld program
-  -- -- msp finalWorld
-
+logMain = do
   -- Works
-  -- msp $ propToRoots theWorld (Write added 140)
-  -- msp $ propToRoots theWorld (Write added' 140)
-  -- msp $ propToRoots theWorld (Write added'' 140)
-  -- msp $ propToRoots theWorld (Write added''' 140)
-  -- roundTrip recon vroot
-  -- roundTrip recon added
-  -- roundTrip recon added'
-  -- roundTrip recon added''
-  -- roundTrip recon added'''
-  -- msp $ added == added
-  -- msp $ added == added'
-  -- msp $ added' == added'
-  -- msp $ added' == added
-  -- msp $ added' == added''
-  -- msp $ added' == added'''
+  msp $ propWrite theWorld (Write added 140)
+  msp $ propWrite theWorld (Write added' 140)
+  msp $ propWrite theWorld (Write added'' 140)
+  msp $ propWrite theWorld (Write added''' 140)
+  msp $ added == added
+  msp $ added /= added'
+  msp $ added' == added'
+  msp $ added' /= added
+  msp $ added' /= added''
+  msp $ added' /= added'''
 
   -- works, or rather did before I split the recon bis
-  -- msp added -- just aa + bb
-  -- let baaa = BiApp (unsafeCoerce (recon "aa")) VRoot
-  --     slaa = VBiSeal baaa
-  --     babb = BiApp (unsafeCoerce (recon "bb")) VRoot
-  --     slbb = VBiSeal babb
-  --     pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
+  msp added -- just aa + bb
+  let baaa = BiApp (unsafeCoerce (recon "aa")) VRoot
+      slaa = VBiSeal baaa
+      babb = BiApp (unsafeCoerce (recon "bb")) VRoot
+      slbb = VBiSeal babb
+      pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
+  -- Causes a seg fault!
   -- msp pl
-  -- msp $ show added == show pl
-  -- msp $ added == pl
-  -- msp $ added == slaa
+  msp $ show added == show pl
+  msp $ added == pl
+  msp $ added == slaa
 
   msp "log hi"
