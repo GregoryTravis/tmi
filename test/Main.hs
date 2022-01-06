@@ -1,5 +1,7 @@
 module Main where
 
+import Main2
+
 import           Test.Tasty             (defaultMain, testGroup, localOption, TestTree)
 import           Test.Tasty.QuickCheck
 import           Test.Tasty.HUnit
@@ -15,4 +17,4 @@ suite = testGroup "Test Suite" [
   ]
 
 main :: IO ()
-main = defaultMain suite
+main = defaultMain (testGroup "both" [suite, main2suite])
