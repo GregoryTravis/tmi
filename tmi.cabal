@@ -36,3 +36,15 @@ executable tmi
                        time,
                        unix,
                        utf8-string
+
+test-suite test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Main.hs
+  build-depends:       base >= 4.8
+                     -- , tmi
+                     , QuickCheck
+                     , tasty
+                     , tasty-quickcheck
+                     , tasty-hunit
