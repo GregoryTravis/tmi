@@ -5,6 +5,7 @@ module Innards where
 import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
+import Unsafe.Coerce
 
 import Lift
 import Propagate
@@ -70,16 +71,23 @@ inc_ :: Int -> R Int -> R Int
 inc_ _ r = mkR r'
   where r' i = write r (i - 1)
 
+recon :: String -> a
+recon "aa" = unsafeCoerce $ VNamed "aa" aa
+recon "aa_" = unsafeCoerce $ VNamed "aa_" aa_
+recon "bb" = unsafeCoerce $ VNamed "bb" bb
+recon "bb_" = unsafeCoerce $ VNamed "bb_" bb_
+recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
+recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
+recon "inc" = unsafeCoerce $ VNamed "inc" inc
+recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
+-- recon "nope" = unsafeCoerce $ VNamed "nope" nope
+-- recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
+recon s = error $ "recon?? " ++ s
+
+
 innardsSuite :: TestTree
 innardsSuite = testGroup "Test Suite" [
-  testCase "List comparison (different length)" $
-      [1, 2, 3] `compare` [1,2] @?= GT
-
-  -- the following test does not hold
-  , testCase "List comparison (same length)" $
-      [1, 2, 3] `compare` [1,2,2] @?= GT
-
-  , propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
+   propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
   , propWrite theWorld (Write added' 140) ~?= W { aa = 69 , bb = 70 }
   , propWrite theWorld (Write added'' 140) ~?= W { aa = 70 , bb = 69 }
   , propWrite theWorld (Write added''' 140) ~?= W { aa = 69 , bb = 69 }
@@ -91,15 +99,16 @@ innardsSuite = testGroup "Test Suite" [
   , added' /= added'' ~?= True
   , added' /= added''' ~?= True
 
-  -- -- works, or rather did before I split the recon bis
-  -- let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
-  --     slaa = VBiSeal baaa
-  --     babb = BiApp (Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)) VRoot
-  --     slbb = VBiSeal babb
-  --     pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) slaa) slbb)
-  -- let lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
-  -- msp $ show pl == lala
-  -- msp $ show added == show pl
-  -- msp $ added == pl
-  -- msp $ added /= slaa
+  , let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
+        slaa = VBiSeal baaa
+        babb = BiApp (Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)) VRoot
+        slbb = VBiSeal babb
+        pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) slaa) slbb)
+        lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
+     in testGroup "" [
+          show pl ~?= lala
+        , show added ~?= show pl
+        , added ~?= pl
+        , added /= slaa ~?= True
+        ]
   ]
