@@ -35,12 +35,12 @@ add :: V Int -> V Int -> V Int
 add = lift2 $ bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
 
 added = add baa bbb
-added' = add (plurs baa) bbb
-added'' = add baa (plurs bbb)
-added''' = add (plurs baa) (plurs bbb)
+added' = add (incV baa) bbb
+added'' = add baa (incV bbb)
+added''' = add (incV baa) (incV bbb)
 
-plurs :: V Int -> V Int
-plurs = lift1 $ bi (VNamed "inc" inc) (VNamed "inc_" inc_)
+incV :: V Int -> V Int
+incV = lift1 $ bi (VNamed "inc" inc) (VNamed "inc_" inc_)
 
 bplus :: Int -> Int -> Int
 bplus = (+)
