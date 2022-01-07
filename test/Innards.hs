@@ -77,7 +77,7 @@ innardsSuite = testGroup "Test Suite" [
 
   , testCase "" $
     -- (propWrite theWorld (Write added 140)) `compare` "asdf" @?= EQ
-    assertEqual "" (propWrite theWorld (Write added 140)) (W { aa = 70 , bb = 70 })
+    (propWrite theWorld (Write added 140)) @?= (W { aa = 70 , bb = 70 })
   -- msp $ propWrite theWorld (Write added' 140)
   -- msp $ propWrite theWorld (Write added'' 140)
   -- msp $ propWrite theWorld (Write added''' 140)
