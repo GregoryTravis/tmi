@@ -54,8 +54,12 @@ import Veq
 --   x OR don't pattern match the Rs, just add an op to write to it
 --   x what about backpack?
 -- ==== cleanup
--- - fix segfault
+-- + fix segfault
 -- - move old tests into a test file
+-- - rename test Main
+-- - other test warnings
+-- - rename stuff in Innards
+-- - fanin tests somewhere (just check that it finishes?)
 -- - dir for dbs and ignore it
 -- - sho -> scripts
 -- - Don't like applyContinuation in Log's recon

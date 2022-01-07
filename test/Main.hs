@@ -1,10 +1,10 @@
 module Main where
 
-import Main2
+import Innards
 
-import           Test.Tasty             (defaultMain, testGroup, localOption, TestTree)
-import           Test.Tasty.QuickCheck
-import           Test.Tasty.HUnit
+import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
+import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit
 
 suite :: TestTree
 suite = testGroup "Test Suite" [
@@ -17,4 +17,4 @@ suite = testGroup "Test Suite" [
   ]
 
 main :: IO ()
-main = defaultMain (testGroup "both" [suite, main2suite])
+main = defaultMain (testGroup "both" [suite, innardsSuite])

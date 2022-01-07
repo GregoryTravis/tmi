@@ -1,3 +1,6 @@
+./t
+exit
+
 # (stack build tmi && stack exec tmi) 2>&1 | tee out
 
 profargs="--library-profiling --executable-profiling --profile"
