@@ -59,7 +59,9 @@ import Veq
 -- + rename test Main
 -- + other test warnings
 -- - rename stuff in Innards
+-- - simplify execution framework before moving things to modules
 -- - mainloop to module
+-- - other things to module
 -- - fanin tests somewhere (just check that it finishes?)
 -- - dir for dbs and ignore it
 -- - sho -> scripts

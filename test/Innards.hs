@@ -31,19 +31,16 @@ root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
 
-addEmBi :: Bi (Int -> Int -> Int)
-              (Int -> R Int -> Int -> R Int -> R Int)
-addEmBi = bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
-addEm = lift2 addEmBi
+add :: V Int -> V Int -> V Int
+add = lift2 $ bi (VNamed "bplus" bplus) (VNamed "bplus_" bplus_)
 
-added = addEm baa bbb
-added' = addEm (plurs baa) bbb
-added'' = addEm baa (plurs bbb)
-added''' = addEm (plurs baa) (plurs bbb)
+added = add baa bbb
+added' = add (plurs baa) bbb
+added'' = add baa (plurs bbb)
+added''' = add (plurs baa) (plurs bbb)
 
-plursBi :: Bi (Int -> Int) (Int -> R Int -> R Int)
-plursBi = bi (VNamed "inc" inc) (VNamed "inc_" inc_)
-plurs = lift1 plursBi
+plurs :: V Int -> V Int
+plurs = lift1 $ bi (VNamed "inc" inc) (VNamed "inc_" inc_)
 
 bplus :: Int -> Int -> Int
 bplus = (+)
