@@ -55,10 +55,11 @@ import Veq
 --   x what about backpack?
 -- ==== cleanup
 -- + fix segfault
--- - move old tests into a test file
--- - rename test Main
--- - other test warnings
+-- + move old tests into a test file
+-- + rename test Main
+-- + other test warnings
 -- - rename stuff in Innards
+-- - mainloop to module
 -- - fanin tests somewhere (just check that it finishes?)
 -- - dir for dbs and ignore it
 -- - sho -> scripts
@@ -84,8 +85,6 @@ type Bi = Ty.Bi W
 type R = Ty.R W
 bi :: V f -> V r -> Bi f r
 bi = Ty.Bi
-vroot :: V W
-vroot = Ty.VRoot
 
 addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)
@@ -97,15 +96,6 @@ eqBi = nuni "eq" (==)
 eqV :: Eq a => V a -> V a -> V Bool
 eqV = lift2 eqBi
 
-plursBi :: Bi (Int -> Int) (Int -> R Int -> R Int)
-plursBi = bi (VNamed "inc" inc) (VNamed "inc_" inc_)
-plurs = lift1 plursBi
-
-added = addEm baa bbb
-added' = addEm (plurs baa) bbb
-added'' = addEm baa (plurs bbb)
-added''' = addEm (plurs baa) (plurs bbb)
-
 bplus :: Int -> Int -> Int
 bplus = (+)
 bplus_ :: Int -> R Int -> Int -> R Int -> R Int
@@ -113,22 +103,6 @@ bplus_ _ ra _ rb = mkR rc
   where rc c = let a = c `div` 2
                    b = c - a
                 in write ra a <> write rb b
-
-baa :: V Int
-baa = VBiSeal (BiApp (bi (VNamed "aa" aa) (VNamed "aa_" aa_)) root)
--- BApp (VNamed "aa" aa) (VNamed "aa_" aa_) root
--- aa :: W -> Int
-aa_ :: W -> R W -> R Int
-aa_ w wr = mkR ir
-  where ir aa = write wr $ w { aa }
-
-bbb :: V Int
-bbb = VBiSeal (BiApp (bi (VNamed "bb" bb) (VNamed "bb_" bb_)) root)
--- bbb = BApp (VNamed "bb" bb) (VNamed "bb_" bb_) root
--- bb :: W -> Int
-bb_ :: W -> R W -> R Int
-bb_ w wr = mkR ir
-  where ir bb = write wr $ w { bb }
 
 bFanInCount :: V Int
 -- TODO Shouldn't this use a lifter?
@@ -146,27 +120,14 @@ fanInCount2_ :: W -> R W -> R Int
 fanInCount2_ w wr = mkR ir
   where ir fanInCount2 = write wr $ w { fanInCount2 }
 
-inc :: Int -> Int
-inc = (+1)
-inc_ :: Int -> R Int -> R Int
-inc_ _ r = mkR r'
-  where r' i = write r (i - 1)
-
 root :: V W
 root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223 }
 
 recon :: String -> a
-recon "aa" = unsafeCoerce $ VNamed "aa" aa
-recon "aa_" = unsafeCoerce $ VNamed "aa_" aa_
-recon "bb" = unsafeCoerce $ VNamed "bb" bb
-recon "bb_" = unsafeCoerce $ VNamed "bb_" bb_
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
-recon "inc" = unsafeCoerce $ VNamed "inc" inc
-recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
-recon "nope" = unsafeCoerce $ VNamed "nope" nope
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -227,9 +188,6 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
--- slp = sleepRand 4 8
--- slp = sleepRand 0.4 0.8
--- slp = sleepRand 8 12
 slp = sleepRand 0.2 0.4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
@@ -245,8 +203,6 @@ cleanDir counter k dir =
                                         (\() -> Program [k]))))
                     k']))
 
--- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
-
 filesThing :: V Int -> Int -> FilePath -> Core W -> Core W
 filesThing counter num dir k =
   Call (InternalCall "createDirectoryExt" (createDirectoryExt dir)
@@ -258,9 +214,6 @@ filesThing counter num dir k =
                                                                (\() -> Program [k]))))
                                            (cleanDir counter k dir)]))
                                            -- Done]))
-
-monnie :: W -> IO ()
-monnie w = msp $ "MON " ++ show w
 
 data Checkpoint w = Checkpoint
   { eventLog :: [Event w] }
@@ -508,6 +461,7 @@ smallProggedRead = rd theWorld smallProggedV'
 smallProg' :: Program w
 smallProg' = toProg sdone smallProggedRead
 
+-- Fan-in using an mvar; not replayable
 -- par :: (Show a, Read a) => [Blef a] -> Blef [a]
 -- par blefs = M.do
 --   mv <- io $ newMVar []
@@ -541,7 +495,7 @@ program num = Program
     -- timeCall (show num) (filesThing bFanInCount num "dirr")
   ]
 
-_logMain = do
+logMain = do
   msp qq
   msp qq
   msp "----"
@@ -560,30 +514,5 @@ _logMain = do
   mapM_ runIt [20]
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
-
-logMain = do
-  -- Works
-  msp $ propWrite theWorld (Write added 140)
-  msp $ propWrite theWorld (Write added' 140)
-  msp $ propWrite theWorld (Write added'' 140)
-  msp $ propWrite theWorld (Write added''' 140)
-  msp $ added == added
-  msp $ added /= added'
-  msp $ added' == added'
-  msp $ added' /= added
-  msp $ added' /= added''
-  msp $ added' /= added'''
-
-  -- works, or rather did before I split the recon bis
-  let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
-      slaa = VBiSeal baaa
-      babb = BiApp (Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)) VRoot
-      slbb = VBiSeal babb
-      pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) slaa) slbb)
-  let lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
-  msp $ show pl == lala
-  msp $ show added == show pl
-  msp $ added == pl
-  msp $ added /= slaa
 
   msp "log hi"
