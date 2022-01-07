@@ -81,7 +81,6 @@ recon "inc_" = unsafeCoerce $ VNamed "inc_" inc_
 -- recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
-
 innardsSuite :: TestTree
 innardsSuite = testGroup "Test Suite" [
    propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
@@ -96,16 +95,12 @@ innardsSuite = testGroup "Test Suite" [
   , added' /= added'' ~?= True
   , added' /= added''' ~?= True
 
-  , let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
-        slaa = VBiSeal baaa
-        babb = BiApp (Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)) VRoot
-        slbb = VBiSeal babb
-        pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) slaa) slbb)
+  , let pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) baa) bbb)
         lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
      in testGroup "" [
           show pl ~?= lala
         , show added ~?= show pl
         , added ~?= pl
-        , added /= slaa ~?= True
+        , added /= baa ~?= True
         ]
   ]
