@@ -41,10 +41,14 @@ test-suite test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test, src
   main-is:             Main.hs
+  other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
+                       InternalCallRunner, Monad
+                     , Innards
   build-depends:       base >= 4.8
                      , QuickCheck
                      , containers
                      , deepseq
+                     , directory
                      , mtl
                      , pretty-simple
                      , random
