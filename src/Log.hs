@@ -58,21 +58,31 @@ import Veq
 -- + move old tests into a test file
 -- + rename test Main
 -- + other test warnings
--- - rename stuff in Innards
+-- + rename stuff in Innards
 -- - simplify execution framework before moving things to modules
 -- - mainloop to module
 -- - other things to module
 -- - fanin tests somewhere (just check that it finishes?)
+-- --
 -- - dir for dbs and ignore it
 -- - sho -> scripts
+-- --
 -- - Don't like applyContinuation in Log's recon
 -- - Don't like that I have VNamed names where they're declared and also in recon
+-- - Don't like duplication of VNameds
 -- - Tmi re-export module
 -- - remove V prefix from V ctors
 -- - ooo: <> for R (not for its contents) and then you don't have to say rc c = ... (?)
 -- - various lowercase 'q's
 -- - rename BS/etc
 -- - general renaming
+-- ====
+-- - inject external response
+--   - add one to files thing
+-- - web server (or plain socket)
+-- - invitation workflow
+-- - tests for that
+-- - MILESTONE
 -- ====
 -- - does bplus work if you change it to Num?
 -- - multi-module registry
