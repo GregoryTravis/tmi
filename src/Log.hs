@@ -67,6 +67,7 @@ import Veq
 -- - rename BS/etc
 -- - general renaming
 -- ====
+-- - does bplus work if you change it to Num?
 -- - multi-module registry
 -- - oh shit you need some pragmas etc for unsafePerformIO
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
@@ -570,16 +571,15 @@ logMain = do
   msp $ added' /= added'''
 
   -- works, or rather did before I split the recon bis
-  msp added -- just aa + bb
-  let baaa = BiApp (unsafeCoerce (recon "aa")) VRoot
+  let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
       slaa = VBiSeal baaa
-      babb = BiApp (unsafeCoerce (recon "bb")) VRoot
+      babb = BiApp (Ty.Bi (VNamed "bb" bb) (VNamed "bb_" bb_)) VRoot
       slbb = VBiSeal babb
-      pl = VBiSeal (BiApp (BiApp (unsafeCoerce (recon "bplus")) slaa) slbb)
-  -- Causes a seg fault!
-  -- msp pl
+      pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) slaa) slbb)
+  let lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
+  msp $ show pl == lala
   msp $ show added == show pl
   msp $ added == pl
-  msp $ added == slaa
+  msp $ added /= slaa
 
   msp "log hi"
