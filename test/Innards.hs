@@ -11,6 +11,10 @@ import Propagate
 import Ty hiding (V, Bi, R)
 import qualified Ty as Ty
 import V
+import Veq
+
+infix 1 ~?=
+a ~?= e = testCase "" $ a @?= e
 
 -- Some low-level prodding
 
@@ -75,18 +79,17 @@ innardsSuite = testGroup "Test Suite" [
   , testCase "List comparison (same length)" $
       [1, 2, 3] `compare` [1,2,2] @?= GT
 
-  , testCase "" $
-    -- (propWrite theWorld (Write added 140)) `compare` "asdf" @?= EQ
-    (propWrite theWorld (Write added 140)) @?= (W { aa = 70 , bb = 70 })
-  -- msp $ propWrite theWorld (Write added' 140)
-  -- msp $ propWrite theWorld (Write added'' 140)
-  -- msp $ propWrite theWorld (Write added''' 140)
-  -- msp $ added == added
-  -- msp $ added /= added'
-  -- msp $ added' == added'
-  -- msp $ added' /= added
-  -- msp $ added' /= added''
-  -- msp $ added' /= added'''
+  , propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
+  , propWrite theWorld (Write added' 140) ~?= W { aa = 69 , bb = 70 }
+  , propWrite theWorld (Write added'' 140) ~?= W { aa = 70 , bb = 69 }
+  , propWrite theWorld (Write added''' 140) ~?= W { aa = 69 , bb = 69 }
+
+  , added ~?= added
+  , added /= added' ~?= True
+  , added' ~?= added'
+  , added' /= added ~?= True
+  , added' /= added'' ~?= True
+  , added' /= added''' ~?= True
 
   -- -- works, or rather did before I split the recon bis
   -- let baaa = BiApp (Ty.Bi (VNamed "aa" aa) (VNamed "aa_" aa_)) VRoot
