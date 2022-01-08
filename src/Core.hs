@@ -69,7 +69,7 @@ wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef a = Blef String (IO a)
             | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
-            | forall b. (Show a, Read a, Show b, Read b) => ParBlefs [Blef b] ([b] -> Blef a)
+            -- | forall b. (Show a, Read a, Show b, Read b) => ParBlefs [Blef b] ([b] -> Blef a)
 
 instance Show (Blef a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"

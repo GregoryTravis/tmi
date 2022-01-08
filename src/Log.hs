@@ -201,6 +201,7 @@ writeAFile dir n = do
   writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
 slp = sleepRand 0.2 0.4
+-- slp = sleepRand 2 4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
@@ -489,8 +490,9 @@ program :: Int -> Program W
 program num = Program
   [
   -- Sub (smallProg')
+  -- timeCall "ayo" (filesThing bFanInCount 10 "dirr")
     Sub (filesThingProg "dirr" 10)
-  , Sub (filesThingProg "dirr2" 15)
+  -- , Sub (filesThingProg "dirr2" 15)
 
   --Assign (Write baa 140)
 
