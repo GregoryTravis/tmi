@@ -99,7 +99,8 @@ esp a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ a
   return a
 
-useTS = True
+-- Use threadsafe logging?
+useTS = False
 
 eesp :: Show s => s -> a -> a
 eesp = if useTS then tseesp else oeesp

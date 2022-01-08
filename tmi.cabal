@@ -20,19 +20,40 @@ executable tmi
                        InternalCallRunner, Monad
   default-language:    Haskell2010
   ghc-options:         -threaded
-  build-depends:       base >= 4.7 && < 5,
-                       base16-bytestring,
-                       bytestring,
-                       containers,
-                       contravariant,
-                       deepseq,
-                       directory,
-                       cryptohash-md5,
-                       mtl,
-                       pretty-simple,
-                       --process,
-                       random,
-                       text,
-                       time,
-                       unix,
-                       utf8-string
+  build-depends:       base >= 4.7 && < 5
+                     , base16-bytestring
+                     , bytestring
+                     , containers
+                     , contravariant
+                     , deepseq
+                     , directory
+                     , cryptohash-md5
+                     , mtl
+                     , pretty-simple
+                     , random
+                     , text
+                     , time
+                     , unix
+                     , utf8-string
+
+test-suite test
+  default-language:    Haskell2010
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test, src
+  main-is:             Tests.hs
+  other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
+                       InternalCallRunner, Monad
+                     , Innards
+  build-depends:       base >= 4.8
+                     , QuickCheck
+                     , containers
+                     , deepseq
+                     , directory
+                     , mtl
+                     , pretty-simple
+                     , random
+                     , tasty
+                     , tasty-quickcheck
+                     , tasty-hunit
+                     , text
+                     , time
