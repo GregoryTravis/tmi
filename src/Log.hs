@@ -486,12 +486,22 @@ smallProg' = toProg sdone smallProggedRead
                          
 -- par [] = M.return (return [])
 
+exty :: Blef Int
+exty = M.do
+  n <- EBlef "exty0" (\h -> msp $ "handle " ++ show h)
+  io $ msp $ "exty got " ++ show n
+  M.return $ return $ n + 1
+
+extyProg :: Program W
+extyProg = toProg sdone exty
+
 program :: Int -> Program W
 program num = Program
   [
+  Sub (extyProg)
   -- Sub (smallProg')
   -- timeCall "ayo" (filesThing bFanInCount 10 "dirr")
-    Sub (filesThingProg "dirr" 10)
+  -- Sub (filesThingProg "dirr" 10)
   -- , Sub (filesThingProg "dirr2" 15)
 
   --Assign (Write baa 140)
@@ -523,9 +533,14 @@ logMain = do
   let runIt n = do
         removeDbDir dir
         ensureDbDir dir theWorld
-        tmiMetaMain proxy "db" ["injectCommand", "program", (show n)]
+        tmiMetaMain proxy dir ["injectCommand", "program", (show n)]
         run lookupCommand dir
-  mapM_ runIt [20]
+  -- mapM_ runIt [20]
+  let continueExty = do
+        ensureDbDir dir theWorld
+        tmiMetaMain proxy dir ["injectRetval", "0", "43"]
+        run lookupCommand dir
+  continueExty
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 

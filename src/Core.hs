@@ -27,7 +27,7 @@ type Monitor a = (a -> IO ())
 data Monitoring w = forall a. Monitoring (V w a) (Monitor a)
 
 data Call w = forall a. (Show a, Read a) => InternalCall String (IO a) (a -> Program w)
-            | forall a. (Show a, Read a) => ExternalCall String (a -> Program w)
+            | forall a. (Show a, Read a) => ExternalCall String (Int -> IO ()) (a -> Program w)
 data Event w = Retval Int String | Command [String] deriving (Show, Read)
 data Core w = Assign (Write w) | Call (Call w) | Sub (Program w)
             | Cond (V w Bool) (Core w) (Core w) | Named String (Core w) | Done
@@ -43,11 +43,11 @@ instance Show (Core w) where
 
 instance Show (Call w) where
   show (InternalCall s _ _) = "(InternalCall " ++ s ++ ")"
-  show (ExternalCall s _) = "(ExternalCall " ++ s ++ ")"
+  show (ExternalCall s _ _) = "(ExternalCall " ++ s ++ ")"
 
 applyContinuation :: Call w -> String -> Program w
 applyContinuation (InternalCall _ _ k) s = k (read s)
-applyContinuation (ExternalCall _ k) s = k (read s)
+applyContinuation (ExternalCall _ _ k) s = k (read s)
 
 -- Wrap an action to 'show' its value into a retval and send it down a channel.
 -- Only for InternalCalls.
@@ -59,7 +59,10 @@ wrapAction chan index (InternalCall _ io _) = do
   -- msp $ "wrapAction chan write: " ++ show retval
   writeChan chan retval
   return ()
-wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
+-- TODO: not sure we should be wrapping this, but otoh why not
+wrapAction _ index (ExternalCall _ handleK _) = do
+  handleK index
+-- wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 
 ---- Monad stuff
 
@@ -68,6 +71,7 @@ wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 -- declaration, but instead only on the actual coordination code. Then this could
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef a = Blef String (IO a)
+            | EBlef String (Int -> IO ())
             | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
             -- | forall b. (Show a, Read a, Show b, Read b) => ParBlefs [Blef b] ([b] -> Blef a)
 
@@ -87,6 +91,8 @@ ritt = Blef "ritt"
 toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
 toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
+toProg k (EBlef s handleK) =
+  Program [Call $ ExternalCall s handleK k]
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> toProg k (a2Blef a)) blef
 -- toProg k (ParBlefs blefs next) = do
@@ -118,7 +124,6 @@ toProg k (Blefs blef a2Blef) =
 --           [ Assign (Write counter 0)
 --           , Sub (Program jobs)
 --           ])
-
 
 done :: a -> Program w
 done _ = Program [Done]
