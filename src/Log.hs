@@ -59,6 +59,7 @@ import Veq
 -- + rename test Main
 -- + other test warnings
 -- + rename stuff in Innards
+-- ==== more cleanup
 -- - simplify execution framework before moving things to modules
 -- - mainloop to module
 -- - other things to module
@@ -448,7 +449,11 @@ filesThingSeq num dir = M.do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let createIt n = M.do
         io slp
-        Blef "writeAFile" (writeAFile dir n)
+        if n == 3
+          then M.do
+            extraN <- EBlef "ftexty" (\h -> msp $ "ft handle " ++ show h)
+            Blef "writeAFile" (writeAFile dir (n + extraN))
+          else Blef "writeAFile" (writeAFile dir n)
   mapBlef_ createIt [0..num-1]
   cleanDirSeq dir
   M.return (return ())
@@ -498,10 +503,10 @@ extyProg = toProg sdone exty
 program :: Int -> Program W
 program num = Program
   [
-  Sub (extyProg)
+  -- Sub (extyProg)
   -- Sub (smallProg')
   -- timeCall "ayo" (filesThing bFanInCount 10 "dirr")
-  -- Sub (filesThingProg "dirr" 10)
+  Sub (filesThingProg "dirr" 10)
   -- , Sub (filesThingProg "dirr2" 15)
 
   --Assign (Write baa 140)
@@ -538,7 +543,7 @@ logMain = do
   -- mapM_ runIt [20]
   let continueExty = do
         ensureDbDir dir theWorld
-        tmiMetaMain proxy dir ["injectRetval", "0", "43"]
+        tmiMetaMain proxy dir ["injectRetval", "8", "43000"]
         run lookupCommand dir
   continueExty
 
