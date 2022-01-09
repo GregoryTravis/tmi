@@ -59,11 +59,12 @@ import Veq
 -- + rename test Main
 -- + other test warnings
 -- + rename stuff in Innards
+-- ==== meta
+-- - mvar in-flight counter
+-- - Meta.hs
+-- - tmi cli
+-- - run filesThing with it
 -- ==== signup
--- - or maybe more cleanup?; otherwise
--- - Chan wrapper and icrmsg
--- - quit when 0
--- - some meta-scripting way to drive exty programs
 -- - do it
 -- ==== more cleanup
 -- - simplify execution framework before moving things to modules
