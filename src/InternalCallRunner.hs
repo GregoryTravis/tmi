@@ -1,38 +1,68 @@
+{-# Language RecordWildCards #-}
+
 module InternalCallRunner
 ( mkInternalCallRunner
+, InternalCallRunner
+, icrRead
+, icrWrite
 ) where
 
 import Control.Concurrent
+import Control.Concurrent.MVar
 import Control.Monad (when)
 import qualified Data.Set as S
 
 import Core
 import Util
 
-mkInternalCallRunner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))
-mkInternalCallRunner eventChan = do
-  ceChan <- newChan
-  forkIO (startLoop eventChan ceChan)
-  return ceChan
+data InternalCallRunner w = InternalCallRunner
+  { eventChan :: Chan (Event w)
+  , ceChan :: Chan ([Call w], [Event w])
+  , inFlightCount :: MVar Int }
 
-startLoop :: Chan (Event w) -> Chan ([Call w], [Event w]) -> IO ()
+updateInFlightCount :: InternalCallRunner w -> (Int -> Int) -> IO ()
+updateInFlightCount icr f = modifyMVar_ (inFlightCount icr) (return . f)
+
+mkInternalCallRunner :: IO (InternalCallRunner w)
+mkInternalCallRunner = do
+  eventChan <- newChan
+  ceChan <- newChan
+  inFlightCount <- newMVar 0
+  let icr = InternalCallRunner {..}
+  forkIO (startLoop icr)
+  return icr
+
+-- Write calls + events to the ICR
+icrWrite :: InternalCallRunner w -> ([Call w], [Event w]) -> IO ()
+icrWrite (InternalCallRunner {..}) ces = do
+  writeChan ceChan ces
+
+-- Read an event from the event change. If it's internal decrease the in-flight count
+icrRead :: InternalCallRunner w -> IO (Event w)
+icrRead icr = do
+  e <- readChan (eventChan icr)
+  updateInFlightCount icr (subtract 1)
+  return e
+
+startLoop :: InternalCallRunner w -> IO ()
 startLoop = loop S.empty
 
 -- Read a ce, pick short calls to run, start them, repeat.
-loop :: S.Set Int -> Chan (Event w) -> Chan ([Call w], [Event w]) -> IO ()
-loop started eventChan ceChan = do
+loop :: S.Set Int -> InternalCallRunner w -> IO ()
+loop started icr = do
   -- msp "ICR wait"
-  (calls, events) <- readChan ceChan
+  (calls, events) <- readChan (ceChan icr)
   -- msp ("ICR done waiting", length calls, events)
   let (callsAndIndices, started') = needToRun started calls events
-  runCalls eventChan callsAndIndices
-  loop started' eventChan ceChan
+  runCalls icr callsAndIndices
+  loop started' icr
 
-runCalls :: Chan (Event w) -> [(Int, Call w)] -> IO ()
-runCalls chan callsAndIndices = do
+runCalls :: InternalCallRunner w -> [(Int, Call w)] -> IO ()
+runCalls icr callsAndIndices = do
   when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
   runList_ ios
-  where ios = map (\(i, call) -> wrapFork $ wrapAction chan i call) callsAndIndices
+  updateInFlightCount icr (+ (length ios))
+  where ios = map (\(i, call) -> do wrapFork $ wrapAction (eventChan icr) i call) callsAndIndices
 
 wrapFork :: IO () -> IO ()
 wrapFork io = do

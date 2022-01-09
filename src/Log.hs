@@ -61,6 +61,7 @@ import Veq
 -- + rename stuff in Innards
 -- ==== meta
 -- - mvar in-flight counter
+-- - don't actually need the bool
 -- - Meta.hs
 -- - tmi cli
 -- - run filesThing with it
@@ -280,8 +281,7 @@ injectEvent dbdir e = do
 
 run :: (Read w, Show w) => LookerUpper w -> FilePath -> IO ()
 run lookerUpper dbdir = do
-  chan <- newChan
-  ceChan <- mkInternalCallRunner chan
+  icr <- mkInternalCallRunner
   let loop = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
@@ -292,9 +292,9 @@ run lookerUpper dbdir = do
         -- msp ("processedEvents, got", length calls)
         -- processCalls calls (eventLog ck)
         -- msp ("write to ICR", length calls, (eventLog ck))
-        writeChan ceChan (calls, eventLog ck)
+        icrWrite icr (calls, eventLog ck)
         -- msp "retval wait"
-        r <- readChan chan
+        r <- icrRead icr
         -- msp $ "retval wait got " ++ show r
         let ck' = ck { eventLog = eventLog ck ++ [r] }
         writeCK dbdir ck'
@@ -547,12 +547,12 @@ logMain = do
         ensureDbDir dir theWorld
         tmiMetaMain proxy dir ["injectCommand", "program", (show n)]
         run lookupCommand dir
-  -- mapM_ runIt [20]
+  mapM_ runIt [20]
   let continueExty = do
         ensureDbDir dir theWorld
         tmiMetaMain proxy dir ["injectRetval", "8", "43000"]
         run lookupCommand dir
-  continueExty
+  -- continueExty
 
   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
 
