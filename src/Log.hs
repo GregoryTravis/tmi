@@ -61,7 +61,9 @@ import Veq
 -- + rename stuff in Innards
 -- ==== meta
 -- - mvar in-flight counter
--- - don't actually need the bool
+--   + write
+--   + don't actually need the bool
+--   - check the counter
 -- - Meta.hs
 -- - tmi cli
 -- - run filesThing with it
