@@ -5,6 +5,8 @@ module InternalCallRunner
 , InternalCallRunner
 , icrRead
 , icrWrite
+, icrDone
+, icrInFlight
 ) where
 
 import Control.Concurrent
@@ -21,7 +23,12 @@ data InternalCallRunner w = InternalCallRunner
   , inFlightCount :: MVar Int }
 
 updateInFlightCount :: InternalCallRunner w -> (Int -> Int) -> IO ()
-updateInFlightCount icr f = modifyMVar_ (inFlightCount icr) (return . f)
+updateInFlightCount icr f = do
+  c <- readMVar (inFlightCount icr)
+  msp $ "update before " ++ show c
+  modifyMVar_ (inFlightCount icr) (return . f)
+  c' <- readMVar (inFlightCount icr)
+  msp $ "update after " ++ show c'
 
 mkInternalCallRunner :: IO (InternalCallRunner w)
 mkInternalCallRunner = do
@@ -41,8 +48,19 @@ icrWrite (InternalCallRunner {..}) ces = do
 icrRead :: InternalCallRunner w -> IO (Event w)
 icrRead icr = do
   e <- readChan (eventChan icr)
+  msp $ "count dec 1"
   updateInFlightCount icr (subtract 1)
   return e
+
+-- True if there are no calls (internal) in flight
+icrDone :: InternalCallRunner w -> IO Bool
+icrDone icr = do
+  b <- readMVar (inFlightCount icr)
+  return $ b == 0
+
+icrInFlight :: InternalCallRunner w -> IO Int
+icrInFlight icr = do
+  readMVar (inFlightCount icr)
 
 startLoop :: InternalCallRunner w -> IO ()
 startLoop = loop S.empty
@@ -61,6 +79,7 @@ runCalls :: InternalCallRunner w -> [(Int, Call w)] -> IO ()
 runCalls icr callsAndIndices = do
   when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
   runList_ ios
+  msp $ "count inc " ++ show (length ios)
   updateInFlightCount icr (+ (length ios))
   where ios = map (\(i, call) -> do wrapFork $ wrapAction (eventChan icr) i call) callsAndIndices
 

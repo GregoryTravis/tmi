@@ -287,31 +287,20 @@ run lookerUpper dbdir = do
   let loop = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
-        -- msp ("ck start", ck)
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-        -- msp ("initW", initW)
-        -- msp ("last w", w')
-        -- msp ("processedEvents, got", length calls)
-        -- processCalls calls (eventLog ck)
-        -- msp ("write to ICR", length calls, (eventLog ck))
         icrWrite icr (calls, eventLog ck)
-        -- msp "retval wait"
-        r <- icrRead icr
-        -- msp $ "retval wait got " ++ show r
-        let ck' = ck { eventLog = eventLog ck ++ [r] }
-        writeCK dbdir ck'
-        -- msp ("ck end", ck')
-        loop
-        -- return ()
+        inf <- icrInFlight icr
+        msp $ "ICR " ++ show inf
+        done <- return False -- icrDone icr
+        if not done
+          then do msp "going to read"
+                  r <- icrRead icr
+                  let ck' = ck { eventLog = eventLog ck ++ [r] }
+                  writeCK dbdir ck'
+                  loop
+          else do msp "Nothing to do, exiting."
+                  return ()
   loop
-
--- mkInternalCall "yo"Runner :: Chan (Event w) -> IO (Chan ([Call w], [Event w]))
-
--- -- Get all calls that don't have a retval yet and run them
--- -- no wait
--- processCalls :: [Call w] -> [Event w] -> IO ()
--- processCalls calls events = do
---   return ()
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
@@ -458,7 +447,7 @@ filesThingSeq num dir = M.do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let createIt n = M.do
         io slp
-        if n == 3
+        if n == 3 && False
           then M.do
             extraN <- EBlef "ftexty" (\h -> msp $ "ft handle " ++ show h)
             Blef "writeAFile" (writeAFile dir (n + extraN))
