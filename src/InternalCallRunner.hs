@@ -4,9 +4,9 @@ module InternalCallRunner
 ( mkInternalCallRunner
 , InternalCallRunner
 , icrRead
-, icrWrite
 , icrDone
 , icrInFlight
+, icrRun
 ) where
 
 import Control.Concurrent
@@ -19,8 +19,8 @@ import Util
 
 data InternalCallRunner w = InternalCallRunner
   { eventChan :: Chan (Event w)
-  , ceChan :: Chan ([Call w], [Event w])
-  , inFlightCount :: MVar Int }
+  , inFlightCount :: MVar Int
+  , started :: S.Set Int }
 
 updateInFlightCount :: InternalCallRunner w -> (Int -> Int) -> IO ()
 updateInFlightCount icr f = do
@@ -33,16 +33,10 @@ updateInFlightCount icr f = do
 mkInternalCallRunner :: IO (InternalCallRunner w)
 mkInternalCallRunner = do
   eventChan <- newChan
-  ceChan <- newChan
   inFlightCount <- newMVar 0
+  let started = S.empty
   let icr = InternalCallRunner {..}
-  forkIO (startLoop icr)
   return icr
-
--- Write calls + events to the ICR
-icrWrite :: InternalCallRunner w -> ([Call w], [Event w]) -> IO ()
-icrWrite (InternalCallRunner {..}) ces = do
-  writeChan ceChan ces
 
 -- Read an event from the event change. If it's internal decrease the in-flight count
 icrRead :: InternalCallRunner w -> IO (Event w)
@@ -62,26 +56,24 @@ icrInFlight :: InternalCallRunner w -> IO Int
 icrInFlight icr = do
   readMVar (inFlightCount icr)
 
-startLoop :: InternalCallRunner w -> IO ()
-startLoop = loop S.empty
-
 -- Read a ce, pick short calls to run, start them, repeat.
-loop :: S.Set Int -> InternalCallRunner w -> IO ()
-loop started icr = do
-  -- msp "ICR wait"
-  (calls, events) <- readChan (ceChan icr)
-  -- msp ("ICR done waiting", length calls, events)
-  let (callsAndIndices, started') = needToRun started calls events
+icrRun :: InternalCallRunner w -> [Call w] -> [Event w] -> IO (InternalCallRunner w)
+icrRun icr calls events = do
+  let (callsAndIndices, started') = needToRun (started icr) calls events
   runCalls icr callsAndIndices
-  loop started' icr
+  return $ icr { started = started' }
 
 runCalls :: InternalCallRunner w -> [(Int, Call w)] -> IO ()
 runCalls icr callsAndIndices = do
   when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
   runList_ ios
-  msp $ "count inc " ++ show (length ios)
-  updateInFlightCount icr (+ (length ios))
+  msp $ "count inc " ++ show numInternalCalls
+  msp callsAndIndices
+  updateInFlightCount icr (+ numInternalCalls)
   where ios = map (\(i, call) -> do wrapFork $ wrapAction (eventChan icr) i call) callsAndIndices
+        numInternalCalls = length $ filter isInternal (map snd callsAndIndices)
+        isInternal (InternalCall _ _ _) = True
+        isInternal _ = False
 
 wrapFork :: IO () -> IO ()
 wrapFork io = do

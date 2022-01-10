@@ -283,24 +283,25 @@ injectEvent dbdir e = do
 
 run :: (Read w, Show w) => LookerUpper w -> FilePath -> IO ()
 run lookerUpper dbdir = do
-  icr <- mkInternalCallRunner
-  let loop = do
+  initIcr <- mkInternalCallRunner
+  let loop icr = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
         let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-        icrWrite icr (calls, eventLog ck)
-        inf <- icrInFlight icr
+        -- icrWrite icr (calls, eventLog ck)
+        icr' <- icrRun icr calls (eventLog ck)
+        inf <- icrInFlight icr'
         msp $ "ICR " ++ show inf
-        done <- return False -- icrDone icr
+        done <- icrDone icr
         if not done
           then do msp "going to read"
-                  r <- icrRead icr
+                  r <- icrRead icr'
                   let ck' = ck { eventLog = eventLog ck ++ [r] }
                   writeCK dbdir ck'
-                  loop
+                  loop icr'
           else do msp "Nothing to do, exiting."
                   return ()
-  loop
+  loop initIcr
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
@@ -505,7 +506,7 @@ program num = Program
   -- Sub (smallProg')
   -- timeCall "ayo" (filesThing bFanInCount 10 "dirr")
   Sub (filesThingProg "dirr" 10)
-  -- , Sub (filesThingProg "dirr2" 15)
+  , Sub (filesThingProg "dirr2" 15)
 
   --Assign (Write baa 140)
 
