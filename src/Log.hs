@@ -2,7 +2,7 @@
    QualifiedDo, RecordWildCards, ScopedTypeVariables, TypeApplications #-}
 
 module Log
-( logMain
+( logApp
 ) where
 
 -- import Data.Dynamic
@@ -25,8 +25,8 @@ import Unsafe.Coerce
 
 import Core
 import Ext
-import InternalCallRunner
 import Lift
+import MainLoop
 import qualified Monad as M
 import Propagate
 import Storage
@@ -63,8 +63,9 @@ import Veq
 -- - mvar in-flight counter
 --   + write
 --   + don't actually need the bool
---   - check the counter
+--   + check the counter
 -- - Meta.hs
+--   - rename lookerUpper
 -- - tmi cli
 -- - run filesThing with it
 -- ==== signup
@@ -227,8 +228,8 @@ cleanDir counter k dir =
                                         (\() -> Program [k]))))
                     k']))
 
-filesThing :: V Int -> Int -> FilePath -> Core W -> Core W
-filesThing counter num dir k =
+filesThing' :: V Int -> Int -> FilePath -> Core W -> Core W
+filesThing' counter num dir k =
   Call (InternalCall "createDirectoryExt" (createDirectoryExt dir)
              -- (\() -> Program [mapCallCPS (cleanDir Done dir) [0..num-1]
              --                             (\f -> (do slp; writeAFile dir f))]))
@@ -239,146 +240,12 @@ filesThing counter num dir k =
                                            (cleanDir counter k dir)]))
                                            -- Done]))
 
-data Checkpoint w = Checkpoint
-  { eventLog :: [Event w] }
-  deriving (Show, Read)
-emptyCK :: Checkpoint w
-emptyCK = Checkpoint { eventLog = [] }
-
-removeDbDir :: FilePath -> IO ()
-removeDbDir dbdir = do
-  de <- doesDirectoryExist dbdir
-  when de $ removeDirectoryRecursive dbdir
-
--- Create the db with empty checkpoint if it doesn't exist.
-ensureDbDir :: Show w => FilePath -> w -> IO ()
-ensureDbDir dbdir initW = do
-  de <- doesDirectoryExist dbdir
-  if not de
-    then do
-      let initWFile = dbdir ++ "/initW"
-          initCKFile = dbdir ++ "/ck"
-      createDirectory dbdir
-      writeFile initWFile (show initW)
-      writeFile initCKFile (show emptyCK)
-    else return ()
-
-readDbFile :: Read a => FilePath -> FilePath -> IO a
-readDbFile dbdir file = do
-  s <- readFile' (dbdir ++ "/" ++ file)
-  return $ read s
-readCK :: (Show w, Read w) => FilePath -> IO (Checkpoint w)
-readCK dbdir = readDbFile dbdir "ck"
-readInitW :: (Show w, Read w) => FilePath -> IO w
-readInitW dbdir = readDbFile dbdir "initW"
-writeCK :: (Show w, Read w) => FilePath -> Checkpoint w -> IO ()
-writeCK dbdir ck = writeFile (dbdir ++ "/ck") (show ck)
-
-injectEvent :: (Show w, Read w) => FilePath -> Event w -> IO ()
-injectEvent dbdir e = do
-  ck <- readCK dbdir
-  -- initW <- readInitW dbdir
-  let ck' = ck { eventLog = eventLog ck ++ [e] }
-  writeCK dbdir ck'
-
-run :: (Read w, Show w) => LookerUpper w -> FilePath -> IO ()
-run lookerUpper dbdir = do
-  initIcr <- mkInternalCallRunner
-  let loop icr = do
-        ck <- readCK dbdir
-        initW <- readInitW dbdir
-        let (w', calls) = processEvents lookerUpper initW (eventLog ck)
-        -- icrWrite icr (calls, eventLog ck)
-        icr' <- icrRun icr calls (eventLog ck)
-        inf <- icrInFlight icr'
-        msp $ "ICR " ++ show inf
-        done <- icrDone icr
-        if not done
-          then do msp "going to read"
-                  r <- icrRead icr'
-                  let ck' = ck { eventLog = eventLog ck ++ [r] }
-                  writeCK dbdir ck'
-                  loop icr'
-          else do msp "Nothing to do, exiting."
-                  return ()
-  loop initIcr
-
--- Iterate through the event list. Each one produces a Program which gives us a new w
--- and some steps to add to the step list.
--- A new InternalCall "yo" has an IO which only run if the retval list doesn't already have
--- a value (which is a witness for that IO having already been run).
-processEvents :: (Show w) => LookerUpper w -> w -> [Event w] -> (w, [Call w])
-processEvents lookerUpper w events = processEvents' lookerUpper w events []
-
-processEvents' :: (Show w) => LookerUpper w -> w -> [Event w] -> [Call w] -> (w, [Call w])
-processEvents' lookerUpper w [] calls = (w, calls)
-processEvents' lookerUpper w (e:es) calls =
-  let (w', newCalls) = processEvent lookerUpper w e calls
-      calls' = calls ++ newCalls
-   in noeesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls'
-
-processEvent :: (Show w) => LookerUpper w -> w -> Event w -> [Call w] -> (w, [Call w])
-processEvent lookerUpper w e calls =
-  let prog = eventToProgram lookerUpper e calls
-      (w', newCalls) = runProgram w prog
-      -- allCalls = calls ++ newCalls
-   in noeesp ("processEvent runProgram", e, calls, newCalls) $ (w', newCalls)
-   -- in eesp ("processEvent", e) $ runProgram w prog
-
-eventToProgram :: LookerUpper w -> Event w -> [Call w] -> Program w
-eventToProgram lookerUpper (Command command) _ = lookerUpper command
-eventToProgram lookerUpper r@(Retval index rs) calls =
-  let call = vindex "eventToProgram" (noeesp ("eventToProgram", length calls, index, r) calls) index
-      program = applyContinuation call rs
-   in noeesp ("applyContinuation", r, call, program) $ program
-
--- data Event w = Retval Int String | Command [String] deriving (Show, Read)
-
--- TODO do these need IO?
-runProgram :: (Show w) => w -> Program w -> (w, [Call w])
-runProgram w (Program cores) =
-  let (writes, calls) = runCores w cores [] []
-      w' = propWrite w (Writes writes)
-   in (w', calls)
-
--- TODO: appends very slow
-runCores :: w -> [Core w] -> [Write w] -> [Call w] -> ([Write w], [Call w])
-runCores w (core:cores) writes calls =
-  let (newWrites, newCalls) = runCore w core
-   in runCores w cores (writes ++ newWrites) (calls ++ newCalls)
-runCores w [] writes calls = (writes, calls)
-
-runCore :: w -> Core w -> ([Write w], [Call w])
-runCore w c = noeesp ("running core", c) $ runCore' w c
--- runCore w c = runCore' w c
-runCore' :: w -> Core w -> ([Write w], [Call w])
-runCore' w (Assign write) = ([write], [])
-runCore' w (Call call) = ([], [call])
-runCore' w (Sub (Program cores)) = runCores w cores [] []
-runCore' w (Cond vbool th el) =
-  let b = rd w vbool
-      next = if b then th else el
-   in runCore w next
--- runCore' w (Named s c) = runCore w c
-runCore' w Done = ([], [])
--- runCore w x = error $ "??? " ++ show x
--- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
--- runCore w (Assign write) writes calls = (writes ++ [write], calls)
--- runCore w (Call) writes calls = (writes, calls ++ [call])
-
--- data Core w = Assign (Write w) | Call (Call w) | Sub (Program w)
---             | Cond (V w Bool) (Core w) (Core w) | Done
-
-type LookerUpper w = [String] -> Program w
-lookupCommand :: LookerUpper W
-lookupCommand ["program", numS] = program (read numS)
-
-tmiMetaMain :: forall w. (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
-tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
-  injectEvent dbdir ((Retval (read indexS) val) :: Event w)
-tmiMetaMain proxy dbdir ("injectCommand" : command) =
-  injectEvent dbdir ((Command command) :: Event w)
--- tmiMetaMain proxy dbdir ["run"] = run dbdir
+-- tmiMetaMain :: forall w. (Read w, Show w) => Proxy w -> FilePath -> [String] -> IO ()
+-- tmiMetaMain proxy dbdir ["injectRetval", indexS, val] =
+--   injectEvent dbdir ((Retval (read indexS) val) :: Event w)
+-- tmiMetaMain proxy dbdir ("injectCommand" : command) =
+--   injectEvent dbdir ((Command command) :: Event w)
+-- -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
 blef0 :: Blef Int
 blef0 = Blef "blef0" (return 12)
@@ -457,9 +324,6 @@ filesThingSeq num dir = M.do
   cleanDirSeq dir
   M.return (return ())
 
-filesThingProg :: FilePath -> Int -> Program W
-filesThingProg dir num = toProg sdone (filesThingSeq num dir)
-
 -- Very ugly proof that a Blef is Nice
 smallProg :: Program W
 smallProg = toProg sdone (smallProgBlef 133)
@@ -499,53 +363,67 @@ exty = M.do
 extyProg :: Program W
 extyProg = toProg sdone exty
 
-program :: Int -> Program W
-program num = Program
-  [
-  -- Sub (extyProg)
-  -- Sub (smallProg')
-  -- timeCall "ayo" (filesThing bFanInCount 10 "dirr")
-  Sub (filesThingProg "dirr" 10)
-  , Sub (filesThingProg "dirr2" 15)
+lookupCommand :: AppEnv W
+lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
+lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
+lookupCommand ["exty"] = extyProg
 
-  --Assign (Write baa 140)
+filesThing :: FilePath -> Int -> Program W
+filesThing dir num = toProg sdone (filesThingSeq num dir)
 
-  -- Call (InternalCall "yo" (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
-  -- Call (InternalCall "step1"
-  --        (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12)
-  --        (\n -> Program [Call (InternalCall "step2"
-  --                                (do msp ("yyyyyyyyyyy", n); return 13)
-  --                                (\n -> Program [Done]))]))
+filesThings :: FilePath -> Int -> FilePath -> Int -> Program W
+filesThings dir num dir2 num2 = Program
+  [ Sub (toProg sdone (filesThingSeq num dir))
+  , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
-  -- , Assign (Write bbb 230)
-    -- timeCall (filesThing bFanInCount 10 "dirr")
-  -- , filesThing bFanInCount2 160 "dirr2" Done
-    -- timeCall (show num) (filesThing bFanInCount num "dirr")
-  ]
+logApp = App { initialW = theWorld, appEnv = lookupCommand }
 
-logMain = do
-  msp qq
-  msp qq
-  msp "----"
-  -- works
-  let proxy = Proxy :: Proxy W
-  let dir = "db"
+--program num = Program
+--  [
+--  -- Sub (extyProg)
+--  -- Sub (smallProg')
+--  -- timeCall "ayo" (filesThing' bFanInCount 10 "dirr")
+--  Sub (filesThingProg "dirr" 10)
+--  , Sub (filesThingProg "dirr2" 15)
 
---   removeDirectoryRecursive "dirr"
+--  --Assign (Write baa 140)
 
-  -- Full reset
-  let runIt n = do
-        removeDbDir dir
-        ensureDbDir dir theWorld
-        tmiMetaMain proxy dir ["injectCommand", "program", (show n)]
-        run lookupCommand dir
-  mapM_ runIt [20]
-  let continueExty = do
-        ensureDbDir dir theWorld
-        tmiMetaMain proxy dir ["injectRetval", "8", "43000"]
-        run lookupCommand dir
-  -- continueExty
+--  -- Call (InternalCall "yo" (msp "zzzzzzzzzzzzzzzzzzzzzz") (\() -> Program [Done]))
+--  -- Call (InternalCall "step1"
+--  --        (do msp "zzzzzzzzzzzzzzzzzzzzzz"; return 12)
+--  --        (\n -> Program [Call (InternalCall "step2"
+--  --                                (do msp ("yyyyyyyyyyy", n); return 13)
+--  --                                (\n -> Program [Done]))]))
 
-  -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
+--  -- , Assign (Write bbb 230)
+--    -- timeCall (filesThing bFanInCount 10 "dirr")
+--  -- , filesThing bFanInCount2 160 "dirr2" Done
+--    -- timeCall (show num) (filesThing bFanInCount num "dirr")
+--  ]
 
-  msp "log hi"
+-- logMain = do
+--   msp qq
+--   msp qq
+--   msp "----"
+--   -- works
+--   let proxy = Proxy :: Proxy W
+--   let dir = "db"
+
+-- --   removeDirectoryRecursive "dirr"
+
+--   -- Full reset
+--   let runIt n = do
+--         removeDbDir dir
+--         ensureDbDir dir theWorld
+--         tmiMetaMain proxy dir ["injectCommand", "program", (show n)]
+--         run lookupCommand dir
+--   mapM_ runIt [20]
+--   let continueExty = do
+--         ensureDbDir dir theWorld
+--         tmiMetaMain proxy dir ["injectRetval", "17", "53000"]
+--         run lookupCommand dir
+--   -- continueExty
+
+--   -- tmiMetaMain proxy "db" ["injectRetval", "12", "hey"]
+
+--   msp "log hi"

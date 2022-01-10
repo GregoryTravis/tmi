@@ -100,7 +100,7 @@ esp a = unsafePerformIO $ do
   return a
 
 -- Use threadsafe logging?
-useTS = True
+useTS = False
 
 eesp :: Show s => s -> a -> a
 eesp = if useTS then tseesp else oeesp
