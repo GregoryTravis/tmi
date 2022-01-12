@@ -75,6 +75,8 @@ data Blef w a where
   -- TOOD should this return Blef ()?
   EBlef :: String -> (Int -> IO ()) -> Blef w a
   Blefs :: forall a b w. (Show a, Read a, Show b, Read b) => Blef w b -> (b -> Blef w a) -> Blef w a
+  BRead :: V w a -> Blef w a
+  BWrite :: V w a -> a -> Blef w a
   BFork :: (Read a, Show a) => Blef w a -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a

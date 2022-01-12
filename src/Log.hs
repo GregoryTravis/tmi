@@ -406,17 +406,37 @@ countDown tag n = M.do
   -- io $ msp $ "n " ++ show n
   -- pretend: return ""
 
-parr :: V (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
-parr = error "whoa"
+-- call/cc at the top. Then a new contination that takes either value and
+-- attempts to write it to the pair accum. You can't write it if something is there,
+-- although if this code is correct that can't happen anyway. Then if both are full,
+-- pass them to the main continuation.
+-- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
+-- Or BRead (V a)?
+-- parr :: V (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
+-- parr acc blefa blefb = M.do
+--   let k realK (Left a) = M.do
+--         (Nothing, myb) <- BRead acc
+--         let newP = (Just a, myb)
+--         BWrite acc newP
+--         case myb of Nothing -> M.return (return ())
+--                     Just _ -> realK newP
+--   BCallCC (\realK -> M.do
+--     BFork (M.do a <- blefa
+--                 k realK (Left a))
+--     BFork (M.do b <- blefb
+--                 k realK (Right b)))
 
 filesThingPar :: V (Maybe Int, Maybe String) -> Program W
 filesThingPar acc = toProg done $ M.do
-  let blef0 = M.do io slp
-                   M.return (return (1::Int))
-      blef1 = M.do io slp
-                   M.return (return "asdf")
-  (i, s) <- parr acc blef0 blef1
-  io $ msp ("holy shit", i, s)
+  -- parr example
+  -- let blef0 = M.do io slp
+  --                  M.return (return (1::Int))
+  --     blef1 = M.do io slp
+  --                  M.return (return "asdf")
+  -- (i, s) <- parr acc blef0 blef1
+  -- io $ msp ("holy shit", i, s)
+
+  -- all this works fine
   -- BFork (countDown "aaa" 3)
   -- BFork (countDown "bbb" 4)
 
