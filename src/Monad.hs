@@ -11,14 +11,14 @@ import Util
 
 infixl 1  >>=
 
-(>>=) :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
+(>>=) :: (Show a, Read a, Show b, Read b) => Blef w a -> (a -> Blef w b) -> Blef w b
 (>>=) = boond
 
-(>>) :: (Show a, Read a, Show b, Read b) => Blef a -> Blef b -> Blef b
+(>>) :: (Show a, Read a, Show b, Read b) => Blef w a -> Blef w b -> Blef w b
 ba >> bb = ba >>= \_ -> bb
 
-return :: (Show a, Read a) => IO a -> Blef a
+return :: (Show a, Read a) => IO a -> Blef w a
 return = ritt
 
-fail :: String -> Blef a
+fail :: String -> Blef w a
 fail s = error $ "tmi monad fail " ++ s

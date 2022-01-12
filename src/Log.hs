@@ -105,7 +105,14 @@ import Veq
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
 --   - scroll down a bit
 
-data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int } deriving (Read, Show)
+data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int,
+  ftacc :: (Maybe Int, Maybe String) } deriving (Read, Show)
+
+vftacc :: V (Maybe Int, Maybe String)
+vftacc = VBiSeal (BiApp (bi (VNamed "ftacc" ftacc) (VNamed "ftacc_" ftacc_)) root)
+ftacc_ :: W -> R W -> R (Maybe Int, Maybe String)
+ftacc_ w wr = mkR ir
+  where ir ftacc = write wr $ w { ftacc }
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -150,11 +157,13 @@ fanInCount2_ w wr = mkR ir
 root :: V W
 root = VRoot
 theWorld :: W
-theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223 }
+theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223, ftacc = (Nothing, Nothing) }
 
 recon :: String -> a
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
+recon "ftacc" = unsafeCoerce $ VNamed "ftacc" ftacc
+recon "ftacc_" = unsafeCoerce $ VNamed "ftacc_" ftacc_
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -250,16 +259,16 @@ filesThing' counter num dir k =
 --   injectEvent dbdir ((Command command) :: Event w)
 -- -- tmiMetaMain proxy dbdir ["run"] = run dbdir
 
-blef0 :: Blef Int
+blef0 :: Blef W Int
 blef0 = Blef "blef0" (return 12)
-a2Blef1 :: Int -> Blef String
+a2Blef1 :: Int -> Blef W String
 a2Blef1 n = Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
-a2Blef2 :: String -> Blef Double
+a2Blef2 :: String -> Blef W Double
 a2Blef2 ns = Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
-a2Blef3 :: Double -> Blef Double
+a2Blef3 :: Double -> Blef W Double
 a2Blef3 n = Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)
 
-qq :: Blef Double
+qq :: Blef W Double
 -- qq = boond (boond blef0 a2Blef1) a2Blef2
 _qq = blef0 M.>>= a2Blef1 M.>>= a2Blef2 M.>>= a2Blef3
 
@@ -284,25 +293,25 @@ qq = M.do
 -- foo :: Program w
 -- foo = toProg sdone qq
 
-bsp :: Show a => a -> Blef ()
+bsp :: Show a => a -> Blef w ()
 bsp a = Blef "bsp" (msp a)
 
-io :: IO a -> Blef a
+io :: IO a -> Blef w a
 io action = Blef "" action
 
-mapBlef :: (Read b, Show b) => (a -> Blef b) -> [a] -> Blef [b]
+mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]
 mapBlef bf [] = M.return (return [])
 mapBlef bf (a:as) = M.do
   b <- bf a
   bs <- mapBlef bf as
   M.return (return (b:bs))
 
-mapBlef_ :: (Read b, Show b) => (a -> Blef b) -> [a] -> Blef ()
+mapBlef_ :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w ()
 mapBlef_ bf as = M.do
   mapBlef bf as
   M.return (return ())
 
-cleanDirSeq :: FilePath -> Blef ()
+cleanDirSeq :: FilePath -> Blef w ()
 cleanDirSeq dir = M.do
   files <- Blef "listDirectory" (listDirectory dir)
   Blef "msp" (msp ("files", files))
@@ -313,7 +322,7 @@ cleanDirSeq dir = M.do
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
   M.return (return ())
 
-filesThingSeq :: Int -> FilePath -> Blef ()
+filesThingSeq :: Int -> FilePath -> Blef w ()
 filesThingSeq num dir = M.do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let createIt n = M.do
@@ -331,7 +340,7 @@ filesThingSeq num dir = M.do
 smallProg :: Program W
 smallProg = toProg sdone (smallProgBlef 133)
 -- TODO rid of dummy param
-smallProgBlef :: Int -> Blef ()
+smallProgBlef :: Int -> Blef w ()
 smallProgBlef _ = M.do
   x <- M.return (return 12)
   Blef "msp" (msp x)
@@ -339,7 +348,7 @@ smallProgV = VNamed "smallProg" smallProgBlef
 smallProgU = uni smallProgV
 smallProgL = lift1 smallProgU
 smallProggedV = smallProgL (VNice (144::Int))
-smallProggedV' :: Ty.V W (Blef ())
+smallProggedV' :: Ty.V W (Blef w ())
 smallProggedV' = head $ tail $ unsafePerformIO (roundTrip recon smallProggedV)
 smallProggedRead = rd theWorld smallProggedV'
 smallProg' :: Program w
@@ -357,7 +366,7 @@ smallProg' = toProg sdone smallProggedRead
                          
 -- par [] = M.return (return [])
 
-exty :: Blef Int
+exty :: Blef w Int
 exty = M.do
   n <- EBlef "exty0" (\h -> msp $ "handle " ++ show h)
   io $ msp $ "exty got " ++ show n
@@ -370,7 +379,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar"] = filesThingPar
+lookupCommand ["filesThingPar"] = filesThingPar vftacc
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -380,7 +389,7 @@ filesThings dir num dir2 num2 = Program
   [ Sub (toProg sdone (filesThingSeq num dir))
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
-countDown :: String -> Int -> Blef ()
+countDown :: String -> Int -> Blef w ()
 countDown tag 0 = M.return (return ())
 countDown tag n = M.do
   io $ msp $ "countdown " ++ tag ++ " " ++ show n
@@ -397,9 +406,42 @@ countDown tag n = M.do
   -- io $ msp $ "n " ++ show n
   -- pretend: return ""
 
-filesThingPar = toProg done $ M.do
-  BFork (countDown "aaa" 3)
-  BFork (countDown "bbb" 4)
+parr :: V (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
+parr = error "whoa"
+
+filesThingPar :: V (Maybe Int, Maybe String) -> Program W
+filesThingPar acc = toProg done $ M.do
+  let blef0 = M.do io slp
+                   M.return (return (1::Int))
+      blef1 = M.do io slp
+                   M.return (return "asdf")
+  (i, s) <- parr acc blef0 blef1
+  io $ msp ("holy shit", i, s)
+  -- BFork (countDown "aaa" 3)
+  -- BFork (countDown "bbb" 4)
+
+  -- works
+  -- n <- Blef "" (return 12)
+
+  -- works
+  -- n <- BCallCC (\k -> k 40)
+
+  -- works
+  -- n <- BCallCC (\k -> M.do io $ msp "omg"
+
+  -- works
+  -- let q = 20
+  -- n <- BCallCC (\k -> M.do io $ msp "omg"
+  --                          if q == 20
+  --                            then k 41
+  --                            else k 42)
+
+  -- works??
+  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
+  --                                              -- k :: Int -> Blef String
+  --                                              -- BCallCC _ :: Blef ()
+
+  -- io $ msp $ "n " ++ show n
   io $ msp "hi filesThingPar"
 
 -- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c

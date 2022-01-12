@@ -70,15 +70,17 @@ wrapAction _ index (ExternalCall _ handleK _) = do
 -- toProg with this; then maybe we wouldn't need Show/Read on the data
 -- declaration, but instead only on the actual coordination code. Then this could
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
-data Blef a where
-  Blef :: String -> IO a -> Blef a
+data Blef w a where
+  Blef :: String -> IO a -> Blef w a
   -- TOOD should this return Blef ()?
-  EBlef :: String -> (Int -> IO ()) -> Blef a
-  Blefs :: forall a b. (Show a, Read a, Show b, Read b) => Blef b -> (b -> Blef a) -> Blef a
-  BFork :: (Read a, Show a) => Blef a -> Blef ()
+  EBlef :: String -> (Int -> IO ()) -> Blef w a
+  Blefs :: forall a b w. (Show a, Read a, Show b, Read b) => Blef w b -> (b -> Blef w a) -> Blef w a
+  BFork :: (Read a, Show a) => Blef w a -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
-  BCallCC :: ((b -> Blef c) -> Blef a) -> Blef a
-  -- ProgBlef :: Program w -> Blef a
+  -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
+  -- BCallCC :: ((b -> Blef w a) -> Blef w a) -> Blef w a
+  BCallCC :: ((a -> Blef w b) -> Blef w a) -> Blef w a
+  ProgBlef :: Program w -> Blef w a
   -- BCallCC :: ((a -> Blef a) -> Blef a) -> Blef a
 
   -- n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
@@ -90,31 +92,31 @@ data Blef a where
 --   a <- CallCC (...) -- the k-receiver here gets (a -> stuff a) :: (a -> Blef b)
 --   stuff a           -- then returns some other blef which may or may not invoke the k
 
-instance Show (Blef a) where
+instance Show (Blef w a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"
  show (Blefs b a2b) = "(Blefs " ++ show b ++ ")"
 
-boond :: (Show a, Read a, Show b, Read b) => Blef a -> (a -> Blef b) -> Blef b
+boond :: (Show a, Read a, Show b, Read b) => Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
-ritt :: (Show a, Read a) => IO a -> Blef a
+ritt :: (Show a, Read a) => IO a -> Blef w a
 ritt = Blef "ritt"
 
 -- Presumably this machinery could be somehow folded in to the type so it doesn't
 -- have to be free-ish.
-toProg :: (Show a, Read a) => (a -> Program w) -> Blef a -> Program w
+toProg :: (Show a, Read a) => (a -> Program w) -> Blef w a -> Program w
 toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (EBlef s handleK) =
   Program [Call $ ExternalCall s handleK k]
 
--- toProg k (BCallCC krec) =
---   -- BCallCC krec :: Blef a
---   -- krec :: (b -> Blef c) -> Blef a
---   -- k :: a -> Program w
---   let blef = krec (\a -> k a)
---    in toProg done blef
+toProg k (BCallCC krec) =
+  -- BCallCC krec :: Blef a
+  -- krec :: (b -> Blef c) -> Blef a
+  -- k :: a -> Program w
+  let blef = krec (\a -> ProgBlef (k a))
+   in toProg done blef
 
 -- toProg k (Blefs (BCallCC krec) k') = toProg k (krec k')
 toProg k (Blefs blef a2Blef) =
@@ -124,7 +126,7 @@ toProg k (BFork blef) =
       origProgram = k ()
    in Program [Sub forkedProgram, Sub origProgram]
 
--- toProg k (ProgBlef p) = p
+toProg k (ProgBlef p) = p
 
 -- toProg k (BCallCC krec) = toProg done (krec k')
 --   where k' a = progToBlef (k a)
