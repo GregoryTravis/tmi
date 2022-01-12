@@ -24,11 +24,11 @@ data InternalCallRunner w = InternalCallRunner
 
 updateInFlightCount :: InternalCallRunner w -> (Int -> Int) -> IO ()
 updateInFlightCount icr f = do
-  c <- readMVar (inFlightCount icr)
-  msp $ "update before " ++ show c
+  -- c <- readMVar (inFlightCount icr)
+  -- msp $ "update before " ++ show c
   modifyMVar_ (inFlightCount icr) (return . f)
-  c' <- readMVar (inFlightCount icr)
-  msp $ "update after " ++ show c'
+  -- c' <- readMVar (inFlightCount icr)
+  -- msp $ "update after " ++ show c'
 
 mkInternalCallRunner :: IO (InternalCallRunner w)
 mkInternalCallRunner = do
@@ -42,7 +42,7 @@ mkInternalCallRunner = do
 icrRead :: InternalCallRunner w -> IO (Event w)
 icrRead icr = do
   e <- readChan (eventChan icr)
-  msp $ "count dec 1"
+  -- msp $ "count dec 1"
   updateInFlightCount icr (subtract 1)
   return e
 
@@ -65,10 +65,10 @@ icrRun icr calls events = do
 
 runCalls :: InternalCallRunner w -> [(Int, Call w)] -> IO ()
 runCalls icr callsAndIndices = do
-  when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
+  -- when (not (null callsAndIndices)) $ msp ("runCalls", map snd callsAndIndices)
   runList_ ios
-  msp $ "count inc " ++ show numInternalCalls
-  msp callsAndIndices
+  -- msp $ "count inc " ++ show numInternalCalls
+  -- msp callsAndIndices
   updateInFlightCount icr (+ numInternalCalls)
   where ios = map (\(i, call) -> do wrapFork $ wrapAction (eventChan icr) i call) callsAndIndices
         numInternalCalls = length $ filter isInternal (map snd callsAndIndices)

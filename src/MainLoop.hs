@@ -71,10 +71,10 @@ run app dbdir = do
         -- icrWrite icr (calls, eventLog ck)
         icr' <- icrRun icr calls (eventLog ck)
         inf <- icrInFlight icr'
-        msp $ "ICR " ++ show inf
+        -- msp $ "ICR " ++ show inf
         done <- icrDone icr
         if not done
-          then do msp "going to read"
+          then do -- msp "going to read"
                   r <- icrRead icr'
                   let ck' = ck { eventLog = eventLog ck ++ [r] }
                   writeCK dbdir ck'

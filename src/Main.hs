@@ -8,5 +8,6 @@ import Util
 
 main = do
   hSetBuffering stdout NoBuffering
-  metaMain logApp
+  -- metaMain logApp
+  logMain
   msp "hi"

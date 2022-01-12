@@ -3,6 +3,7 @@
 
 module Log
 ( logApp
+, logMain
 ) where
 
 -- import Data.Dynamic
@@ -68,6 +69,8 @@ import Veq
 --   - rename lookerUpper
 -- - tmi cli
 -- - run filesThing with it
+-- ==== more cleanup
+-- - why that nested return thing, probably 'rit' is the prob
 -- ==== signup
 -- - do it
 -- ==== more cleanup
@@ -165,12 +168,12 @@ sleepRand lo hi = do
 -- sleepAfter :: Double -> Double -> Core w -> Core w
 -- sleepAfter lo hi k = Call (InternalCall "yo" (sleepRand lo hi) (\() -> Program [k]))
 
-countDown :: Int -> Core W
-countDown (-1) = Done
-countDown n = Call (InternalCall "yo" (threadDelay 1000000)
-                         (\() -> Program [
-                                   Call (InternalCall "yo" (do msp ("countDown " ++ show n); return (n - 1))
-                                        (\n -> Program [countDown n]))]))
+-- countDown :: Int -> Core W
+-- countDown (-1) = Done
+-- countDown n = Call (InternalCall "yo" (threadDelay 1000000)
+--                          (\() -> Program [
+--                                    Call (InternalCall "yo" (do msp ("countDown " ++ show n); return (n - 1))
+--                                         (\n -> Program [countDown n]))]))
 
 -- Initializes the counter, runs each cps-based core and when they're all done, runs
 -- the main k.
@@ -367,6 +370,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
+lookupCommand ["filesThingPar"] = filesThingPar
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -376,7 +380,41 @@ filesThings dir num dir2 num2 = Program
   [ Sub (toProg sdone (filesThingSeq num dir))
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
+countDown :: String -> Int -> Blef ()
+countDown tag 0 = M.return (return ())
+countDown tag n = M.do
+  io $ msp $ "countdown " ++ tag ++ " " ++ show n
+  io $ slp -- sleepRand 0.6 1.0
+  countDown tag (n - 1)
+
+  -- Can't figure it out
+  -- -- n <- Blef "" (return 12)
+  -- -- n <- BCallCC (\k -> k 40)
+  -- -- n <- BCallCC (\k -> Blefs thing (\n -> k n))
+  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
+  --                                              -- k :: Int -> Blef String
+  --                                              -- BCallCC _ :: Blef ()
+  -- io $ msp $ "n " ++ show n
+  -- pretend: return ""
+
+filesThingPar = toProg done $ M.do
+  BFork (countDown "aaa" 3)
+  BFork (countDown "bbb" 4)
+  io $ msp "hi filesThingPar"
+
+-- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c
+
 logApp = App { initialW = theWorld, appEnv = lookupCommand }
+
+justRun :: (Read w, Show w) => FilePath -> App w -> [String] -> IO ()
+justRun dbdir app command = do
+  reset dbdir
+  ensureDbDir dbdir (initialW app)
+  injectEvent dbdir app (Command command)
+  run app dbdir
+
+logMain :: IO ()
+logMain = justRun "db" logApp ["filesThingPar"]
 
 --program num = Program
 --  [
