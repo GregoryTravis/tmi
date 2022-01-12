@@ -72,10 +72,18 @@ wrapAction _ index (ExternalCall _ handleK _) = do
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef a where
   Blef :: String -> IO a -> Blef a
+  -- TOOD should this return Blef ()?
   EBlef :: String -> (Int -> IO ()) -> Blef a
   Blefs :: forall a b. (Show a, Read a, Show b, Read b) => Blef b -> (b -> Blef a) -> Blef a
   BFork :: (Read a, Show a) => Blef a -> Blef ()
-  BCallCC :: ((a -> Blef a) -> Blef a) -> Blef a
+  -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
+  BCallCC :: ((b -> Blef c) -> Blef a) -> Blef a
+  -- ProgBlef :: Program w -> Blef a
+  -- BCallCC :: ((a -> Blef a) -> Blef a) -> Blef a
+
+  -- n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
+  --                                                 -- BCallCC _ :: Blef ()
+
 
 -- call/cc
 -- do
@@ -100,6 +108,14 @@ toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (EBlef s handleK) =
   Program [Call $ ExternalCall s handleK k]
+
+-- toProg k (BCallCC krec) =
+--   -- BCallCC krec :: Blef a
+--   -- krec :: (b -> Blef c) -> Blef a
+--   -- k :: a -> Program w
+--   let blef = krec (\a -> k a)
+--    in toProg done blef
+
 -- toProg k (Blefs (BCallCC krec) k') = toProg k (krec k')
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> toProg k (a2Blef a)) blef
@@ -107,6 +123,8 @@ toProg k (BFork blef) =
   let forkedProgram = toProg done blef
       origProgram = k ()
    in Program [Sub forkedProgram, Sub origProgram]
+
+-- toProg k (ProgBlef p) = p
 
 -- toProg k (BCallCC krec) = toProg done (krec k')
 --   where k' a = progToBlef (k a)

@@ -387,15 +387,20 @@ countDown tag n = M.do
   io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
-filesThingPar = toProg done $ M.do
-  -- BFork (countDown "aaa" 3)
-  -- BFork (countDown "bbb" 4)
-  -- n <- Blef "" (return 12)
-  n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
-                                                  -- BCallCC _ :: Blef ()
-  io $ msp $ "n " ++ show n
-  io $ msp "hi filesThingPar"
+  -- Can't figure it out
+  -- -- n <- Blef "" (return 12)
+  -- -- n <- BCallCC (\k -> k 40)
+  -- -- n <- BCallCC (\k -> Blefs thing (\n -> k n))
+  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
+  --                                              -- k :: Int -> Blef String
+  --                                              -- BCallCC _ :: Blef ()
+  -- io $ msp $ "n " ++ show n
   -- pretend: return ""
+
+filesThingPar = toProg done $ M.do
+  BFork (countDown "aaa" 3)
+  BFork (countDown "bbb" 4)
+  io $ msp "hi filesThingPar"
 
 -- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c
 
