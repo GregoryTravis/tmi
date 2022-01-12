@@ -384,13 +384,20 @@ countDown :: String -> Int -> Blef ()
 countDown tag 0 = M.return (return ())
 countDown tag n = M.do
   io $ msp $ "countdown " ++ tag ++ " " ++ show n
-  io $ sleepRand 0.6 1.0
+  io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
 filesThingPar = toProg done $ M.do
-  BFork (countDown "aaa" 5)
-  BFork (countDown "bbb" 8)
+  -- BFork (countDown "aaa" 3)
+  -- BFork (countDown "bbb" 4)
+  -- n <- Blef "" (return 12)
+  n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
+                                                  -- BCallCC _ :: Blef ()
+  io $ msp $ "n " ++ show n
   io $ msp "hi filesThingPar"
+  -- pretend: return ""
+
+-- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c
 
 logApp = App { initialW = theWorld, appEnv = lookupCommand }
 
