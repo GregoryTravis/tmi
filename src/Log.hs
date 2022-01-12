@@ -69,6 +69,8 @@ import Veq
 --   - rename lookerUpper
 -- - tmi cli
 -- - run filesThing with it
+-- ==== more cleanup
+-- - why that nested return thing, probably 'rit' is the prob
 -- ==== signup
 -- - do it
 -- ==== more cleanup
@@ -166,12 +168,12 @@ sleepRand lo hi = do
 -- sleepAfter :: Double -> Double -> Core w -> Core w
 -- sleepAfter lo hi k = Call (InternalCall "yo" (sleepRand lo hi) (\() -> Program [k]))
 
-countDown :: Int -> Core W
-countDown (-1) = Done
-countDown n = Call (InternalCall "yo" (threadDelay 1000000)
-                         (\() -> Program [
-                                   Call (InternalCall "yo" (do msp ("countDown " ++ show n); return (n - 1))
-                                        (\n -> Program [countDown n]))]))
+-- countDown :: Int -> Core W
+-- countDown (-1) = Done
+-- countDown n = Call (InternalCall "yo" (threadDelay 1000000)
+--                          (\() -> Program [
+--                                    Call (InternalCall "yo" (do msp ("countDown " ++ show n); return (n - 1))
+--                                         (\n -> Program [countDown n]))]))
 
 -- Initializes the counter, runs each cps-based core and when they're all done, runs
 -- the main k.
@@ -378,7 +380,16 @@ filesThings dir num dir2 num2 = Program
   [ Sub (toProg sdone (filesThingSeq num dir))
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
+countDown :: String -> Int -> Blef ()
+countDown tag 0 = M.return (return ())
+countDown tag n = M.do
+  io $ msp $ "countdown " ++ tag ++ " " ++ show n
+  io $ sleepRand 0.6 1.0
+  countDown tag (n - 1)
+
 filesThingPar = toProg done $ M.do
+  BFork (countDown "aaa" 5)
+  BFork (countDown "bbb" 8)
   io $ msp "hi filesThingPar"
 
 logApp = App { initialW = theWorld, appEnv = lookupCommand }

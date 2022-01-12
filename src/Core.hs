@@ -70,9 +70,11 @@ wrapAction _ index (ExternalCall _ handleK _) = do
 -- toProg with this; then maybe we wouldn't need Show/Read on the data
 -- declaration, but instead only on the actual coordination code. Then this could
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
-data Blef a = Blef String (IO a)
-            | EBlef String (Int -> IO ())
-            | forall b. (Show a, Read a, Show b, Read b) => Blefs (Blef b) (b -> Blef a)
+data Blef a where
+  Blef :: String -> IO a -> Blef a
+  EBlef :: String -> (Int -> IO ()) -> Blef a
+  Blefs :: forall a b. (Show a, Read a, Show b, Read b) => Blef b -> (b -> Blef a) -> Blef a
+  BFork :: (Read a, Show a) => Blef a -> Blef ()
             -- | forall b. (Show a, Read a, Show b, Read b) => ParBlefs [Blef b] ([b] -> Blef a)
 
 instance Show (Blef a) where
@@ -95,6 +97,11 @@ toProg k (EBlef s handleK) =
   Program [Call $ ExternalCall s handleK k]
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> toProg k (a2Blef a)) blef
+toProg k (BFork blef) =
+  let forkedProgram = toProg done blef
+      origProgram = k ()
+   in Program [Sub forkedProgram, Sub origProgram]
+
 -- toProg k (ParBlefs blefs next) = do
 --   mv <- newMVar []
 --   let n = length blefs
