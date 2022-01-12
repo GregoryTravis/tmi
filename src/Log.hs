@@ -3,6 +3,7 @@
 
 module Log
 ( logApp
+, logMain
 ) where
 
 -- import Data.Dynamic
@@ -367,6 +368,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
+lookupCommand ["filesThingPar"] = filesThingPar
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -376,7 +378,20 @@ filesThings dir num dir2 num2 = Program
   [ Sub (toProg sdone (filesThingSeq num dir))
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
+filesThingPar = toProg done $ M.do
+  io $ msp "hi filesThingPar"
+
 logApp = App { initialW = theWorld, appEnv = lookupCommand }
+
+justRun :: (Read w, Show w) => FilePath -> App w -> [String] -> IO ()
+justRun dbdir app command = do
+  reset dbdir
+  ensureDbDir dbdir (initialW app)
+  injectEvent dbdir app (Command command)
+  run app dbdir
+
+logMain :: IO ()
+logMain = justRun "db" logApp ["filesThingPar"]
 
 --program num = Program
 --  [
