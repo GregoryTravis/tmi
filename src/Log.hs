@@ -416,20 +416,20 @@ countDown tag n = M.do
 -- Or BRead (V a)?
 -- TODO W should be w, maybe cuz V here is actually V w
 parr :: (Show a, Read a, Show b, Read b) =>
-        V (Maybe a, Maybe b) -> Blef W a -> Blef W b -> Blef W (Maybe a, Maybe b)
+        V (Maybe a, Maybe b) -> Blef W a -> Blef W b -> Blef W (a, b)
 parr acc blefa blefb = M.do
   let k realK (Left a) = M.do
         (Nothing, myb) <- BRead acc
         let newP = (Just a, myb)
         BWrite acc newP
         case myb of Nothing -> M.return (return ())
-                    Just _ -> realK newP
+                    Just _ -> case newP of (Just a, Just b) -> realK (a, b)
       k realK (Right b) = M.do
         (mya, Nothing) <- BRead acc
         let newP = (mya, Just b)
         BWrite acc newP
         case mya of Nothing -> M.return (return ())
-                    Just _ -> realK newP
+                    Just _ -> case newP of (Just a, Just b) -> realK (a, b)
   BCallCC (\realK -> M.do
     BFork (M.do a <- blefa
                 k realK (Left a))
