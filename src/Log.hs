@@ -301,7 +301,7 @@ qq = M.do
 bsp :: Show a => a -> Blef w ()
 bsp a = Blef "bsp" (msp a)
 
-io :: IO a -> Blef w a
+io :: (Read a, Show a) => IO a -> Blef w a
 io action = Blef "" action
 
 mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]

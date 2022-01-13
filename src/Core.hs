@@ -72,12 +72,12 @@ wrapAction _ index (ExternalCall _ handleK _) = do
 -- declaration, but instead only on the actual coordination code. Then this could
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef w a where
-  Blef :: String -> IO a -> Blef w a
+  Blef :: (Read a, Show a) => String -> IO a -> Blef w a
   -- TOOD should this return Blef ()?
-  EBlef :: String -> (Int -> IO ()) -> Blef w a
-  Blefs :: forall a b w. (Show a, Read a, Show b, Read b) => Blef w b -> (b -> Blef w a) -> Blef w a
+  EBlef :: (Read a, Show a) => String -> (Int -> IO ()) -> Blef w a
+  Blefs :: forall a b w. Blef w b -> (b -> Blef w a) -> Blef w a
   BRead :: V w a -> Blef w a
-  BWrite :: (Read a, Show a) => V w a -> a -> Blef w ()
+  BWrite :: V w a -> a -> Blef w ()
   BFork :: (Read a, Show a) => Blef w a -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
@@ -97,11 +97,11 @@ data Blef w a where
 
 instance (Show a, Read a) => Show (Blef w a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"
- show (Blefs b a2b) = "(Blefs " ++ show b ++ ")"
+ show (Blefs b a2b) = "(Blefs)"
  show (BRead va) = "(BRead " ++ show va ++ ")"
- show (BWrite va a) = "(BWrite " ++ show va ++ " " ++ show a ++ ")"
+ show (BWrite va a) = "(BWrite " ++ show va ++ ")"
 
-boond :: (Show a, Read a, Show b, Read b) => Blef w a -> (a -> Blef w b) -> Blef w b
+boond :: Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
@@ -110,7 +110,7 @@ ritt = Blef "ritt"
 
 -- Presumably this machinery could be somehow folded in to the type so it doesn't
 -- have to be free-ish.
-toProg :: (Show a, Read a) => (a -> Program w) -> Blef w a -> Program w
+toProg :: (a -> Program w) -> Blef w a -> Program w
 toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (EBlef s handleK) =
