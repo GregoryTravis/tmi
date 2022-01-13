@@ -62,6 +62,8 @@ import Veq
 -- + other test warnings
 -- + rename stuff in Innards
 -- ==== parr
+-- + parr
+-- - BReturn so we can return a V without it being an IO
 -- - Allocate pairs
 -- - parrList
 -- - filesThingPar

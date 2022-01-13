@@ -105,7 +105,7 @@ boond :: Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
-ritt :: (Show a, Read a) => IO a -> Blef w a
+ritt :: (Read a, Show a) => IO a -> Blef w a
 ritt = Blef "ritt"
 
 -- Presumably this machinery could be somehow folded in to the type so it doesn't
