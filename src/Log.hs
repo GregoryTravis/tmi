@@ -414,9 +414,8 @@ countDown tag n = M.do
 -- pass them to the main continuation.
 -- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
 -- Or BRead (V a)?
--- TODO W should be w, maybe cuz V here is actually V w
 parr :: (Show a, Read a, Show b, Read b) =>
-        V (Maybe a, Maybe b) -> Blef W a -> Blef W b -> Blef W (a, b)
+        Ty.V w (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
 parr acc blefa blefb = M.do
   let k realK (Left a) = M.do
         (Nothing, myb) <- BRead acc
