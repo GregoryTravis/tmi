@@ -24,6 +24,7 @@ import System.IO.Unsafe
 import System.Random
 import Unsafe.Coerce
 
+import Alloc
 import Core
 import Ext
 import Lift
@@ -79,6 +80,7 @@ import Veq
 -- ==== signup
 -- - do it
 -- ==== more cleanup
+-- - recons from different modules, maybe a registry?
 -- - simplify execution framework before moving things to modules
 -- - mainloop to module
 -- - other things to module
@@ -122,8 +124,6 @@ ftacc_ w wr = mkR ir
 type V = Ty.V W
 type Bi = Ty.Bi W
 type R = Ty.R W
-bi :: V f -> V r -> Bi f r
-bi = Ty.Bi
 
 addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)

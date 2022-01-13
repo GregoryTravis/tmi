@@ -23,8 +23,6 @@ data W = W { aa :: Int, bb :: Int } deriving (Eq, Read, Show)
 type V = Ty.V W
 type Bi = Ty.Bi W
 type R = Ty.R W
-bi :: V f -> V r -> Bi f r
-bi = Ty.Bi
 root :: V W
 root = VRoot
 
