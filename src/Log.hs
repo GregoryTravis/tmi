@@ -61,6 +61,9 @@ import Veq
 -- + other test warnings
 -- + rename stuff in Innards
 -- ==== parr
+-- - Allocate pairs
+-- - parrList
+-- - filesThingPar
 -- - Cond is redundant
 -- ==== meta
 -- - mvar in-flight counter
