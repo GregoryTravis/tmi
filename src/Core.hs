@@ -31,6 +31,7 @@ data Call w = forall a. (Show a, Read a) => InternalCall String (IO a) (a -> Pro
 data Event w = Retval Int String | Command [String] deriving (Show, Read)
 data Core w = Assign (Write w) | Call (Call w) | Sub (Program w)
             | Cond (V w Bool) (Core w) (Core w) | Named String (Core w) | Done
+            | forall a. CRead (V w a) (a -> Program w)
 data Program w = Program [Core w] deriving Show
 
 instance Show (Core w) where
@@ -76,7 +77,7 @@ data Blef w a where
   EBlef :: String -> (Int -> IO ()) -> Blef w a
   Blefs :: forall a b w. (Show a, Read a, Show b, Read b) => Blef w b -> (b -> Blef w a) -> Blef w a
   BRead :: V w a -> Blef w a
-  BWrite :: V w a -> a -> Blef w a
+  BWrite :: (Read a, Show a) => V w a -> a -> Blef w ()
   BFork :: (Read a, Show a) => Blef w a -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
@@ -116,13 +117,9 @@ toProg k (EBlef s handleK) =
   Program [Call $ ExternalCall s handleK k]
 
 toProg k (BCallCC krec) =
-  -- BCallCC krec :: Blef a
-  -- krec :: (b -> Blef c) -> Blef a
-  -- k :: a -> Program w
   let blef = krec (\a -> ProgBlef (k a))
    in toProg done blef
 
--- toProg k (Blefs (BCallCC krec) k') = toProg k (krec k')
 toProg k (Blefs blef a2Blef) =
   toProg (\a -> toProg k (a2Blef a)) blef
 toProg k (BFork blef) =
@@ -130,29 +127,14 @@ toProg k (BFork blef) =
       origProgram = k ()
    in Program [Sub forkedProgram, Sub origProgram]
 
+toProg k (BRead va) =
+  Program [CRead va k]
+toProg k (BWrite va a) =
+  Program [Assign (Write va a), Sub (k ())]
+
 toProg k (ProgBlef p) = p
-toProg _ x = error $ "toProg " ++ show x
 
--- toProg k (BCallCC krec) = toProg done (krec k')
---   where k' a = progToBlef (k a)
-
--- progToBlef :: Program a -> Blef a
--- progToBlef = undefined
-
--- toProg k (ParBlefs blefs next) = do
---   mv <- newMVar []
---   let n = length blefs
---       -- accum :: a -> Program w
---       accum x = do
---         xs <- takeMVar mv
---         let xs' = x : xs
---         putMVar mv (x:xs')
---         if length xs' == n
---           then return k
---           else return (\_ -> Done)
---       subProgs = map (toProg accum) blefs
---       runEmParallel = Program [subProgs]
---    in runEmParallel
+-- toProg _ x = error $ "toProg " ++ show x
 
 -- mapCallFanIn :: V Int -> [Core W -> Core W] -> Core W -> Core W
 -- mapCallFanIn counter kjobs k =

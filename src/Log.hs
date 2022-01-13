@@ -60,6 +60,8 @@ import Veq
 -- + rename test Main
 -- + other test warnings
 -- + rename stuff in Innards
+-- ==== parr
+-- - Cond is redundant
 -- ==== meta
 -- - mvar in-flight counter
 --   + write
@@ -421,6 +423,12 @@ parr acc blefa blefb = M.do
         let newP = (Just a, myb)
         BWrite acc newP
         case myb of Nothing -> M.return (return ())
+                    Just _ -> realK newP
+      k realK (Right b) = M.do
+        (mya, Nothing) <- BRead acc
+        let newP = (mya, Just b)
+        BWrite acc newP
+        case mya of Nothing -> M.return (return ())
                     Just _ -> realK newP
   BCallCC (\realK -> M.do
     BFork (M.do a <- blefa
