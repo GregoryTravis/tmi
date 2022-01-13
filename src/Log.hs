@@ -412,29 +412,31 @@ countDown tag n = M.do
 -- pass them to the main continuation.
 -- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
 -- Or BRead (V a)?
--- parr :: V (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
--- parr acc blefa blefb = M.do
---   let k realK (Left a) = M.do
---         (Nothing, myb) <- BRead acc
---         let newP = (Just a, myb)
---         BWrite acc newP
---         case myb of Nothing -> M.return (return ())
---                     Just _ -> realK newP
---   BCallCC (\realK -> M.do
---     BFork (M.do a <- blefa
---                 k realK (Left a))
---     BFork (M.do b <- blefb
---                 k realK (Right b)))
+-- TODO W should be w, maybe cuz V here is actually V w
+parr :: (Show a, Read a, Show b, Read b) =>
+        V (Maybe a, Maybe b) -> Blef W a -> Blef W b -> Blef W (Maybe a, Maybe b)
+parr acc blefa blefb = M.do
+  let k realK (Left a) = M.do
+        (Nothing, myb) <- BRead acc
+        let newP = (Just a, myb)
+        BWrite acc newP
+        case myb of Nothing -> M.return (return ())
+                    Just _ -> realK newP
+  BCallCC (\realK -> M.do
+    BFork (M.do a <- blefa
+                k realK (Left a))
+    BFork (M.do b <- blefb
+                k realK (Right b)))
 
 filesThingPar :: V (Maybe Int, Maybe String) -> Program W
 filesThingPar acc = toProg done $ M.do
   -- parr example
-  -- let blef0 = M.do io slp
-  --                  M.return (return (1::Int))
-  --     blef1 = M.do io slp
-  --                  M.return (return "asdf")
-  -- (i, s) <- parr acc blef0 blef1
-  -- io $ msp ("holy shit", i, s)
+  let blef0 = M.do io slp
+                   M.return (return (1::Int))
+      blef1 = M.do io slp
+                   M.return (return "asdf")
+  (i, s) <- parr acc blef0 blef1
+  io $ msp ("holy shit", i, s)
 
   -- all this works fine
   -- BFork (countDown "aaa" 3)

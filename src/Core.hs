@@ -81,7 +81,7 @@ data Blef w a where
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
   -- BCallCC :: ((b -> Blef w a) -> Blef w a) -> Blef w a
-  BCallCC :: ((a -> Blef w b) -> Blef w a) -> Blef w a
+  BCallCC :: (Read c, Show c) => ((a -> Blef w b) -> Blef w c) -> Blef w a
   ProgBlef :: Program w -> Blef w a
   -- BCallCC :: ((a -> Blef a) -> Blef a) -> Blef a
 
@@ -94,9 +94,11 @@ data Blef w a where
 --   a <- CallCC (...) -- the k-receiver here gets (a -> stuff a) :: (a -> Blef b)
 --   stuff a           -- then returns some other blef which may or may not invoke the k
 
-instance Show (Blef w a) where
+instance (Show a, Read a) => Show (Blef w a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"
  show (Blefs b a2b) = "(Blefs " ++ show b ++ ")"
+ show (BRead va) = "(BRead " ++ show va ++ ")"
+ show (BWrite va a) = "(BWrite " ++ show va ++ " " ++ show a ++ ")"
 
 boond :: (Show a, Read a, Show b, Read b) => Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
@@ -129,6 +131,7 @@ toProg k (BFork blef) =
    in Program [Sub forkedProgram, Sub origProgram]
 
 toProg k (ProgBlef p) = p
+toProg _ x = error $ "toProg " ++ show x
 
 -- toProg k (BCallCC krec) = toProg done (krec k')
 --   where k' a = progToBlef (k a)
