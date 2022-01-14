@@ -81,7 +81,7 @@ recon s = error $ "recon?? " ++ s
 
 innardsSuite :: TestTree
 innardsSuite = testGroup "Test Suite" [
-   propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
+    propWrite theWorld (Write added 140) ~?= W { aa = 70 , bb = 70 }
   , propWrite theWorld (Write added' 140) ~?= W { aa = 69 , bb = 70 }
   , propWrite theWorld (Write added'' 140) ~?= W { aa = 70 , bb = 69 }
   , propWrite theWorld (Write added''' 140) ~?= W { aa = 69 , bb = 69 }

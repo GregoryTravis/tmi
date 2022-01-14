@@ -30,6 +30,7 @@ import Ext
 import Lift
 import MainLoop
 import qualified Monad as M
+import Parr
 import Propagate
 import Storage
 import Testing
@@ -63,11 +64,13 @@ import Veq
 -- + rename stuff in Innards
 -- ==== parr
 -- + parr
--- - BReturn so we can return a V without it being an IO
--- - Allocate pairs
+-- + BReturn so we can return a V without it being an IO
+-- + Allocate pairs
 -- - parrList
 -- - filesThingPar
--- - Cond is redundant
+-- - test
+--   - get a return value from a program?
+--   - easier way to run a blef real quick: just the blef, init, and recon
 -- ==== meta
 -- - mvar in-flight counter
 --   + write
@@ -78,6 +81,7 @@ import Veq
 -- - tmi cli
 -- - run filesThing with it
 -- ==== more cleanup
+-- - Cond is redundant
 -- - why that nested return thing, probably 'rit' is the prob
 -- ==== signup
 -- - do it
@@ -416,34 +420,6 @@ countDown tag n = M.do
   --                                              -- BCallCC _ :: Blef ()
   -- io $ msp $ "n " ++ show n
   -- pretend: return ""
-
--- call/cc at the top. Then a new contination that takes either value and
--- attempts to write it to the pair accum. You can't write it if something is there,
--- although if this code is correct that can't happen anyway. Then if both are full,
--- pass them to the main continuation.
--- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
--- Or BRead (V a)?
-parr :: (Show a, Read a, Show b, Read b) =>
-        Ty.V w (Alloc (Maybe a, Maybe b)) -> Blef w a -> Blef w b -> Blef w (a, b)
-parr all blefa blefb = M.do
-  Allocated acc dealloc <- alloc all (Nothing, Nothing)
-  let k realK (Left a) = M.do
-        (Nothing, myb) <- BRead acc
-        let newP = (Just a, myb)
-        BWrite acc newP
-        case myb of Nothing -> M.return ()
-                    Just _ -> case newP of (Just a, Just b) -> M.do dealloc; realK (a, b)
-      k realK (Right b) = M.do
-        (mya, Nothing) <- BRead acc
-        let newP = (mya, Just b)
-        BWrite acc newP
-        case mya of Nothing -> M.return ()
-                    Just _ -> case newP of (Just a, Just b) -> M.do dealloc; realK (a, b)
-  BCallCC (\realK -> M.do
-    BFork (M.do a <- blefa
-                k realK (Left a))
-    BFork (M.do b <- blefb
-                k realK (Right b)))
 
 filesThingPar :: Program W
 filesThingPar = toProg done $ M.do
