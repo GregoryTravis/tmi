@@ -2,6 +2,7 @@
 
 module Alloc
 ( Alloc
+, Allocated(..)
 , mkAlloc
 , alloc
 , dealloc ) where
@@ -19,7 +20,7 @@ import V
 -- I will burn in hell for creating something that requires explicit deallocation.
 data Alloc a = Alloc
   { map :: IntMap a
-  , serial :: Int } deriving Show
+  , serial :: Int } deriving (Read, Show)
 
 -- The allocated thing and a deallocator
 -- Again, I shall be punished for this
@@ -46,22 +47,24 @@ vslot = lift2 $ bi (VNamed "slot" slot) (VNamed "slot_" slot_)
 mkAlloc :: Alloc a
 mkAlloc = Alloc { map = empty, serial = 0 }
 
-alloc = undefined
-dealloc = undefined
+-- alloc = undefined
+-- dealloc = undefined
 
 -- TODO: Why do we need to read here?
--- alloc :: (Show a) => V w (Alloc a) -> Blef w (Allocated w a)
--- alloc valloc = M.do
---   alloc <- BRead valloc
---   let va = vslot valloc (VNice (serial alloc))
---       alloc' = alloc { serial = serial alloc + 1 }
---       allocated = Allocated va (dealloc valloc (serial alloc))
---   BWrite valloc alloc'
---   M.return (return allocated)
+alloc :: V w (Alloc a) -> a -> Blef w (Allocated w a)
+alloc valloc initialValue = M.do
+  alloc <- BRead valloc
+  let va = vslot valloc (VNice (serial alloc))
+      i = serial alloc
+      map' = insert i initialValue (map alloc)
+      alloc' = alloc { map = map', serial = i + 1 }
+      allocated = Allocated va (dealloc valloc i)
+  BWrite valloc alloc'
+  M.return allocated
 
--- dealloc :: (Read a, Show a) => V w (Alloc a) -> Int -> Blef w ()
--- dealloc valloc i = M.do
---   alloc <- BRead valloc
---   let alloc' = alloc { map = map' }
---       map' = delete i (map alloc)
---   BWrite valloc alloc'
+dealloc :: V w (Alloc a) -> Int -> Blef w ()
+dealloc valloc i = M.do
+  alloc <- BRead valloc
+  let alloc' = alloc { map = map' }
+      map' = delete i (map alloc)
+  BWrite valloc alloc'

@@ -12,7 +12,6 @@ module Core
 , Blef(..)
 , toProg
 , boond
-, ritt
 , done
 , sdone
 ) where
@@ -73,6 +72,7 @@ wrapAction _ index (ExternalCall _ handleK _) = do
 -- be an actual monad instead of a QualifiedDo pseudo-monad.
 data Blef w a where
   Blef :: (Read a, Show a) => String -> IO a -> Blef w a
+  BReturn :: a -> Blef w a
   -- TOOD should this return Blef ()?
   EBlef :: (Read a, Show a) => String -> (Int -> IO ()) -> Blef w a
   Blefs :: forall a b w. Blef w b -> (b -> Blef w a) -> Blef w a
@@ -97,6 +97,7 @@ data Blef w a where
 
 instance (Show a, Read a) => Show (Blef w a) where
  show (Blef s _) = "(Blef " ++ s ++ ")"
+ show (BReturn _) = "(BReturn)"
  show (Blefs b a2b) = "(Blefs)"
  show (BRead va) = "(BRead " ++ show va ++ ")"
  show (BWrite va a) = "(BWrite " ++ show va ++ ")"
@@ -105,9 +106,6 @@ boond :: Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
 boond = Blefs
 
-ritt :: (Read a, Show a) => IO a -> Blef w a
-ritt = Blef "ritt"
-
 -- Presumably this machinery could be somehow folded in to the type so it doesn't
 -- have to be free-ish.
 toProg :: (a -> Program w) -> Blef w a -> Program w
@@ -115,6 +113,8 @@ toProg k (Blef s io) =
   Program [Call $ InternalCall s io k]
 toProg k (EBlef s handleK) =
   Program [Call $ ExternalCall s handleK k]
+
+toProg k (BReturn a) = k a
 
 toProg k (BCallCC krec) =
   let blef = krec (\a -> ProgBlef (k a))

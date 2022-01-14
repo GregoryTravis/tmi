@@ -114,14 +114,16 @@ import Veq
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
 --   - scroll down a bit
 
-data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int,
-  ftacc :: (Maybe Int, Maybe String) } deriving (Read, Show)
+data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int
+  , pairAllocator :: Alloc (Maybe Int, Maybe String)
+  } deriving (Read, Show)
 
-vftacc :: V (Maybe Int, Maybe String)
-vftacc = VBiSeal (BiApp (bi (VNamed "ftacc" ftacc) (VNamed "ftacc_" ftacc_)) root)
-ftacc_ :: W -> R W -> R (Maybe Int, Maybe String)
-ftacc_ w wr = mkR ir
-  where ir ftacc = write wr $ w { ftacc }
+vpairAllocator :: V (Alloc (Maybe Int, Maybe String))
+vpairAllocator = VBiSeal (BiApp (bi (VNamed "pairAllocator" pairAllocator)
+                                    (VNamed "pairAllocator_" pairAllocator_)) root)
+pairAllocator_ :: W -> R W -> R (Alloc (Maybe Int, Maybe String))
+pairAllocator_ w wr = mkR ir
+  where ir pairAllocator = write wr $ w { pairAllocator }
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -164,13 +166,15 @@ fanInCount2_ w wr = mkR ir
 root :: V W
 root = VRoot
 theWorld :: W
-theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223, ftacc = (Nothing, Nothing) }
+theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223
+  , pairAllocator = mkAlloc
+  }
 
 recon :: String -> a
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
-recon "ftacc" = unsafeCoerce $ VNamed "ftacc" ftacc
-recon "ftacc_" = unsafeCoerce $ VNamed "ftacc_" ftacc_
+recon "pairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "pairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -291,7 +295,7 @@ qq = M.do
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
   n' <- Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
   n'' <- (Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')) M.>>= (\x -> Blef "x" (do msp ("x", x); return $ x + 1))
-  M.return (return n'')
+  M.return n''
 
 -- qq' :: Blef Double
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
@@ -307,16 +311,16 @@ io :: (Read a, Show a) => IO a -> Blef w a
 io action = Blef "" action
 
 mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]
-mapBlef bf [] = M.return (return [])
+mapBlef bf [] = M.return []
 mapBlef bf (a:as) = M.do
   b <- bf a
   bs <- mapBlef bf as
-  M.return (return (b:bs))
+  M.return (b:bs)
 
 mapBlef_ :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w ()
 mapBlef_ bf as = M.do
   mapBlef bf as
-  M.return (return ())
+  M.return ()
 
 cleanDirSeq :: FilePath -> Blef w ()
 cleanDirSeq dir = M.do
@@ -327,7 +331,7 @@ cleanDirSeq dir = M.do
         Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
   () <- mapBlef_ remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
-  M.return (return ())
+  M.return ()
 
 filesThingSeq :: Int -> FilePath -> Blef w ()
 filesThingSeq num dir = M.do
@@ -341,7 +345,7 @@ filesThingSeq num dir = M.do
           else Blef "writeAFile" (writeAFile dir n)
   mapBlef_ createIt [0..num-1]
   cleanDirSeq dir
-  M.return (return ())
+  M.return ()
 
 -- Very ugly proof that a Blef is Nice
 smallProg :: Program W
@@ -349,7 +353,7 @@ smallProg = toProg sdone (smallProgBlef 133)
 -- TODO rid of dummy param
 smallProgBlef :: Int -> Blef w ()
 smallProgBlef _ = M.do
-  x <- M.return (return 12)
+  x <- M.return 12
   Blef "msp" (msp x)
 smallProgV = VNamed "smallProg" smallProgBlef
 smallProgU = uni smallProgV
@@ -377,7 +381,7 @@ exty :: Blef w Int
 exty = M.do
   n <- EBlef "exty0" (\h -> msp $ "handle " ++ show h)
   io $ msp $ "exty got " ++ show n
-  M.return $ return $ n + 1
+  M.return $ n + 1
 
 extyProg :: Program W
 extyProg = toProg sdone exty
@@ -386,7 +390,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar"] = filesThingPar vftacc
+lookupCommand ["filesThingPar"] = filesThingPar
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -397,7 +401,7 @@ filesThings dir num dir2 num2 = Program
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
 countDown :: String -> Int -> Blef w ()
-countDown tag 0 = M.return (return ())
+countDown tag 0 = M.return ()
 countDown tag n = M.do
   io $ msp $ "countdown " ++ tag ++ " " ++ show n
   io $ slp -- sleepRand 0.6 1.0
@@ -426,13 +430,13 @@ parr acc blefa blefb = M.do
         (Nothing, myb) <- BRead acc
         let newP = (Just a, myb)
         BWrite acc newP
-        case myb of Nothing -> M.return (return ())
+        case myb of Nothing -> M.return ()
                     Just _ -> case newP of (Just a, Just b) -> realK (a, b)
       k realK (Right b) = M.do
         (mya, Nothing) <- BRead acc
         let newP = (mya, Just b)
         BWrite acc newP
-        case mya of Nothing -> M.return (return ())
+        case mya of Nothing -> M.return ()
                     Just _ -> case newP of (Just a, Just b) -> realK (a, b)
   BCallCC (\realK -> M.do
     BFork (M.do a <- blefa
@@ -440,14 +444,17 @@ parr acc blefa blefb = M.do
     BFork (M.do b <- blefb
                 k realK (Right b)))
 
-filesThingPar :: V (Maybe Int, Maybe String) -> Program W
-filesThingPar acc = toProg done $ M.do
+filesThingPar :: Program W
+filesThingPar = toProg done $ M.do
   -- parr example
+  -- all <- BRead vpairAllocator
+  Allocated acc dealloc <- alloc vpairAllocator (Nothing, Nothing)
   let blef0 = M.do io slp
-                   M.return (return (1::Int))
+                   M.return 1
       blef1 = M.do io slp
-                   M.return (return "asdf")
+                   M.return "asdf"
   (i, s) <- parr acc blef0 blef1
+  dealloc
   io $ msp ("holy shit", i, s)
 
   -- all this works fine
