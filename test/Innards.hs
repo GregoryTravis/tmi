@@ -1,6 +1,6 @@
 {-# Language NamedFieldPuns #-}
 
-module Innards where
+module Innards (innardsSuite) where
 
 import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck

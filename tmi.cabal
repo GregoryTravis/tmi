@@ -42,7 +42,8 @@ test-suite test
   hs-source-dirs:      test, src
   main-is:             Tests.hs
   other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
-                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr
+                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr,
+                       ParrTest, Innards, TestUtil
                      , Innards
   build-depends:       base >= 4.8
                      , QuickCheck

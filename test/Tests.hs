@@ -1,10 +1,11 @@
 module Main where
 
 import Innards
+import ParrTest
 
 import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
 main :: IO ()
-main = defaultMain (testGroup "both" [innardsSuite, parrSuite])
+main = defaultMain (testGroup "both" [innardsSuite])
