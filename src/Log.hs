@@ -424,20 +424,21 @@ countDown tag n = M.do
 -- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
 -- Or BRead (V a)?
 parr :: (Show a, Read a, Show b, Read b) =>
-        Ty.V w (Maybe a, Maybe b) -> Blef w a -> Blef w b -> Blef w (a, b)
-parr acc blefa blefb = M.do
+        Ty.V w (Alloc (Maybe a, Maybe b)) -> Blef w a -> Blef w b -> Blef w (a, b)
+parr all blefa blefb = M.do
+  Allocated acc dealloc <- alloc all (Nothing, Nothing)
   let k realK (Left a) = M.do
         (Nothing, myb) <- BRead acc
         let newP = (Just a, myb)
         BWrite acc newP
         case myb of Nothing -> M.return ()
-                    Just _ -> case newP of (Just a, Just b) -> realK (a, b)
+                    Just _ -> case newP of (Just a, Just b) -> M.do dealloc; realK (a, b)
       k realK (Right b) = M.do
         (mya, Nothing) <- BRead acc
         let newP = (mya, Just b)
         BWrite acc newP
         case mya of Nothing -> M.return ()
-                    Just _ -> case newP of (Just a, Just b) -> realK (a, b)
+                    Just _ -> case newP of (Just a, Just b) -> M.do dealloc; realK (a, b)
   BCallCC (\realK -> M.do
     BFork (M.do a <- blefa
                 k realK (Left a))
@@ -448,13 +449,11 @@ filesThingPar :: Program W
 filesThingPar = toProg done $ M.do
   -- parr example
   -- all <- BRead vpairAllocator
-  Allocated acc dealloc <- alloc vpairAllocator (Nothing, Nothing)
   let blef0 = M.do io slp
                    M.return 1
       blef1 = M.do io slp
                    M.return "asdf"
-  (i, s) <- parr acc blef0 blef1
-  dealloc
+  (i, s) <- parr vpairAllocator blef0 blef1
   io $ msp ("holy shit", i, s)
 
   -- all this works fine
