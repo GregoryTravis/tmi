@@ -22,6 +22,9 @@ wr w (VBiSeal bi) a =
    in rarec a
 wr w q _ = error $ "wr " ++ show q
 
+vwr :: Show w => w -> V w b -> b -> Write w
+vwr w v b = eesp ("wr", v, w) $ wr w v b
+
 getrev :: w -> Bi w f r -> r
 getrev w (Bi qf qr) =
   let r = rd w qr
@@ -46,10 +49,10 @@ rdb w (BiApp bi qa) =
       a = rd w qa
    in for a
 
-propWrite :: w -> Write w -> w
+propWrite :: Show w => w -> Write w -> w
 propWrite w write = propWrites w [write]
 
-propWrites :: w -> [Write w] -> w
+propWrites :: Show w => w -> [Write w] -> w
 propWrites w [] = w
 propWrites w (VWrite va va' : rest) = propWrites w (Write va (rd w va') : rest)
 propWrites w (Write VRoot w' : rest) = propWrites w' rest

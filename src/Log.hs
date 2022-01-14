@@ -196,8 +196,12 @@ theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223
 recon :: String -> a
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
+recon "nilpairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "nilpairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
 recon "pairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
 recon "pairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
+recon "pairAllocator2" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "pairAllocator2_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -473,7 +477,9 @@ justRun dbdir app command = do
   run app dbdir
 
 logMain :: IO ()
-logMain = justRun "db" logApp ["filesThingPar", "dirr", "4"]
+logMain = do
+  -- msp parYeahL
+  justRun "db" logApp ["filesThingPar", "dirr", "4"]
 
 --program num = Program
 --  [

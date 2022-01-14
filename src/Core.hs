@@ -38,7 +38,8 @@ instance Show (Core w) where
   show (Call _) = "(Call)"
   show (Sub program) = "(Sub " ++ show program ++ ")"
   show (Cond vb _ _) = "(Cond " ++ show vb ++ ")"
-  -- show (Named s c) = "(Named " ++ show s ++ " " ++ show c ++ ")"
+  show (Named s c) = "(Named)"
+  show (CRead v k) = "(CRead " ++ show v ++ ")"
   show Done = "(Done)"
 
 instance Show (Call w) where
