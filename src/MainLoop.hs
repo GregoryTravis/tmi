@@ -137,6 +137,10 @@ runCore' w (Cond vbool th el) =
   let b = rd w vbool
       next = if b then th else el
    in runCore w next
+runCore' w (CRead va a2P) =
+  let a = rd w va
+      prog = a2P a
+   in runCore w (Sub prog)
 -- runCore' w (Named s c) = runCore w c
 runCore' w Done = ([], [])
 -- runCore w x = error $ "??? " ++ show x

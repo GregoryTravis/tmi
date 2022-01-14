@@ -82,30 +82,3 @@ unqs recon (SVBiSeal bis) = VBiSeal (unbs recon bis)
 unbs :: Reconstitutor -> BS -> Bi w f r
 unbs recon (BSBi sf sv) = Bi (unqs recon sf) (unqs recon sv)
 unbs recon (BSBiApp bs sv) = BiApp (unbs recon bs) (unqs recon sv)
-
-  -- Bi :: V w f -> V w r -> Bi w f r
-  -- BiApp :: Bi w (a -> b) (a -> R w a -> c) -> V w a -> Bi w b c
-
--- sqd :: forall w. Typeable w => Proxy w -> Reconstitutor -> S -> Dynamic
--- sqd w recon SRoot = toDyn (VRoot :: V w w)
--- sqd w recon (SNice ddyn) = dumDynToXShowD w ddyn
--- sqd _ recon (SNamed name) = recon name
--- sqd w recon (SVBiSeal bis) =
---   let dbs = bqd w recon bis
---    in fromJust $ qbiseal dbs
-
--- -- name should be bsbd
--- bqd :: Typeable w => Proxy w -> Reconstitutor -> BS -> Dynamic
--- bqd w recon (BSBi sf sr) =
---   let dsf = sqd w recon sf
---       dsr = sqd w recon sr
---    in fromJust $ bi dsf dsr
--- bqd w recon (BSBiApp bs s) =
---   let dbs = bqd w recon bs
---       ds = sqd w recon s
---    in fromJust $ bsbiapp dbs ds
-
--- sq :: forall a w. (Typeable a, Typeable w) => Reconstitutor -> S -> V w a
--- sq recon s =
---   let pw = Proxy :: Proxy w
---    in fromJustVerbose ("sq'", s) $ fromDynamic $ sqd pw recon s

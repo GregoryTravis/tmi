@@ -24,11 +24,13 @@ import System.IO.Unsafe
 import System.Random
 import Unsafe.Coerce
 
+import Alloc
 import Core
 import Ext
 import Lift
 import MainLoop
 import qualified Monad as M
+import Parr
 import Propagate
 import Storage
 import Testing
@@ -60,6 +62,16 @@ import Veq
 -- + rename test Main
 -- + other test warnings
 -- + rename stuff in Innards
+-- ==== parr
+-- + parr
+-- + BReturn so we can return a V without it being an IO
+-- + Allocate pairs
+-- - parrList
+-- - filesThingPar
+-- - generic allocator
+-- - test
+--   - get a return value from a program?
+--   - easier way to run a blef real quick: just the blef, init, and recon
 -- ==== meta
 -- - mvar in-flight counter
 --   + write
@@ -70,10 +82,12 @@ import Veq
 -- - tmi cli
 -- - run filesThing with it
 -- ==== more cleanup
+-- - Cond is redundant
 -- - why that nested return thing, probably 'rit' is the prob
 -- ==== signup
 -- - do it
 -- ==== more cleanup
+-- - recons from different modules, maybe a registry?
 -- - simplify execution framework before moving things to modules
 -- - mainloop to module
 -- - other things to module
@@ -105,20 +119,36 @@ import Veq
 --   - https://hackage.haskell.org/package/base-4.16.0.0/docs/GHC-IO.html
 --   - scroll down a bit
 
-data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int,
-  ftacc :: (Maybe Int, Maybe String) } deriving (Read, Show)
+data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int
+  , pairAllocator :: Alloc (Maybe Int, Maybe String)
+  , pairAllocator2 :: Alloc (Maybe Int, Maybe [Int])
+  , nilPairAllocator :: Alloc (Maybe (), Maybe [()])
+  } deriving (Read, Show)
 
-vftacc :: V (Maybe Int, Maybe String)
-vftacc = VBiSeal (BiApp (bi (VNamed "ftacc" ftacc) (VNamed "ftacc_" ftacc_)) root)
-ftacc_ :: W -> R W -> R (Maybe Int, Maybe String)
-ftacc_ w wr = mkR ir
-  where ir ftacc = write wr $ w { ftacc }
+vpairAllocator :: V (Alloc (Maybe Int, Maybe String))
+vpairAllocator = VBiSeal (BiApp (bi (VNamed "pairAllocator" pairAllocator)
+                                    (VNamed "pairAllocator_" pairAllocator_)) root)
+pairAllocator_ :: W -> R W -> R (Alloc (Maybe Int, Maybe String))
+pairAllocator_ w wr = mkR ir
+  where ir pairAllocator = write wr $ w { pairAllocator }
+
+vpairAllocator2 :: V (Alloc (Maybe Int, Maybe [Int]))
+vpairAllocator2 = VBiSeal (BiApp (bi (VNamed "pairAllocator2" pairAllocator2)
+                                     (VNamed "pairAllocator2_" pairAllocator2_)) root)
+pairAllocator2_ :: W -> R W -> R (Alloc (Maybe Int, Maybe [Int]))
+pairAllocator2_ w wr = mkR ir
+  where ir pairAllocator2 = write wr $ w { pairAllocator2 }
+
+vnilPairAllocator :: V (Alloc (Maybe (), Maybe [()]))
+vnilPairAllocator = VBiSeal (BiApp (bi (VNamed "nilPairAllocator" nilPairAllocator)
+                                       (VNamed "nilPairAllocator_" nilPairAllocator_)) root)
+nilPairAllocator_ :: W -> R W -> R (Alloc (Maybe (), Maybe [()]))
+nilPairAllocator_ w wr = mkR ir
+  where ir nilPairAllocator = write wr $ w { nilPairAllocator }
 
 type V = Ty.V W
 type Bi = Ty.Bi W
 type R = Ty.R W
-bi :: V f -> V r -> Bi f r
-bi = Ty.Bi
 
 addEmBi :: Bi (Int -> Int -> Int)
               (Int -> R Int -> Int -> R Int -> R Int)
@@ -157,13 +187,21 @@ fanInCount2_ w wr = mkR ir
 root :: V W
 root = VRoot
 theWorld :: W
-theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223, ftacc = (Nothing, Nothing) }
+theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223
+  , pairAllocator = mkAlloc
+  , pairAllocator2 = mkAlloc
+  , nilPairAllocator = mkAlloc
+  }
 
 recon :: String -> a
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
-recon "ftacc" = unsafeCoerce $ VNamed "ftacc" ftacc
-recon "ftacc_" = unsafeCoerce $ VNamed "ftacc_" ftacc_
+recon "nilpairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "nilpairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
+recon "pairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "pairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
+recon "pairAllocator2" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
+recon "pairAllocator2_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -284,7 +322,7 @@ qq = M.do
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
   n' <- Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
   n'' <- (Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')) M.>>= (\x -> Blef "x" (do msp ("x", x); return $ x + 1))
-  M.return (return n'')
+  M.return n''
 
 -- qq' :: Blef Double
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
@@ -296,20 +334,20 @@ qq = M.do
 bsp :: Show a => a -> Blef w ()
 bsp a = Blef "bsp" (msp a)
 
-io :: IO a -> Blef w a
+io :: (Read a, Show a) => IO a -> Blef w a
 io action = Blef "" action
 
 mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]
-mapBlef bf [] = M.return (return [])
+mapBlef bf [] = M.return []
 mapBlef bf (a:as) = M.do
   b <- bf a
   bs <- mapBlef bf as
-  M.return (return (b:bs))
+  M.return (b:bs)
 
 mapBlef_ :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w ()
 mapBlef_ bf as = M.do
   mapBlef bf as
-  M.return (return ())
+  M.return ()
 
 cleanDirSeq :: FilePath -> Blef w ()
 cleanDirSeq dir = M.do
@@ -320,7 +358,7 @@ cleanDirSeq dir = M.do
         Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
   () <- mapBlef_ remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
-  M.return (return ())
+  M.return ()
 
 filesThingSeq :: Int -> FilePath -> Blef w ()
 filesThingSeq num dir = M.do
@@ -334,7 +372,7 @@ filesThingSeq num dir = M.do
           else Blef "writeAFile" (writeAFile dir n)
   mapBlef_ createIt [0..num-1]
   cleanDirSeq dir
-  M.return (return ())
+  M.return ()
 
 -- Very ugly proof that a Blef is Nice
 smallProg :: Program W
@@ -342,7 +380,7 @@ smallProg = toProg sdone (smallProgBlef 133)
 -- TODO rid of dummy param
 smallProgBlef :: Int -> Blef w ()
 smallProgBlef _ = M.do
-  x <- M.return (return 12)
+  x <- M.return 12
   Blef "msp" (msp x)
 smallProgV = VNamed "smallProg" smallProgBlef
 smallProgU = uni smallProgV
@@ -370,7 +408,7 @@ exty :: Blef w Int
 exty = M.do
   n <- EBlef "exty0" (\h -> msp $ "handle " ++ show h)
   io $ msp $ "exty got " ++ show n
-  M.return $ return $ n + 1
+  M.return $ n + 1
 
 extyProg :: Program W
 extyProg = toProg sdone exty
@@ -379,7 +417,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar"] = filesThingPar vftacc
+lookupCommand ["filesThingPar", dir, numS] = parYeah -- filesThingPar dir (read numS)
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -390,80 +428,41 @@ filesThings dir num dir2 num2 = Program
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
 countDown :: String -> Int -> Blef w ()
-countDown tag 0 = M.return (return ())
+countDown tag 0 = M.return ()
 countDown tag n = M.do
   io $ msp $ "countdown " ++ tag ++ " " ++ show n
   io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
-  -- Can't figure it out
-  -- -- n <- Blef "" (return 12)
-  -- -- n <- BCallCC (\k -> k 40)
-  -- -- n <- BCallCC (\k -> Blefs thing (\n -> k n))
-  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
-  --                                              -- k :: Int -> Blef String
-  --                                              -- BCallCC _ :: Blef ()
-  -- io $ msp $ "n " ++ show n
-  -- pretend: return ""
+filesThingPar :: String -> Int -> Program W
+filesThingPar dir num = toProg done $ M.do
+  Blef "createDirectoryExt" (createDirectoryExt dir)
+  let writerIOs = map (writeAFile dir) [0..num-1]
+      blefs = map (Blef "") writerIOs
+  nils <- parrList vnilPairAllocator blefs
+  io $ msp nils
+  io $ msp "hi filesThingPar"
 
--- call/cc at the top. Then a new contination that takes either value and
--- attempts to write it to the pair accum. You can't write it if something is there,
--- although if this code is correct that can't happen anyway. Then if both are full,
--- pass them to the main continuation.
--- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
--- Or BRead (V a)?
--- TODO W should be w, maybe cuz V here is actually V w
-parr :: (Show a, Read a, Show b, Read b) =>
-        V (Maybe a, Maybe b) -> Blef W a -> Blef W b -> Blef W (Maybe a, Maybe b)
-parr acc blefa blefb = M.do
-  let k realK (Left a) = M.do
-        (Nothing, myb) <- BRead acc
-        let newP = (Just a, myb)
-        BWrite acc newP
-        case myb of Nothing -> M.return (return ())
-                    Just _ -> realK newP
-  BCallCC (\realK -> M.do
-    BFork (M.do a <- blefa
-                k realK (Left a))
-    BFork (M.do b <- blefb
-                k realK (Right b)))
-
-filesThingPar :: V (Maybe Int, Maybe String) -> Program W
-filesThingPar acc = toProg done $ M.do
-  -- parr example
+parYeah :: Program W
+parYeah = toProg done $ M.do
+  -- TODO: turn into test
   let blef0 = M.do io slp
-                   M.return (return (1::Int))
+                   M.return 1
       blef1 = M.do io slp
-                   M.return (return "asdf")
-  (i, s) <- parr acc blef0 blef1
+                   M.return "asdf"
+  (i, s) <- parr vpairAllocator blef0 blef1
   io $ msp ("holy shit", i, s)
+  io $ msp "hi filesThingPar"
 
-  -- all this works fine
-  -- BFork (countDown "aaa" 3)
-  -- BFork (countDown "bbb" 4)
-
-  -- works
-  -- n <- Blef "" (return 12)
-
-  -- works
-  -- n <- BCallCC (\k -> k 40)
-
-  -- works
-  -- n <- BCallCC (\k -> M.do io $ msp "omg"
-
-  -- works
-  -- let q = 20
-  -- n <- BCallCC (\k -> M.do io $ msp "omg"
-  --                          if q == 20
-  --                            then k 41
-  --                            else k 42)
-
-  -- works??
-  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
-  --                                              -- k :: Int -> Blef String
-  --                                              -- BCallCC _ :: Blef ()
-
-  -- io $ msp $ "n " ++ show n
+parYeahL :: Program W
+parYeahL = toProg done $ M.do
+  -- TODO: turn into test
+  let blef0 = M.do io slp
+                   M.return 1
+      blef1 = M.do io slp
+                   M.return 2
+  [i, j] <- parrList vpairAllocator2 [blef0, blef1]
+  io $ msp ("holy shit", i, j)
   io $ msp "hi filesThingPar"
 
 -- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c
@@ -478,7 +477,9 @@ justRun dbdir app command = do
   run app dbdir
 
 logMain :: IO ()
-logMain = justRun "db" logApp ["filesThingPar"]
+logMain = do
+  -- msp parYeahL
+  justRun "db" logApp ["filesThingPar", "dirr", "4"]
 
 --program num = Program
 --  [

@@ -16,6 +16,9 @@ write (R rec) x = rec x
 mkR :: (a -> Write w) -> R w a
 mkR = R
 
+bi :: V w f -> V w r -> Bi w f r
+bi = Ty.Bi
+
 -- Turned a named forward into a Bi
 uni :: V w (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 uni vf = Bi vf nope
