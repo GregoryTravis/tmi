@@ -28,11 +28,11 @@ data Allocated w a = Allocated (V w a) (Blef w ())
   deriving (Show)
 
 slot :: Alloc a -> Int -> a
-slot alloc i = map alloc ! i
+slot alloc i = feesp "AAA read" $ map alloc ! i
 slot_ :: Alloc a -> R w (Alloc a) -> Int -> R w Int -> R w a
 slot_ alloc ralloc i _ = mkR r
   where r a = write ralloc alloc'
-              where alloc' = alloc { map = insert i a (map alloc) }
+              where alloc' = feesp "AAA insert" $ alloc { map = insert i a (map alloc) }
 vslot :: V w (Alloc a) -> V w Int -> V w a
 vslot = lift2 $ bi (VNamed "slot" slot) (VNamed "slot_" slot_)
 
@@ -56,7 +56,7 @@ alloc valloc initialValue = M.do
   alloc <- BRead valloc
   let va = vslot valloc (VNice (serial alloc))
       i = serial alloc
-      map' = insert i initialValue (map alloc)
+      map' = feesp "AAA insert0" $ insert i initialValue (map alloc)
       alloc' = alloc { map = map', serial = i + 1 }
       allocated = Allocated va (dealloc valloc i)
   BWrite valloc alloc'

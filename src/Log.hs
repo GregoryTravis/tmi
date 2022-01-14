@@ -68,6 +68,7 @@ import Veq
 -- + Allocate pairs
 -- - parrList
 -- - filesThingPar
+-- - generic allocator
 -- - test
 --   - get a return value from a program?
 --   - easier way to run a blef real quick: just the blef, init, and recon
@@ -120,6 +121,8 @@ import Veq
 
 data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int
   , pairAllocator :: Alloc (Maybe Int, Maybe String)
+  , pairAllocator2 :: Alloc (Maybe Int, Maybe [Int])
+  , nilPairAllocator :: Alloc (Maybe (), Maybe [()])
   } deriving (Read, Show)
 
 vpairAllocator :: V (Alloc (Maybe Int, Maybe String))
@@ -128,6 +131,20 @@ vpairAllocator = VBiSeal (BiApp (bi (VNamed "pairAllocator" pairAllocator)
 pairAllocator_ :: W -> R W -> R (Alloc (Maybe Int, Maybe String))
 pairAllocator_ w wr = mkR ir
   where ir pairAllocator = write wr $ w { pairAllocator }
+
+vpairAllocator2 :: V (Alloc (Maybe Int, Maybe [Int]))
+vpairAllocator2 = VBiSeal (BiApp (bi (VNamed "pairAllocator2" pairAllocator2)
+                                     (VNamed "pairAllocator2_" pairAllocator2_)) root)
+pairAllocator2_ :: W -> R W -> R (Alloc (Maybe Int, Maybe [Int]))
+pairAllocator2_ w wr = mkR ir
+  where ir pairAllocator2 = write wr $ w { pairAllocator2 }
+
+vnilPairAllocator :: V (Alloc (Maybe (), Maybe [()]))
+vnilPairAllocator = VBiSeal (BiApp (bi (VNamed "nilPairAllocator" nilPairAllocator)
+                                       (VNamed "nilPairAllocator_" nilPairAllocator_)) root)
+nilPairAllocator_ :: W -> R W -> R (Alloc (Maybe (), Maybe [()]))
+nilPairAllocator_ w wr = mkR ir
+  where ir nilPairAllocator = write wr $ w { nilPairAllocator }
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -172,6 +189,8 @@ root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223
   , pairAllocator = mkAlloc
+  , pairAllocator2 = mkAlloc
+  , nilPairAllocator = mkAlloc
   }
 
 recon :: String -> a
@@ -394,7 +413,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar"] = filesThingPar
+lookupCommand ["filesThingPar", dir, numS] = parYeah -- filesThingPar dir (read numS)
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -411,53 +430,35 @@ countDown tag n = M.do
   io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
-  -- Can't figure it out
-  -- -- n <- Blef "" (return 12)
-  -- -- n <- BCallCC (\k -> k 40)
-  -- -- n <- BCallCC (\k -> Blefs thing (\n -> k n))
-  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
-  --                                              -- k :: Int -> Blef String
-  --                                              -- BCallCC _ :: Blef ()
-  -- io $ msp $ "n " ++ show n
-  -- pretend: return ""
+filesThingPar :: String -> Int -> Program W
+filesThingPar dir num = toProg done $ M.do
+  Blef "createDirectoryExt" (createDirectoryExt dir)
+  let writerIOs = map (writeAFile dir) [0..num-1]
+      blefs = map (Blef "") writerIOs
+  nils <- parrList vnilPairAllocator blefs
+  io $ msp nils
+  io $ msp "hi filesThingPar"
 
-filesThingPar :: Program W
-filesThingPar = toProg done $ M.do
-  -- parr example
-  -- all <- BRead vpairAllocator
+parYeah :: Program W
+parYeah = toProg done $ M.do
+  -- TODO: turn into test
   let blef0 = M.do io slp
                    M.return 1
       blef1 = M.do io slp
                    M.return "asdf"
   (i, s) <- parr vpairAllocator blef0 blef1
   io $ msp ("holy shit", i, s)
+  io $ msp "hi filesThingPar"
 
-  -- all this works fine
-  -- BFork (countDown "aaa" 3)
-  -- BFork (countDown "bbb" 4)
-
-  -- works
-  -- n <- Blef "" (return 12)
-
-  -- works
-  -- n <- BCallCC (\k -> k 40)
-
-  -- works
-  -- n <- BCallCC (\k -> M.do io $ msp "omg"
-
-  -- works
-  -- let q = 20
-  -- n <- BCallCC (\k -> M.do io $ msp "omg"
-  --                          if q == 20
-  --                            then k 41
-  --                            else k 42)
-
-  -- works??
-  -- n <- BCallCC (\k -> Blef "" (msp "ignored")) -- (\k -> ...) :: (Int -> Blef String) -> Blef ()
-  --                                              -- k :: Int -> Blef String
-  --                                              -- BCallCC _ :: Blef ()
-
-  -- io $ msp $ "n " ++ show n
+parYeahL :: Program W
+parYeahL = toProg done $ M.do
+  -- TODO: turn into test
+  let blef0 = M.do io slp
+                   M.return 1
+      blef1 = M.do io slp
+                   M.return 2
+  [i, j] <- parrList vpairAllocator2 [blef0, blef1]
+  io $ msp ("holy shit", i, j)
   io $ msp "hi filesThingPar"
 
 -- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c
@@ -472,7 +473,7 @@ justRun dbdir app command = do
   run app dbdir
 
 logMain :: IO ()
-logMain = justRun "db" logApp ["filesThingPar"]
+logMain = justRun "db" logApp ["filesThingPar", "dirr", "4"]
 
 --program num = Program
 --  [

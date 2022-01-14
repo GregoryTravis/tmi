@@ -22,7 +22,7 @@ parr :: (Show a, Read a, Show b, Read b) =>
 parr all blefa blefb = M.do
   Allocated acc dealloc <- alloc all (Nothing, Nothing)
   let k realK (Left a) = M.do
-        (Nothing, myb) <- BRead acc
+        (Nothing, myb) <- eesp "read?" $ BRead acc
         let newP = (Just a, myb)
         BWrite acc newP
         case myb of Nothing -> M.return ()
