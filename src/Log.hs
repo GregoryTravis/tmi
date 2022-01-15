@@ -70,6 +70,7 @@ import Veq
 -- + parrList
 -- - filesThingPar
 -- - generic allocator
+-- - why are those commits necessary?
 -- - ooo what if you can only get the value when deallocating, but you can
 --   transform it without deallocating. Still might leak tho
 -- - test
@@ -457,11 +458,12 @@ parYeah = toProg done $ do
 parYeahL :: Program W
 parYeahL = toProg done $ do
   -- TODO: turn into test
-  let blef0 = do io slp
+  -- TODO why are these commits necessary?
+  let blef0 = do commit
                  return 1
-      blef1 = do io slp
+      blef1 = do commit
                  return 2
-      blef2 = do io slp
+      blef2 = do commit
                  return 30
   [i, j, k] <- parrList vpairAllocator2 [blef0, blef1, blef2]
   io $ msp ("holy shit", i, j, k)
