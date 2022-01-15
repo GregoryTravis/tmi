@@ -190,7 +190,9 @@ tseeesp :: (Show s, Show a) => s -> a -> a
 tseeesp s a = tseesp (s, a) a
 
 tsmsp :: Show s => s -> IO ()
-tsmsp s = writeChan tsspChan (sp s)
+tsmsp s = do
+  -- threadDelay 1
+  writeChan tsspChan (sp s)
 
 tsspChan :: Chan String
 tsspChan = unsafePerformIO $ do

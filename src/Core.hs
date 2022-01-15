@@ -18,6 +18,7 @@ module Core
 
 import Control.Concurrent
 
+import Flags
 import Util
 import V
 import Ty
@@ -53,7 +54,8 @@ applyContinuation (ExternalCall _ _ k) s = k (read s)
 -- Wrap an action to 'show' its value into a retval and send it down a channel.
 -- Only for InternalCalls.
 wrapAction :: Chan (Event w) -> Int -> Call w -> IO ()
-wrapAction chan index (InternalCall _ io _) = do
+wrapAction chan index (InternalCall s io _) = do
+  vmsp $ "InternalCall " ++ s
   a <- io
   let as = show a
       retval = Retval index as
@@ -61,7 +63,8 @@ wrapAction chan index (InternalCall _ io _) = do
   writeChan chan retval
   return ()
 -- TODO: not sure we should be wrapping this, but otoh why not
-wrapAction _ index (ExternalCall _ handleK _) = do
+wrapAction _ index (ExternalCall s handleK _) = do
+  vmsp $ "ExternalCall " ++ s
   handleK index
 -- wrapAction _ _ _ = error "Cannot wrap a non-InternalCall"
 

@@ -70,6 +70,8 @@ import Veq
 -- - parrList
 -- - filesThingPar
 -- - generic allocator
+-- - ooo what if you can only get the value when deallocating, but you can
+--   transform it without deallocating. Still might leak tho
 -- - test
 --   - get a return value from a program?
 --   - easier way to run a blef real quick: just the blef, init, and recon
@@ -335,9 +337,6 @@ qq = do
 bsp :: Show a => a -> Blef w ()
 bsp a = Blef "bsp" (msp a)
 
-io :: (Read a, Show a) => IO a -> Blef w a
-io action = Blef "" action
-
 mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]
 mapBlef bf [] = return []
 mapBlef bf (a:as) = do
@@ -418,7 +417,7 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar", dir, numS] = parYeah -- filesThingPar dir (read numS)
+lookupCommand ["filesThingPar", dir, numS] = parYeahL -- filesThingPar dir (read numS)
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -462,8 +461,10 @@ parYeahL = toProg done $ do
                  return 1
       blef1 = do io slp
                  return 2
-  [i, j] <- parrList vpairAllocator2 [blef0, blef1]
-  io $ msp ("holy shit", i, j)
+      blef2 = do io slp
+                 return 30
+  [i, j, k] <- parrList vpairAllocator2 [blef0, blef1, blef2]
+  io $ msp ("holy shit", i, j, k)
   io $ msp "hi filesThingPar"
 
 -- BCallCC :: ((b -> Blef a) -> Blef c) -> Blef c

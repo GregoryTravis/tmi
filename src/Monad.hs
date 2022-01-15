@@ -27,3 +27,11 @@ instance MonadFail (Blef w) where
 
 -- fail :: String -> Blef w a
 -- fail s = error $ "tmi monad fail " ++ s
+
+io :: (Read a, Show a) => IO a -> Blef w a
+io action = Blef "" action
+
+commit :: Blef w ()
+commit = do
+  () <- io $ return ()
+  return ()

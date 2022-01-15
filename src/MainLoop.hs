@@ -11,6 +11,7 @@ import Control.Monad (forM_, when)
 import System.Directory
 
 import Core
+import Flags
 import InternalCallRunner
 import Propagate
 import Ty
@@ -67,15 +68,16 @@ run app dbdir = do
   let loop icr = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
+        vmsp $ "MainLoop processEvents"
         let (w', calls) = processEvents (appEnv app) initW (eventLog ck)
-        -- icrWrite icr (calls, eventLog ck)
+        vmsp $ "MainLoop icrRun"
         icr' <- icrRun icr calls (eventLog ck)
         inf <- icrInFlight icr'
-        -- msp $ "ICR " ++ show inf
         done <- icrDone icr
         if not done
-          then do -- msp "going to read"
+          then do vmsp "MainLoop icrRead..."
                   r <- icrRead icr'
+                  vmsp $ "MainLoop icrRead " ++ show r
                   let ck' = ck { eventLog = eventLog ck ++ [r] }
                   writeCK dbdir ck'
                   loop icr'
@@ -102,7 +104,7 @@ processEvent lookerUpper w e calls =
   let prog = eventToProgram lookerUpper e calls
       (w', newCalls) = runProgram w prog
       -- allCalls = calls ++ newCalls
-   in noeesp ("processEvent runProgram", e, calls, newCalls) $ (w', newCalls)
+   in veesp ("MainLoop processEvent ", e) $ (w', newCalls)
    -- in eesp ("processEvent", e) $ runProgram w prog
 
 eventToProgram :: AppEnv w -> Event w -> [Call w] -> Program w
@@ -114,9 +116,12 @@ eventToProgram lookerUpper r@(Retval index rs) calls =
 
 -- TODO do these need IO?
 runProgram :: (Show w) => w -> Program w -> (w, [Call w])
-runProgram w (Program cores) =
-  let (writes, calls) = runCores w cores [] []
-      w' = propWrite w (Writes writes)
+-- runProgram w (Program cores) =
+--   let (writes, calls) = runCores w cores [] []
+--       w' = propWrite w (Writes writes)
+runProgram w (Program cores) = {-noeesp ("MainLoop runProgram " ++ show cores) $ -}
+  let (writes, calls) = {-noeesp ("MainLoop runProgram runCores") $-} runCores w cores [] []
+      w' = {-noeesp ("MainLoop runProgram propWrite " ++ show writes) $-} propWrite w (Writes writes)
    in (w', calls)
 
 -- TODO: appends very slow
@@ -127,7 +132,7 @@ runCores w (core:cores) writes calls =
 runCores w [] writes calls = (writes, calls)
 
 runCore :: w -> Core w -> ([Write w], [Call w])
-runCore w c = noeesp ("running core", c) $ runCore' w c
+runCore w c = veesp ("MainLoop runCore", c) $ runCore' w c
 -- runCore w c = runCore' w c
 runCore' :: w -> Core w -> ([Write w], [Call w])
 runCore' w (Assign write) = ([write], [])
