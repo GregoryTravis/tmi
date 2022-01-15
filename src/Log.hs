@@ -66,6 +66,7 @@ import Veq
 -- + parr
 -- + BReturn so we can return a V without it being an IO
 -- + Allocate pairs
+-- + real monad
 -- - parrList
 -- - filesThingPar
 -- - generic allocator
