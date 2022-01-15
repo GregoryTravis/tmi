@@ -1,24 +1,29 @@
-module Monad
-( (>>=)
-, (>>)
-, return
-, fail ) where
+module Monad where
 
-import Prelude hiding ((>>=), (>>), return, fail)
+import Control.Applicative -- Otherwise you can't do the Applicative instance.
+import Control.Monad (liftM, ap)
 
 import Core
 import Util
 
-infixl 1  >>=
+instance Functor (Blef w) where
+  fmap = liftM
 
-(>>=) :: Blef w a -> (a -> Blef w b) -> Blef w b
-(>>=) = boond
+instance Applicative (Blef w) where
+  pure  = return
+  (<*>) = ap
 
-(>>) :: Blef w a -> Blef w b -> Blef w b
-ba >> bb = ba >>= \_ -> bb
+instance Monad (Blef w) where
+  -- (>>=) :: Blef w a -> (a -> Blef w b) -> Blef w b
+  (>>=) = boond
+  -- return :: a -> Blef w a
+  return = BReturn
 
-return :: a -> Blef w a
-return = BReturn
+instance MonadFail (Blef w) where
+  fail s = error $ "Fail " ++ s
 
-fail :: String -> Blef w a
-fail s = error $ "tmi monad fail " ++ s
+-- (>>) :: Blef w a -> Blef w b -> Blef w b
+-- ba >> bb = ba >>= \_ -> bb
+
+-- fail :: String -> Blef w a
+-- fail s = error $ "tmi monad fail " ++ s

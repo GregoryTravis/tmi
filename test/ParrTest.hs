@@ -10,7 +10,7 @@ import Unsafe.Coerce
 import Alloc
 import Core
 import Lift
-import qualified Monad as M
+import Monad
 import Parr
 import Propagate
 import Ty hiding (V, Bi, R)

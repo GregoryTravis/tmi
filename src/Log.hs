@@ -29,7 +29,7 @@ import Core
 import Ext
 import Lift
 import MainLoop
-import qualified Monad as M
+import Monad
 import Parr
 import Propagate
 import Storage
@@ -308,21 +308,21 @@ a2Blef3 n = Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)
 
 qq :: Blef W Double
 -- qq = boond (boond blef0 a2Blef1) a2Blef2
-_qq = blef0 M.>>= a2Blef1 M.>>= a2Blef2 M.>>= a2Blef3
+_qq = blef0 >>= a2Blef1 >>= a2Blef2 >>= a2Blef3
 
-__qq = (Blef "blef0" (return 12)) M.>>=
-     (\n -> (Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))) M.>>=
-            (\ns -> (Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))) M.>>=
+__qq = (Blef "blef0" (return 12)) >>=
+     (\n -> (Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))) >>=
+            (\ns -> (Blef "a2Blef2" (do msp ("a2Blef1", ns); return $ 1.5 * (read ns))) >>=
                     (\n -> (Blef "a2Blef3" (do msp ("a2Blef3", n); return $ 2.0 * n)))))
 
--- TODO: Perhaps we could leave off M. on the operator if this were in a separate module
+-- TODO: Perhaps we could leave off  on the operator if this were in a separate module
 -- that was hiding the standard bind?
-qq = M.do
+qq = do
   n <- Blef "blef0" (return 12)
   ns <- Blef "a2Blef1" (do msp ("a2Blef1", n); return $ show (n + 1))
   n' <- Blef "a2Blef2" (do msp ("a2Blef2", ns); return $ 1.5 * (read ns))
-  n'' <- (Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')) M.>>= (\x -> Blef "x" (do msp ("x", x); return $ x + 1))
-  M.return n''
+  n'' <- (Blef "a2Blef3" (do msp ("a2Blef3", n'); return $ 2.0 * n')) >>= (\x -> Blef "x" (do msp ("x", x); return $ x + 1))
+  return n''
 
 -- qq' :: Blef Double
 -- qq' = Blefs (Blefs (Blef (return 12)) (\n -> Blef (return $ show (n + 1)))) (\ns -> Blef (return $ 1.5 * (read ns)))
@@ -338,49 +338,49 @@ io :: (Read a, Show a) => IO a -> Blef w a
 io action = Blef "" action
 
 mapBlef :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w [b]
-mapBlef bf [] = M.return []
-mapBlef bf (a:as) = M.do
+mapBlef bf [] = return []
+mapBlef bf (a:as) = do
   b <- bf a
   bs <- mapBlef bf as
-  M.return (b:bs)
+  return (b:bs)
 
 mapBlef_ :: (Read b, Show b) => (a -> Blef w b) -> [a] -> Blef w ()
-mapBlef_ bf as = M.do
+mapBlef_ bf as = do
   mapBlef bf as
-  M.return ()
+  return ()
 
 cleanDirSeq :: FilePath -> Blef w ()
-cleanDirSeq dir = M.do
+cleanDirSeq dir = do
   files <- Blef "listDirectory" (listDirectory dir)
   Blef "msp" (msp ("files", files))
-  let remover f = M.do
+  let remover f = do
         io slp
         Blef "removeFileExt" $ removeFileExt (dir ++ "/" ++ f)
   () <- mapBlef_ remover files
   Blef "removeDirectoryExt" (removeDirectoryExt dir)
-  M.return ()
+  return ()
 
 filesThingSeq :: Int -> FilePath -> Blef w ()
-filesThingSeq num dir = M.do
+filesThingSeq num dir = do
   Blef "createDirectoryExt" (createDirectoryExt dir)
-  let createIt n = M.do
+  let createIt n = do
         io slp
         if n == 3 && False
-          then M.do
+          then do
             extraN <- EBlef "ftexty" (\h -> msp $ "ft handle " ++ show h)
             Blef "writeAFile" (writeAFile dir (n + extraN))
           else Blef "writeAFile" (writeAFile dir n)
   mapBlef_ createIt [0..num-1]
   cleanDirSeq dir
-  M.return ()
+  return ()
 
 -- Very ugly proof that a Blef is Nice
 smallProg :: Program W
 smallProg = toProg sdone (smallProgBlef 133)
 -- TODO rid of dummy param
 smallProgBlef :: Int -> Blef w ()
-smallProgBlef _ = M.do
-  x <- M.return 12
+smallProgBlef _ = do
+  x <- return 12
   Blef "msp" (msp x)
 smallProgV = VNamed "smallProg" smallProgBlef
 smallProgU = uni smallProgV
@@ -394,21 +394,21 @@ smallProg' = toProg sdone smallProggedRead
 
 -- Fan-in using an mvar; not replayable
 -- par :: (Show a, Read a) => [Blef a] -> Blef [a]
--- par blefs = M.do
+-- par blefs = do
 --   mv <- io $ newMVar []
---   runBlef blef = M.do
+--   runBlef blef = do
 --     r <- blef
 --     rs <- io $ takeMVar mv
 --     io $ putMVar mv (r : rs)
 --   flip mapBlef_ blef runBlef
                          
--- par [] = M.return (return [])
+-- par [] = return (return [])
 
 exty :: Blef w Int
-exty = M.do
+exty = do
   n <- EBlef "exty0" (\h -> msp $ "handle " ++ show h)
   io $ msp $ "exty got " ++ show n
-  M.return $ n + 1
+  return $ n + 1
 
 extyProg :: Program W
 extyProg = toProg sdone exty
@@ -428,14 +428,14 @@ filesThings dir num dir2 num2 = Program
   , Sub (toProg sdone (filesThingSeq num2 dir2)) ]
 
 countDown :: String -> Int -> Blef w ()
-countDown tag 0 = M.return ()
-countDown tag n = M.do
+countDown tag 0 = return ()
+countDown tag n = do
   io $ msp $ "countdown " ++ tag ++ " " ++ show n
   io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
 filesThingPar :: String -> Int -> Program W
-filesThingPar dir num = toProg done $ M.do
+filesThingPar dir num = toProg done $ do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let writerIOs = map (writeAFile dir) [0..num-1]
       blefs = map (Blef "") writerIOs
@@ -444,23 +444,23 @@ filesThingPar dir num = toProg done $ M.do
   io $ msp "hi filesThingPar"
 
 parYeah :: Program W
-parYeah = toProg done $ M.do
+parYeah = toProg done $ do
   -- TODO: turn into test
-  let blef0 = M.do io slp
-                   M.return 1
-      blef1 = M.do io slp
-                   M.return "asdf"
+  let blef0 = do io slp
+                 return 1
+      blef1 = do io slp
+                 return "asdf"
   (i, s) <- parr vpairAllocator blef0 blef1
   io $ msp ("holy shit", i, s)
   io $ msp "hi filesThingPar"
 
 parYeahL :: Program W
-parYeahL = toProg done $ M.do
+parYeahL = toProg done $ do
   -- TODO: turn into test
-  let blef0 = M.do io slp
-                   M.return 1
-      blef1 = M.do io slp
-                   M.return 2
+  let blef0 = do io slp
+                 return 1
+      blef1 = do io slp
+                 return 2
   [i, j] <- parrList vpairAllocator2 [blef0, blef1]
   io $ msp ("holy shit", i, j)
   io $ msp "hi filesThingPar"

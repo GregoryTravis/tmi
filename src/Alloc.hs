@@ -12,7 +12,7 @@ import Data.IntMap hiding (map)
 
 import Core
 import Lift
-import qualified Monad as M
+import Monad
 import Ty
 import Util
 import V
@@ -52,7 +52,7 @@ mkAlloc = Alloc { map = empty, serial = 0 }
 
 -- TODO: Why do we need to read here?
 alloc :: V w (Alloc a) -> a -> Blef w (Allocated w a)
-alloc valloc initialValue = M.do
+alloc valloc initialValue = do
   alloc <- BRead valloc
   let va = vslot valloc (VNice (serial alloc))
       i = serial alloc
@@ -60,10 +60,10 @@ alloc valloc initialValue = M.do
       alloc' = alloc { map = map', serial = i + 1 }
       allocated = Allocated va (dealloc valloc i)
   BWrite valloc alloc'
-  M.return allocated
+  return allocated
 
 dealloc :: V w (Alloc a) -> Int -> Blef w ()
-dealloc valloc i = M.do
+dealloc valloc i = do
   alloc <- BRead valloc
   let alloc' = alloc { map = map' }
       map' = delete i (map alloc)
