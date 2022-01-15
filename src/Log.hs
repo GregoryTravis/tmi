@@ -67,7 +67,7 @@ import Veq
 -- + BReturn so we can return a V without it being an IO
 -- + Allocate pairs
 -- + real monad
--- - parrList
+-- + parrList
 -- - filesThingPar
 -- - generic allocator
 -- - ooo what if you can only get the value when deallocating, but you can
