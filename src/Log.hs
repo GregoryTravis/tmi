@@ -68,7 +68,7 @@ import Veq
 -- + Allocate pairs
 -- + real monad
 -- + parrList
--- - filesThingPar
+-- + filesThingPar
 -- - generic allocator
 -- - why are those commits necessary?
 -- - ooo what if you can only get the value when deallocating, but you can
@@ -124,31 +124,15 @@ import Veq
 --   - scroll down a bit
 
 data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int
-  , pairAllocator :: Alloc (Maybe Int, Maybe String)
-  , pairAllocator2 :: Alloc (Maybe Int, Maybe [Int])
-  , nilPairAllocator :: Alloc (Maybe (), Maybe [()])
+  , allocator :: Alloc
   } deriving (Read, Show)
 
-vpairAllocator :: V (Alloc (Maybe Int, Maybe String))
-vpairAllocator = VBiSeal (BiApp (bi (VNamed "pairAllocator" pairAllocator)
-                                    (VNamed "pairAllocator_" pairAllocator_)) root)
-pairAllocator_ :: W -> R W -> R (Alloc (Maybe Int, Maybe String))
-pairAllocator_ w wr = mkR ir
-  where ir pairAllocator = write wr $ w { pairAllocator }
-
-vpairAllocator2 :: V (Alloc (Maybe Int, Maybe [Int]))
-vpairAllocator2 = VBiSeal (BiApp (bi (VNamed "pairAllocator2" pairAllocator2)
-                                     (VNamed "pairAllocator2_" pairAllocator2_)) root)
-pairAllocator2_ :: W -> R W -> R (Alloc (Maybe Int, Maybe [Int]))
-pairAllocator2_ w wr = mkR ir
-  where ir pairAllocator2 = write wr $ w { pairAllocator2 }
-
-vnilPairAllocator :: V (Alloc (Maybe (), Maybe [()]))
-vnilPairAllocator = VBiSeal (BiApp (bi (VNamed "nilPairAllocator" nilPairAllocator)
-                                       (VNamed "nilPairAllocator_" nilPairAllocator_)) root)
-nilPairAllocator_ :: W -> R W -> R (Alloc (Maybe (), Maybe [()]))
-nilPairAllocator_ w wr = mkR ir
-  where ir nilPairAllocator = write wr $ w { nilPairAllocator }
+vallocator :: V Alloc
+vallocator = VBiSeal (BiApp (bi (VNamed "allocator" allocator)
+                                    (VNamed "allocator_" allocator_)) root)
+allocator_ :: W -> R W -> R Alloc
+allocator_ w wr = mkR ir
+  where ir allocator = write wr $ w { allocator }
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -192,20 +176,14 @@ root :: V W
 root = VRoot
 theWorld :: W
 theWorld = W { aa = 13, bb = 100, fanInCount = 112, fanInCount2 = 223
-  , pairAllocator = mkAlloc
-  , pairAllocator2 = mkAlloc
-  , nilPairAllocator = mkAlloc
+  , allocator = mkAlloc
   }
 
 recon :: String -> a
 recon "bplus" = unsafeCoerce $ VNamed "bplus" bplus
 recon "bplus_" = unsafeCoerce $ VNamed "bplus_" bplus_
-recon "nilpairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
-recon "nilpairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
-recon "pairAllocator" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
-recon "pairAllocator_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
-recon "pairAllocator2" = unsafeCoerce $ VNamed "pairAllocator" pairAllocator
-recon "pairAllocator2_" = unsafeCoerce $ VNamed "pairAllocator_" pairAllocator_
+recon "allocator" = unsafeCoerce $ VNamed "allocator" allocator
+recon "allocator_" = unsafeCoerce $ VNamed "allocator_" allocator_
 recon "smallProg" = unsafeCoerce $ VNamed "smallProg" smallProgBlef
 recon s = error $ "recon?? " ++ s
 
@@ -444,16 +422,16 @@ filesThingPar dir num = do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let writerIOs = map (\i -> do slp; writeAFile dir i) [0..num-1]
       blefs = map (Blef "") writerIOs
-  nils <- parrList vnilPairAllocator blefs
+  nils <- parrList vallocator blefs
   files <- Blef "listDirectory" (listDirectory dir)
   let deleterIOs = map (\f -> do slp; removeFile (dir ++ "/" ++ f)) files
       blefsd = map (Blef "") deleterIOs
-  nils <- parrList vnilPairAllocator blefsd
+  nils <- parrList vallocator blefsd
   Blef "removeDirectory" (removeDirectory dir)
 
 filesThingPar2 :: String -> Int -> String -> Int -> Blef W ()
 filesThingPar2 dir num dir' num' = do
-  parrList vnilPairAllocator [filesThingPar dir num, filesThingPar dir' num']
+  parrList vallocator [filesThingPar dir num, filesThingPar dir' num']
   return ()
 
 parYeah :: Program W
@@ -463,7 +441,7 @@ parYeah = toProg done $ do
                  return 1
       blef1 = do -- io slp
                  return "asdf"
-  (i, s) <- parr vpairAllocator blef0 blef1
+  (i, s) <- parr vallocator blef0 blef1
   io $ msp ("holy shit", i, s)
   io $ msp "hi filesThingPar"
 
@@ -474,7 +452,7 @@ parYeahL = toProg done $ do
   let blef0 = do return 1
       blef1 = do return 2
       blef2 = do return 30
-  [i, j, k] <- parrList vpairAllocator2 [blef0, blef1, blef2]
+  [i, j, k] <- parrList vallocator [blef0, blef1, blef2]
   io $ msp ("holy shit", i, j, k)
   io $ msp "hi filesThingPar"
 

@@ -18,7 +18,7 @@ import V
 -- Needs new Core elements: BRead (a -> Blef b) and BWrite etc.
 -- Or BRead (V a)?
 parr :: (Show a, Read a, Show b, Read b) =>
-        V w (Alloc (Maybe a, Maybe b)) -> Blef w a -> Blef w b -> Blef w (a, b)
+        V w Alloc -> Blef w a -> Blef w b -> Blef w (a, b)
 parr all blefa blefb = do
   Allocated acc dealloc <- alloc all (Nothing, Nothing)
   let k realK (Left a) = do
@@ -40,7 +40,7 @@ parr all blefa blefb = do
               k realK (Right b)))
 
 parrList :: (Show a, Read a) =>
-        V w (Alloc (Maybe a, Maybe [a])) -> [Blef w a] -> Blef w [a]
+        V w Alloc -> [Blef w a] -> Blef w [a]
 parrList all [] = return []
 parrList all (a:as) = do
   (first, rest) <- parr all a (parrList all as)
