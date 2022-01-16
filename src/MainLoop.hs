@@ -116,28 +116,23 @@ eventToProgram lookerUpper r@(Retval index rs) calls =
 
 -- TODO do these need IO?
 runProgram :: (Show w) => w -> Program w -> (w, [Call w])
--- runProgram w (Program cores) =
---   let (writes, calls) = runCores w cores [] []
---       w' = propWrite w (Writes writes)
-runProgram w (Program cores) = {-noeesp ("MainLoop runProgram " ++ show cores) $ -}
-  let (writes, calls) = {-noeesp ("MainLoop runProgram runCores") $-} runCores w cores [] []
-      w' = {-noeesp ("MainLoop runProgram propWrite " ++ show writes) $-} propWrite w (Writes writes)
-   in (w', calls)
+runProgram w (Program cores) = runCores w cores []
 
 -- TODO: appends very slow
-runCores :: w -> [Core w] -> [Write w] -> [Call w] -> ([Write w], [Call w])
-runCores w (core:cores) writes calls =
-  let (newWrites, newCalls) = runCore w core
-   in runCores w cores (writes ++ newWrites) (calls ++ newCalls)
-runCores w [] writes calls = (writes, calls)
+runCores :: Show w => w -> [Core w] -> [Call w] -> (w, [Call w])
+runCores w (core:cores) calls =
+  let (w', newCalls) = runCore w core
+   in runCores w' cores (calls ++ newCalls)
+runCores w [] calls = (w, calls)
 
-runCore :: w -> Core w -> ([Write w], [Call w])
+runCore :: Show w => w -> Core w -> (w, [Call w])
 runCore w c = veesp ("MainLoop runCore", c) $ runCore' w c
 -- runCore w c = runCore' w c
-runCore' :: w -> Core w -> ([Write w], [Call w])
-runCore' w (Assign write) = ([write], [])
-runCore' w (Call call) = ([], [call])
-runCore' w (Sub (Program cores)) = runCores w cores [] []
+runCore' :: Show w => w -> Core w -> (w, [Call w])
+runCore' w (Assign write) = (w', [])
+  where w' = propWrite w write
+runCore' w (Call call) = (w, [call])
+runCore' w (Sub (Program cores)) = runCores w cores []
 runCore' w (Cond vbool th el) =
   let b = rd w vbool
       next = if b then th else el
@@ -147,7 +142,7 @@ runCore' w (CRead va a2P) =
       prog = a2P a
    in runCore w (Sub prog)
 -- runCore' w (Named s c) = runCore w c
-runCore' w Done = ([], [])
+runCore' w Done = (w, [])
 -- runCore w x = error $ "??? " ++ show x
 -- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
 -- runCore w (Assign write) writes calls = (writes ++ [write], calls)

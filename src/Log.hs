@@ -447,9 +447,9 @@ filesThingPar dir num = toProg done $ do
 parYeah :: Program W
 parYeah = toProg done $ do
   -- TODO: turn into test
-  let blef0 = do io slp
+  let blef0 = do -- io slp
                  return 1
-      blef1 = do io slp
+      blef1 = do -- io slp
                  return "asdf"
   (i, s) <- parr vpairAllocator blef0 blef1
   io $ msp ("holy shit", i, s)
@@ -459,12 +459,9 @@ parYeahL :: Program W
 parYeahL = toProg done $ do
   -- TODO: turn into test
   -- TODO why are these commits necessary?
-  let blef0 = do commit
-                 return 1
-      blef1 = do commit
-                 return 2
-      blef2 = do commit
-                 return 30
+  let blef0 = do return 1
+      blef1 = do return 2
+      blef2 = do return 30
   [i, j, k] <- parrList vpairAllocator2 [blef0, blef1, blef2]
   io $ msp ("holy shit", i, j, k)
   io $ msp "hi filesThingPar"
