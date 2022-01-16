@@ -266,8 +266,9 @@ writeAFile dir n = do
   let ns = show n
   writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
-slp = sleepRand 0.2 0.4
--- slp = sleepRand 2 4
+-- slp = sleepRand 0.2 0.4
+-- slp = sleepRand 0.5 0.8
+slp = sleepRand 2 4
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
@@ -418,7 +419,10 @@ lookupCommand :: AppEnv W
 lookupCommand ["filesThing", dir, numS] = filesThing dir (read numS)
 lookupCommand ["filesThings", dir, numS, dir2, numS2] = filesThings dir (read numS) dir2 (read numS2)
 lookupCommand ["exty"] = extyProg
-lookupCommand ["filesThingPar", dir, numS] = parYeahL -- filesThingPar dir (read numS)
+lookupCommand ["filesThingPar", dir, numS] =
+  toProg done $ filesThingPar dir (read numS)
+lookupCommand ["filesThingPar2", dir, numS, dir', numS'] =
+  toProg done $ filesThingPar2 dir (read numS) dir' (read numS)
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -435,14 +439,22 @@ countDown tag n = do
   io $ slp -- sleepRand 0.6 1.0
   countDown tag (n - 1)
 
-filesThingPar :: String -> Int -> Program W
-filesThingPar dir num = toProg done $ do
+filesThingPar :: String -> Int -> Blef W ()
+filesThingPar dir num = do
   Blef "createDirectoryExt" (createDirectoryExt dir)
-  let writerIOs = map (writeAFile dir) [0..num-1]
+  let writerIOs = map (\i -> do slp; writeAFile dir i) [0..num-1]
       blefs = map (Blef "") writerIOs
   nils <- parrList vnilPairAllocator blefs
-  io $ msp nils
-  io $ msp "hi filesThingPar"
+  files <- Blef "listDirectory" (listDirectory dir)
+  let deleterIOs = map (\f -> do slp; removeFile (dir ++ "/" ++ f)) files
+      blefsd = map (Blef "") deleterIOs
+  nils <- parrList vnilPairAllocator blefsd
+  Blef "removeDirectory" (removeDirectory dir)
+
+filesThingPar2 :: String -> Int -> String -> Int -> Blef W ()
+filesThingPar2 dir num dir' num' = do
+  parrList vnilPairAllocator [filesThingPar dir num, filesThingPar dir' num']
+  return ()
 
 parYeah :: Program W
 parYeah = toProg done $ do
@@ -480,7 +492,7 @@ justRun dbdir app command = do
 logMain :: IO ()
 logMain = do
   -- msp parYeahL
-  justRun "db" logApp ["filesThingPar", "dirr", "4"]
+  justRun "db" logApp ["filesThingPar2", "dirr", "20", "dirr2", "10"]
 
 --program num = Program
 --  [
