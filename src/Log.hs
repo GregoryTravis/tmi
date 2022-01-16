@@ -69,10 +69,12 @@ import Veq
 -- + real monad
 -- + parrList
 -- + filesThingPar
--- - generic allocator
--- - why are those commits necessary?
--- - ooo what if you can only get the value when deallocating, but you can
---   transform it without deallocating. Still might leak tho
+-- + generic allocator
+-- x why are those commits necessary?
+-- + ooo what if you can only get the value when deallocating, but you can
+--   transform it without deallocating. Still might leak tho. And no, I need to peek at it
+-- - add an external call to filesThingPar
+-- - that's the Narrative Monad
 -- - test
 --   - get a return value from a program?
 --   - easier way to run a blef real quick: just the blef, init, and recon
@@ -247,6 +249,7 @@ writeAFile dir n = do
 -- slp = sleepRand 0.2 0.4
 -- slp = sleepRand 0.5 0.8
 slp = sleepRand 2 4
+-- slp = return ()
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
 cleanDir counter k dir =
