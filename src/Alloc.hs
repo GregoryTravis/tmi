@@ -56,11 +56,10 @@ alloc valloc initialValue = do
   alloc <- BRead valloc
   let va = vslot valloc (VNice (serial alloc))
       i = serial alloc
-      map' = feesp "AAA insert0" $ insert i initialValue (map alloc)
+      map' = insert i initialValue (map alloc)
       alloc' = alloc { map = map', serial = i + 1 }
       allocated = Allocated va (dealloc valloc i)
   BWrite valloc alloc'
-  commit
   return allocated
 
 dealloc :: V w (Alloc a) -> Int -> Blef w ()
@@ -69,4 +68,3 @@ dealloc valloc i = do
   let alloc' = alloc { map = map' }
       map' = delete i (map alloc)
   BWrite valloc alloc'
-  commit

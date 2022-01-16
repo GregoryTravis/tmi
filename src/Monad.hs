@@ -30,8 +30,3 @@ instance MonadFail (Blef w) where
 
 io :: (Read a, Show a) => IO a -> Blef w a
 io action = Blef "" action
-
-commit :: Blef w ()
-commit = do
-  () <- io $ return ()
-  return ()
