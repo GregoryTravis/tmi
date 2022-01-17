@@ -22,7 +22,7 @@ import TestUtil
 
 -- Some low-level prodding
 
-data W = W { pairAllocator :: Alloc (Maybe Int, Maybe String) } deriving (Read, Show)
+data W = W { allocator :: Alloc } deriving (Read, Show)
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -31,12 +31,12 @@ type R = Ty.R W
 root :: V W
 root = VRoot
 
-vpairAllocator :: V (Alloc (Maybe Int, Maybe String))
-vpairAllocator = VBiSeal (BiApp (bi (VNamed "pairAllocator" pairAllocator)
-                                    (VNamed "pairAllocator_" pairAllocator_)) root)
-pairAllocator_ :: W -> R W -> R (Alloc (Maybe Int, Maybe String))
-pairAllocator_ w wr = mkR ir
-  where ir pairAllocator = write wr $ w { pairAllocator }
+vallocator :: V Alloc
+vallocator = VBiSeal (BiApp (bi (VNamed "allocator" allocator)
+                                    (VNamed "allocator_" allocator_)) root)
+allocator_ :: W -> R W -> R Alloc
+allocator_ w wr = mkR ir
+  where ir allocator = write wr $ w { allocator }
 
 -- parrTest :: Program W
 -- parrTest = toProg done $ M.do
