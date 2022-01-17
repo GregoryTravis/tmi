@@ -423,8 +423,13 @@ countDown tag n = do
 filesThingPar :: String -> Int -> Blef W ()
 filesThingPar dir num = do
   Blef "createDirectoryExt" (createDirectoryExt dir)
-  let writerIOs = map (\i -> do slp; writeAFile dir i) [0..num-1]
-      blefs = map (Blef "") writerIOs
+  let blefs = map writie [0..num-1]
+        where writie i = do io slp
+                            if i == 3 && False
+                              then do extraN <- EBlef "ftexty" (\h -> msp $ "ft handle " ++ show h)
+                                      Blef "" $ writeAFile dir (i + extraN)
+                            else Blef "" $ writeAFile dir i
+      -- blefs = map (Blef "") writerIOs
   nils <- parrList vallocator blefs
   files <- Blef "listDirectory" (listDirectory dir)
   let deleterIOs = map (\f -> do slp; removeFile (dir ++ "/" ++ f)) files
@@ -473,7 +478,9 @@ justRun dbdir app command = do
 logMain :: IO ()
 logMain = do
   -- msp parYeahL
-  justRun "db" logApp ["filesThingPar2", "dirr", "20", "dirr2", "10"]
+  justRun "db" logApp ["filesThingPar2", "dirr", "5", "dirr2", "5"]
+  -- injectEvent "db" logApp $ Retval 21 "2000"
+  -- run logApp "db"
 
 --program num = Program
 --  [
