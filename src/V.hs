@@ -18,6 +18,8 @@ mkR = R
 
 bi :: V w f -> V w r -> Bi w f r
 bi = Ty.Bi
+vbi :: String -> f -> r -> Bi w f r
+vbi s f r = (bi (VNamed s f) (VNamed (s ++ "_") r))
 
 -- Turned a named forward into a Bi
 uni :: V w (a -> b) -> Bi w (a -> b) (a -> R w a -> c)

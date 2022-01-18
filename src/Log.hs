@@ -130,11 +130,13 @@ data W = W { aa :: Int, bb :: Int, fanInCount :: Int, fanInCount2 :: Int
   } deriving (Read, Show)
 
 vallocator :: V Alloc
-vallocator = VBiSeal (BiApp (bi (VNamed "allocator" allocator)
-                                    (VNamed "allocator_" allocator_)) root)
+-- vallocator = lift1 (bi (VNamed "allocator" allocator)
+--                        (VNamed "allocator_" allocator_)) root
+vallocator = lift1 (vbi "allocator" allocator (liftV (\w allocator -> w { allocator })))
+                   root
 allocator_ :: W -> R W -> R Alloc
-allocator_ w wr = mkR ir
-  where ir allocator = write wr $ w { allocator }
+-- TODO still need this for recon
+allocator_ = liftV (\w allocator -> w { allocator })
 
 type V = Ty.V W
 type Bi = Ty.Bi W
@@ -247,8 +249,8 @@ writeAFile dir n = do
   writeFileExt (dir ++ "/" ++ ns) ("i am " ++ ns ++ "\n")
 
 -- slp = sleepRand 0.2 0.4
--- slp = sleepRand 0.5 0.8
-slp = sleepRand 2 4
+slp = sleepRand 0.5 0.8
+-- slp = sleepRand 2 4
 -- slp = return ()
 
 cleanDir :: V Int -> Core W -> FilePath -> Core W
@@ -403,7 +405,7 @@ lookupCommand ["exty"] = extyProg
 lookupCommand ["filesThingPar", dir, numS] =
   toProg done $ filesThingPar dir (read numS)
 lookupCommand ["filesThingPar2", dir, numS, dir', numS'] =
-  toProg done $ filesThingPar2 dir (read numS) dir' (read numS)
+  toProg done $ filesThingPar2 dir (read numS) dir' (read numS')
 
 filesThing :: FilePath -> Int -> Program W
 filesThing dir num = toProg sdone (filesThingSeq num dir)
@@ -425,6 +427,7 @@ filesThingPar dir num = do
   Blef "createDirectoryExt" (createDirectoryExt dir)
   let blefs = map writie [0..num-1]
         where writie i = do io slp
+                            io $ msp "write"
                             if i == 3 && False
                               then do extraN <- EBlef "ftexty" (\h -> msp $ "ft handle " ++ show h)
                                       Blef "" $ writeAFile dir (i + extraN)
@@ -478,7 +481,7 @@ justRun dbdir app command = do
 logMain :: IO ()
 logMain = do
   -- msp parYeahL
-  justRun "db" logApp ["filesThingPar2", "dirr", "5", "dirr2", "5"]
+  justRun "db" logApp ["filesThingPar2", "dirr", "20", "dirr2", "5"]
   -- injectEvent "db" logApp $ Retval 21 "2000"
   -- run logApp "db"
 
