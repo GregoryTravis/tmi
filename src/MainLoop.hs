@@ -1,6 +1,7 @@
 module MainLoop
 ( reset
 , run
+, fromTheTop
 , ensureDbDir
 , injectEvent
 , App(..)
@@ -84,6 +85,14 @@ run app dbdir = do
           else do msp "Nothing to do, exiting."
                   return ()
   loop initIcr
+
+fromTheTop :: (Read w, Show w) => FilePath -> App w -> [String] -> IO ()
+fromTheTop dbdir app command = do
+  reset dbdir
+  ensureDbDir dbdir (initialW app)
+  injectEvent dbdir app (Command command)
+  run app dbdir
+
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.

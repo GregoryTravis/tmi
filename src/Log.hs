@@ -471,17 +471,10 @@ parYeahL = toProg done $ do
 
 logApp = App { initialW = theWorld, appEnv = lookupCommand }
 
-justRun :: (Read w, Show w) => FilePath -> App w -> [String] -> IO ()
-justRun dbdir app command = do
-  reset dbdir
-  ensureDbDir dbdir (initialW app)
-  injectEvent dbdir app (Command command)
-  run app dbdir
-
 logMain :: IO ()
 logMain = do
   -- msp parYeahL
-  justRun "db" logApp ["filesThingPar2", "dirr", "20", "dirr2", "5"]
+  fromTheTop "db" logApp ["filesThingPar2", "dirr", "20", "dirr2", "5"]
   -- injectEvent "db" logApp $ Retval 21 "2000"
   -- run logApp "db"
 

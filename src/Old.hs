@@ -51,8 +51,4 @@ old' = do
 oldApp = App { initialW = theWorld, appEnv = lookupCommand }
 
 oldMain = do
-  let dbdir = "old"
-  reset dbdir
-  ensureDbDir dbdir (initialW oldApp)
-  injectEvent dbdir oldApp (Command ["old"])
-  run oldApp dbdir
+  fromTheTop "old" oldApp ["old"]
