@@ -3,6 +3,7 @@
 module Old (oldMain) where
 
 import Core
+import Lens
 import Lift
 import MainLoop
 import Monad
@@ -31,11 +32,8 @@ theWorld = W
   , invited = []
   }
 
-binvitees :: V [String]
-binvitees = VBiSeal (BiApp (bi (VNamed "invitees" invitees) (VNamed "invitees_" invitees_)) root)
-invitees_ :: W -> R W -> R [String]
-invitees_ w wr = mkR ir
-  where ir invitees = write wr $ w { invitees }
+binvitees = field root "invitees" invitees $ \w invitees -> w { invitees }
+binvited = field root "invited" invited $ \w invited -> w { invited }
 
 lookupCommand :: AppEnv W
 lookupCommand ["old"] = old

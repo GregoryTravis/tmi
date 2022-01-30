@@ -17,7 +17,7 @@ executable tmi
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
-                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr, Flags, Old
+                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr, Flags, Old, Lens
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5
@@ -42,7 +42,7 @@ test-suite test
   hs-source-dirs:      test, src
   main-is:             Tests.hs
   other-modules:       Dyn, Log, V, Veq, Storage, Ty, Util, Propagate, Lift, Testing, Core, C, Ext,
-                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr, Flags, Old,
+                       InternalCallRunner, Monad, Meta, MainLoop, Alloc, Parr, Flags, Old, Lens,
                        ParrTest, Innards, TestUtil
                      , Innards
   build-depends:       base >= 4.8
