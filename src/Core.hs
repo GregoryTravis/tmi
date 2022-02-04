@@ -8,6 +8,7 @@ module Core
 , applyContinuation
 , Monitor(..)
 , Monitoring(..)
+, monitor
 , wrapAction
 , Blef(..)
 , toProg
@@ -32,6 +33,7 @@ data Event w = Retval Int String | Command [String] deriving (Show, Read)
 data Core w = Assign (Write w) | Call (Call w) | Sub (Program w)
             | Cond (V w Bool) (Core w) (Core w) | Named String (Core w) | Done
             | forall a. CRead (V w a) (a -> Program w)
+            | forall a. Mon (V w a) (Monitor a)
 data Program w = Program [Core w] deriving Show
 
 instance Show (Core w) where
@@ -88,11 +90,13 @@ data Blef w a where
   -- BCallCC :: ((b -> Blef w a) -> Blef w a) -> Blef w a
   BCallCC :: (Read c, Show c) => ((a -> Blef w b) -> Blef w c) -> Blef w a
   ProgBlef :: Program w -> Blef w a
+  BMon :: V w a -> Monitor a -> Blef w ()
   -- BCallCC :: ((a -> Blef a) -> Blef a) -> Blef a
 
   -- n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
   --                                                 -- BCallCC _ :: Blef ()
 
+monitor = BMon
 
 -- call/cc
 -- do
@@ -137,6 +141,9 @@ toProg k (BWrite va a) =
   Program [Assign (Write va a), Sub (k ())]
 
 toProg k (ProgBlef p) = p
+
+toProg k (BMon va mon) =
+  Program [Mon va mon, Sub (k ())]
 
 -- toProg _ x = error $ "toProg " ++ show x
 

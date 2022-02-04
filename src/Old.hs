@@ -41,8 +41,9 @@ lookupCommand ["old"] = old
 old :: Program W
 old = toProg sdone old'
 
-old' :: Blef w ()
+old' :: Blef W ()
 old' = do
+  monitor binvited $ \x -> msp ("monny", x)
   io $ msp "hi old'"
   return ()
 

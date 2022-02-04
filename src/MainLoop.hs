@@ -66,11 +66,14 @@ injectEvent dbdir _app e = do
 run :: (Read w, Show w) => App w -> FilePath -> IO ()
 run app dbdir = do
   initIcr <- mkInternalCallRunner
-  let loop icr = do
+  let loop icr monitorings = do
         ck <- readCK dbdir
         initW <- readInitW dbdir
         vmsp $ "MainLoop processEvents"
-        let (w', calls) = processEvents (appEnv app) initW (eventLog ck)
+        let (w', calls, newMonitorings) = processEvents (appEnv app) initW (eventLog ck)
+            monitorings' = monitorings ++ newMonitorings
+        vmsp $ "MainLoop runMonitorings"
+        runMonitorings w' monitorings'
         vmsp $ "MainLoop icrRun"
         icr' <- icrRun icr calls (eventLog ck)
         inf <- icrInFlight icr'
@@ -81,10 +84,10 @@ run app dbdir = do
                   vmsp $ "MainLoop icrRead " ++ show r
                   let ck' = ck { eventLog = eventLog ck ++ [r] }
                   writeCK dbdir ck'
-                  loop icr'
+                  loop icr' monitorings'
           else do msp "Nothing to do, exiting."
                   return ()
-  loop initIcr
+  loop initIcr []
 
 fromTheTop :: (Read w, Show w) => FilePath -> App w -> [String] -> IO ()
 fromTheTop dbdir app command = do
@@ -93,27 +96,33 @@ fromTheTop dbdir app command = do
   injectEvent dbdir app (Command command)
   run app dbdir
 
+runMonitorings :: w -> [Monitoring w] -> IO ()
+runMonitorings w monitorings = mapM_ (runIt w) monitorings
+  where runIt w (Monitoring va mon) = do let x = rd w va
+                                         mon x
 
 -- Iterate through the event list. Each one produces a Program which gives us a new w
 -- and some steps to add to the step list.
 -- A new InternalCall "yo" has an IO which only run if the retval list doesn't already have
 -- a value (which is a witness for that IO having already been run).
-processEvents :: (Show w) => AppEnv w -> w -> [Event w] -> (w, [Call w])
-processEvents lookerUpper w events = processEvents' lookerUpper w events []
+processEvents :: (Show w) => AppEnv w -> w -> [Event w] -> (w, [Call w], [Monitoring w])
+processEvents lookerUpper w events = processEvents' lookerUpper w events [] []
 
-processEvents' :: (Show w) => AppEnv w -> w -> [Event w] -> [Call w] -> (w, [Call w])
-processEvents' lookerUpper w [] calls = (w, calls)
-processEvents' lookerUpper w (e:es) calls =
-  let (w', newCalls) = processEvent lookerUpper w e calls
+processEvents' :: (Show w) => AppEnv w -> w -> [Event w] -> [Call w] -> [Monitoring w] -> (w, [Call w], [Monitoring w])
+processEvents' lookerUpper w [] calls monitorings = (w, calls, monitorings)
+processEvents' lookerUpper w (e:es) calls monitorings =
+  let (w', newCalls, newMonitorings) = processEvent lookerUpper w e calls monitorings
       calls' = calls ++ newCalls
-   in noeesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls'
+      monitorings' = monitorings ++ newMonitorings
+   in noeesp ("processEvents", (e:es), "old", calls, "new", newCalls, "all", calls') $ processEvents' lookerUpper w' es calls' monitorings'
 
-processEvent :: (Show w) => AppEnv w -> w -> Event w -> [Call w] -> (w, [Call w])
-processEvent lookerUpper w e calls =
+processEvent :: (Show w) => AppEnv w -> w -> Event w -> [Call w] -> [Monitoring w] -> (w, [Call w], [Monitoring w])
+processEvent lookerUpper w e calls monitorings =
   let prog = eventToProgram lookerUpper e calls
-      (w', newCalls) = runProgram w prog
+      (w', newCalls, newMonitorings) = runProgram w prog
+      -- chk = assertM "nonempty arrays to processEvent" (null calls && null monitorings)
       -- allCalls = calls ++ newCalls
-   in veesp ("MainLoop processEvent ", e) $ (w', newCalls)
+   in veesp ("MainLoop processEvent ", e) $ (w', newCalls, newMonitorings)
    -- in eesp ("processEvent", e) $ runProgram w prog
 
 eventToProgram :: AppEnv w -> Event w -> [Call w] -> Program w
@@ -124,24 +133,24 @@ eventToProgram lookerUpper r@(Retval index rs) calls =
    in noeesp ("applyContinuation", r, call, program) $ program
 
 -- TODO do these need IO?
-runProgram :: (Show w) => w -> Program w -> (w, [Call w])
-runProgram w (Program cores) = runCores w cores []
+runProgram :: (Show w) => w -> Program w -> (w, [Call w], [Monitoring w])
+runProgram w (Program cores) = runCores w cores [] []
 
 -- TODO: appends very slow
-runCores :: Show w => w -> [Core w] -> [Call w] -> (w, [Call w])
-runCores w (core:cores) calls =
-  let (w', newCalls) = runCore w core
-   in runCores w' cores (calls ++ newCalls)
-runCores w [] calls = (w, calls)
+runCores :: Show w => w -> [Core w] -> [Call w] -> [Monitoring w] -> (w, [Call w], [Monitoring w])
+runCores w (core:cores) calls monitorings =
+  let (w', newCalls, newMonitorings) = runCore w core
+   in runCores w' cores (calls ++ newCalls) (monitorings ++ newMonitorings)
+runCores w [] calls monitorings = (w, calls, monitorings)
 
-runCore :: Show w => w -> Core w -> (w, [Call w])
+runCore :: Show w => w -> Core w -> (w, [Call w], [Monitoring w])
 runCore w c = veesp ("MainLoop runCore", c) $ runCore' w c
 -- runCore w c = runCore' w c
-runCore' :: Show w => w -> Core w -> (w, [Call w])
-runCore' w (Assign write) = (w', [])
+runCore' :: Show w => w -> Core w -> (w, [Call w], [Monitoring w])
+runCore' w (Assign write) = (w', [], [])
   where w' = propWrite w write
-runCore' w (Call call) = (w, [call])
-runCore' w (Sub (Program cores)) = runCores w cores []
+runCore' w (Call call) = (w, [call], [])
+runCore' w (Sub (Program cores)) = runCores w cores [] []
 runCore' w (Cond vbool th el) =
   let b = rd w vbool
       next = if b then th else el
@@ -151,7 +160,8 @@ runCore' w (CRead va a2P) =
       prog = a2P a
    in runCore w (Sub prog)
 -- runCore' w (Named s c) = runCore w c
-runCore' w Done = (w, [])
+runCore' w Done = (w, [], [])
+runCore' w (Mon va mon) = (w, [], [Monitoring va mon])
 -- runCore w x = error $ "??? " ++ show x
 -- runCore :: w -> Core w -> [Write w] -> [Call w] -> ([Write w], [Call w])
 -- runCore w (Assign write) writes calls = (writes ++ [write], calls)
