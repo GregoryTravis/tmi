@@ -2,6 +2,8 @@
 
 module Old (oldMain) where
 
+import Data.List ((\\))
+
 import Core
 import Lens
 import Lift
@@ -28,12 +30,18 @@ data W = W
 
 theWorld :: W
 theWorld = W
-  { invitees = []
-  , invited = []
+  { invitees = ["a@b.com", "c@d.com"]
+  , invited = ["c@d.com"]
   }
 
 binvitees = field root "invitees" invitees $ \w invitees -> w { invitees }
 binvited = field root "invited" invited $ \w invited -> w { invited }
+
+bListDiff :: Eq a => V [a] -> V [a] -> V [a]
+bListDiff = lift2 $ nuni "eq" (\\)
+
+notYetInvited :: V [String]
+notYetInvited = bListDiff binvitees binvited
 
 lookupCommand :: AppEnv W
 lookupCommand ["old"] = old
@@ -43,7 +51,7 @@ old = toProg sdone old'
 
 old' :: Blef W ()
 old' = do
-  monitor binvited $ \x -> msp ("monny", x)
+  monitor notYetInvited $ \x -> msp ("monny", x)
   io $ msp "hi old'"
   return ()
 
