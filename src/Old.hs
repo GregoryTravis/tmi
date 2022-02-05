@@ -56,7 +56,13 @@ old' = do
   binvs <- BRead binvitees
   BWrite binvitees (binvs ++ ["e@f.com"])
   io $ msp "hi old'"
+  inviteTheUninvited
   return ()
+
+inviteTheUninvited :: Blef W ()
+inviteTheUninvited = do
+  nyi <- BRead notYetInvited
+  io $ msp $ "gonna email" ++ (show nyi)
 
 oldApp = App { initialW = theWorld, appEnv = lookupCommand }
 
