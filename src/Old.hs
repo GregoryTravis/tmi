@@ -53,6 +53,9 @@ old' :: Blef W ()
 old' = do
   monitor notYetInvited $ \x -> msp ("monny", x)
   io $ msp "hi old'"
+  binvs <- BRead binvitees
+  BWrite binvitees (binvs ++ ["e@f.com"])
+  io $ msp "hi old'"
   return ()
 
 oldApp = App { initialW = theWorld, appEnv = lookupCommand }
