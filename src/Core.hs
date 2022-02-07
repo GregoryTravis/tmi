@@ -11,6 +11,8 @@ module Core
 , monitor
 , wrapAction
 , Blef(..)
+, (<--)
+, (<--+)
 , toProg
 , boond
 , done
@@ -84,6 +86,7 @@ data Blef w a where
   Blefs :: forall a b w. Blef w b -> (b -> Blef w a) -> Blef w a
   BRead :: V w a -> Blef w a
   BWrite :: V w a -> a -> Blef w ()
+  BVWrite :: V w a -> V w a -> Blef w ()
   BFork :: (Read a, Show a) => Blef w a -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
@@ -95,6 +98,13 @@ data Blef w a where
 
   -- n <- BCallCC (\krec -> Blef "" (msp "ignored")) -- krec :: (Int -> Blef String) -> Blef ()
   --                                                 -- BCallCC _ :: Blef ()
+
+(<--) :: V w a -> V w a -> Blef w ()
+(<--) = BVWrite
+
+(<--+) :: V w a -> (V w a -> V w a) -> Blef w ()
+(<--+) va vat = do
+  va <-- (vat va)
 
 monitor = BMon
 
@@ -109,6 +119,7 @@ instance (Show a, Read a) => Show (Blef w a) where
  show (Blefs b a2b) = "(Blefs)"
  show (BRead va) = "(BRead " ++ show va ++ ")"
  show (BWrite va a) = "(BWrite " ++ show va ++ ")"
+ show (BVWrite va va') = "(BVWrite " ++ show va ++ " " ++ show va' ++ ")"
 
 boond :: Blef w a -> (a -> Blef w b) -> Blef w b
 -- TODO make a constructor that only allows the correct usage pattern, infixl
@@ -139,6 +150,8 @@ toProg k (BRead va) =
   Program [CRead va k]
 toProg k (BWrite va a) =
   Program [Assign (Write va a), Sub (k ())]
+toProg k (BVWrite va va') =
+  Program [Assign (VWrite va va'), Sub (k ())]
 
 toProg k (ProgBlef p) = p
 

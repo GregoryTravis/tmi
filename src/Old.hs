@@ -46,16 +46,18 @@ bdeclined = field root "declined" declined $ \w declined -> w { declined }
 bListDiff :: Eq a => V [a] -> V [a] -> V [a]
 bListDiff = lift2 $ nuni "eq" (\\)
 
+(++.) :: Ty.V w [a] -> Ty.V w [a] -> Ty.V w [a]
+(++.) = lift2 $ nuni "append" (++)
+
 notYetInvited :: V [String]
 notYetInvited = bListDiff binvitees binvited
 
 lookupCommand :: AppEnv W
 lookupCommand ["old"] = old
 
-vappend :: Ty.V w [a] -> a -> Blef w ()
-vappend vas a = do
-  as <- BRead vas
-  BWrite vas (as ++ [a])
+-- TODO don't want this Show a
+vappend :: Show a => Ty.V w [a] -> a -> Blef w ()
+vappend vas a = vas <--+ (++. (k [a]))
 
 old :: Program W
 old = toProg sdone old'
@@ -68,7 +70,7 @@ old' = do
   io $ msp "hi old'"
   -- binvs <- BRead binvitees
   -- BWrite binvitees (binvs ++ ["e@f.com"])
-  vappend binvitees "e@f.com"
+  binvitees <--+ (++. k ["e@f.com"])
   io $ msp "hi old'"
   inviteTheUninvited
   return ()
@@ -86,8 +88,8 @@ inviteTheUninvited = do
         acceptToken = show (Retval h "Accept")
         rejectToken = show (Retval h "Reject")
     msp text
-  case rsvp of Accept -> vappend bjoined one
-               Reject -> vappend bdeclined one
+  case rsvp of Accept -> bjoined <--+ (++. k [one])
+               Reject -> bdeclined <--+ (++. k [one])
   io $ msp $ "gonna email" ++ (show nyi)
 
 oldApp = App { initialW = theWorld, appEnv = lookupCommand }
