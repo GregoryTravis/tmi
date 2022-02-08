@@ -67,6 +67,7 @@ old' = do
   monitor notYetInvited $ \x -> msp ("nyi", x)
   monitor bjoined $ \x -> msp ("joined", x)
   monitor bdeclined $ \x -> msp ("declined", x)
+  monitor binvited $ \x -> msp ("invited", x)
   io $ msp "hi old'"
   -- binvs <- BRead binvitees
   -- BWrite binvitees (binvs ++ ["e@f.com"])
@@ -81,6 +82,7 @@ inviteTheUninvited :: Blef W ()
 inviteTheUninvited = do
   nyi <- BRead notYetInvited
   let one = head nyi
+  binvited <--+ (++. k [one])
   rsvp <- EBlef "rsvp" $ \h -> do
     let text = "sent to " ++ one ++ "\n" ++
                "accept: " ++ acceptToken ++ "\n" ++
