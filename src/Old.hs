@@ -80,6 +80,7 @@ data RSVP = Accept | Reject deriving (Read, Show)
 
 invitePlayer :: String -> Blef W ()
 invitePlayer email = do
+  binvited <--+ (++. k [email])
   rsvp <- EBlef "rsvp" $ \h -> do
     let text = "sent to " ++ email ++ "\n" ++
                "accept: " ++ acceptToken ++ "\n" ++
@@ -93,9 +94,6 @@ invitePlayer email = do
 inviteTheUninvited :: Blef W ()
 inviteTheUninvited = do
   nyi <- BRead notYetInvited
-  let one = head nyi
-  binvited <--+ (++. k [one])
-  -- BFork $ invitePlayer one
   mapM_ (BFork . invitePlayer) nyi
   io $ msp $ "gonna email" ++ (show nyi)
 
