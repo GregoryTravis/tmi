@@ -23,9 +23,6 @@ module Util
 , ttsp
 , tesp
 , ttesp
-, tseesp
-, tseeesp
-, tsmsp
 , fromLeftReal
 , mappily
 , mcompose
@@ -74,6 +71,7 @@ module Util
 ) where
 
 import Control.Concurrent.Chan
+import Control.Concurrent.MVar (MVar, newMVar, takeMVar, putMVar)
 import Control.Exception
 import Data.Containers.ListUtils (nubOrd)
 import Control.DeepSeq
@@ -95,17 +93,32 @@ import System.Random
 import Text.Pretty.Simple (pShowNoColor)
 import Text.Printf
 
+tsPutStrLnLock :: MVar ()
+tsPutStrLnLock = unsafePerformIO $ newMVar ()
+
+tsPutStrLn s = do
+  () <- takeMVar tsPutStrLnLock
+  putStrLn s
+  putMVar tsPutStrLnLock ()
+
+ourPutStrLn = tsPutStrLn
+
+-- blah = do
+--   mapM_ yeah [0..10]
+--   where yeah i = forkIO $ boo i
+--         boo i = do () <- takeMVar lock
+--                    putStrLn ("asdfalsdkfjhalkjsdfhlakjhdflkjahdflkjhasdlkfjhalsdkjfh" ++ "a")
+--                    putMVar lock ()
+--                    threadDelay $ floor (((fromIntegral i :: Double) / 10.0) * 1000000)
+--                    boo i
+
 esp a = unsafePerformIO $ do
   putStrLn $ evalString $ show $ a
   return a
 
--- Use threadsafe logging?
-useTS = True
-
 eesp :: Show s => s -> a -> a
-eesp = if useTS then tseesp else oeesp
-oeesp s a = unsafePerformIO $ do
-  putStrLn $ evalString $ show $ s
+eesp s a = unsafePerformIO $ do
+  ourPutStrLn $ evalString $ show $ s
   hFlush stdout
   return a
 
@@ -114,32 +127,32 @@ noeesp _ x = x
 
 fesp :: Show b => (a -> b) -> a -> a
 fesp f a = unsafePerformIO $ do
-  putStrLn $ evalString $ show $ f a
+  ourPutStrLn $ evalString $ show $ f a
   return a
 
 sfesp :: (Show s, Show b) => s -> (a -> b) -> a -> a
 sfesp s f a = unsafePerformIO $ do
-  putStrLn $ evalString $ show (s, f a)
+  ourPutStrLn $ evalString $ show (s, f a)
   return a
 
 -- function, arg, and result
 faresp :: (Show a, Show b) => (a -> b) -> (a -> b)
 faresp f a = unsafePerformIO $ do
   let result = f a
-  putStrLn $ evalString $ show $ (a, result)
+  ourPutStrLn $ evalString $ show $ (a, result)
   return result
 
 -- thing, function, arg, and result
 faaresp :: (Show a, Show b, Show c) => a -> (b -> c) -> (b -> c)
 faaresp s f a = unsafePerformIO $ do
   let result = f a
-  putStrLn $ evalString $ show $ (s, a, result)
+  ourPutStrLn $ evalString $ show $ (s, a, result)
   return result
 
 faaresp2 :: (Show a, Show b, Show c, Show d) => a -> (b -> c -> d) -> (b -> c -> d)
 faaresp2 s f a b = unsafePerformIO $ do
   let result = f a b
-  putStrLn $ evalString $ show $ (s, a, b, result)
+  ourPutStrLn $ evalString $ show $ (s, a, b, result)
   return result
 
 lesp logFile a = leesp logFile (evalString $ show a) a
@@ -149,9 +162,8 @@ leesp logFile s a = unsafePerformIO $ do
   return a
 
 eeesp :: (Show s, Show a) => s -> a -> a
-eeesp = if useTS then tseeesp else oeeesp
-oeeesp s a = unsafePerformIO $ do
-  putStrLn $ evalString $ show $ (s, a)
+eeesp s a = unsafePerformIO $ do
+  ourPutStrLn $ evalString $ show $ (s, a)
   return a
 
 -- Fake ones for quickly disabling
@@ -170,41 +182,15 @@ sp x = unpack $ toStrict $ pShowNoColor $ x
 --sp x = show x
 
 msp :: Show a => a -> IO ()
-msp = if useTS then tsmsp else omsp
-omsp x = putStrLn $ evalString $ sp x
+msp x = ourPutStrLn $ evalString $ sp x
 
 lmsp :: Show a => String -> a -> IO ()
-lmsp label x = putStrLn $ label ++ ": " ++ (evalString $ sp x)
+lmsp label x = ourPutStrLn $ label ++ ": " ++ (evalString $ sp x)
 
-tsp x = putStrLn $ (sp x) ++ " :: " ++ (sp (typeOf x))
-ttsp x = putStrLn $ "_ :: " ++ (sp (typeOf x))
+tsp x = ourPutStrLn $ (sp x) ++ " :: " ++ (sp (typeOf x))
+ttsp x = ourPutStrLn $ "_ :: " ++ (sp (typeOf x))
 tesp x = eesp (sp x ++ " :: " ++ (sp (typeOf x))) x
 ttesp x = eesp ("_ :: " ++ (sp (typeOf x))) x
-
-tseesp :: Show s => s -> a -> a
-tseesp s a = unsafePerformIO $ do
-  tsmsp s
-  return a
-
-tseeesp :: (Show s, Show a) => s -> a -> a
-tseeesp s a = tseesp (s, a) a
-
-tsmsp :: Show s => s -> IO ()
-tsmsp s = do
-  -- threadDelay 1
-  writeChan tsspChan (sp s)
-
-tsspChan :: Chan String
-tsspChan = unsafePerformIO $ do
-  chan <- newChan
-  forkIO $ do
-    let loop = do
-          s <- readChan chan
-          putStrLn s
-          hFlush stdout
-          loop
-     in loop
-  return chan
 
 -- Really surprised this doesn't exist
 fromLeftReal (Left a) = a
