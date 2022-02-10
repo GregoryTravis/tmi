@@ -32,7 +32,7 @@ data W = W
 
 theWorld :: W
 theWorld = W
-  { invitees = ["a@b.com", "c@d.com"]
+  { invitees = ["a@b.com", "c@d.com", "g@h.com"]
   , invited = ["c@d.com"]
   , joined = []
   , declined = []
@@ -78,20 +78,25 @@ old' = do
 
 data RSVP = Accept | Reject deriving (Read, Show)
 
-inviteTheUninvited :: Blef W ()
-inviteTheUninvited = do
-  nyi <- BRead notYetInvited
-  let one = head nyi
-  binvited <--+ (++. k [one])
+invitePlayer :: String -> Blef W ()
+invitePlayer email = do
   rsvp <- EBlef "rsvp" $ \h -> do
-    let text = "sent to " ++ one ++ "\n" ++
+    let text = "sent to " ++ email ++ "\n" ++
                "accept: " ++ acceptToken ++ "\n" ++
                "reject: " ++ rejectToken ++ "\n"
         acceptToken = show (Retval h "Accept")
         rejectToken = show (Retval h "Reject")
     msp text
-  case rsvp of Accept -> bjoined <--+ (++. k [one])
-               Reject -> bdeclined <--+ (++. k [one])
+  case rsvp of Accept -> bjoined <--+ (++. k [email])
+               Reject -> bdeclined <--+ (++. k [email])
+
+inviteTheUninvited :: Blef W ()
+inviteTheUninvited = do
+  nyi <- BRead notYetInvited
+  let one = head nyi
+  binvited <--+ (++. k [one])
+  -- BFork $ invitePlayer one
+  mapM_ (BFork . invitePlayer) nyi
   io $ msp $ "gonna email" ++ (show nyi)
 
 oldApp = App { initialW = theWorld, appEnv = lookupCommand }
@@ -101,4 +106,6 @@ oldMain = do
   fromTheTop dbdir oldApp ["old"]
   -- injectEvent dbdir oldApp (Retval 2 "Accept")
   injectEvent dbdir oldApp (Retval 2 "Reject")
+  injectEvent dbdir oldApp (Retval 3 "Accept")
+  injectEvent dbdir oldApp (Retval 4 "Reject")
   run oldApp dbdir

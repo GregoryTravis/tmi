@@ -87,7 +87,7 @@ data Blef w a where
   BRead :: V w a -> Blef w a
   BWrite :: V w a -> a -> Blef w ()
   BVWrite :: V w a -> V w a -> Blef w ()
-  BFork :: (Read a, Show a) => Blef w a -> Blef w ()
+  BFork :: Blef w () -> Blef w ()
   -- BCallCC :: ((a -> Blef b) -> Blef c) -> Blef c
   -- BCallCC :: ((b -> Blef w c) -> Blef w a) -> Blef w a
   -- BCallCC :: ((b -> Blef w a) -> Blef w a) -> Blef w a
