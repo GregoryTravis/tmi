@@ -2,6 +2,7 @@
 
 module Old (oldMain) where
 
+import Data.Dynamic (Typeable)
 import Data.List ((\\))
 
 import Alloc
@@ -62,7 +63,7 @@ lookupCommand ["inviteToSite"] = inviteToSite
 lookupCommand ["inviteToGame"] = inviteToGameP ["a@b.com", "e@f.com", "g@h.com"]
 
 -- TODO don't want this Show a
-vappend :: Show a => Ty.V w [a] -> a -> Blef w ()
+vappend :: (Typeable a, Eq a, Show a, Read a) => Ty.V w [a] -> a -> Blef w ()
 vappend vas a = vas <--+ (++. (k [a]))
 
 inviteToSite :: Program W

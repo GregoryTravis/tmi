@@ -4,6 +4,8 @@ module Storage
 ( Reconstitutor
 , qs
 , unqs
+, qToString
+, stringToQ
 ) where 
 
 import Data.Dynamic
@@ -73,6 +75,7 @@ unqs recon SRoot = unsafeCoerce VRoot
 -- unqs recon (SNice shown typeS) = error "VNice"
 unqs recon (SNice shown "<<Int>>") = unsafeCoerce $ VNice (read shown :: Int)
 unqs recon (SNice shown "<<String>>") = unsafeCoerce $ VNice (read shown :: String)
+unqs recon (SNice shown "<<[Char]>>") = unsafeCoerce $ VNice (read shown :: String)
 -- unqs recon (SNice shown "<<Retval>>") = unsafeCoerce $ VNice (read shown :: Retval)
 unqs recon (SNice shown typeS) = error $ "unqs type?? " ++ shown ++ " " ++ typeS
 
@@ -82,3 +85,9 @@ unqs recon (SVBiSeal bis) = VBiSeal (unbs recon bis)
 unbs :: Reconstitutor -> BS -> Bi w f r
 unbs recon (BSBi sf sv) = Bi (unqs recon sf) (unqs recon sv)
 unbs recon (BSBiApp bs sv) = BiApp (unbs recon bs) (unqs recon sv)
+
+qToString :: V w a -> String
+qToString v = show (qs v)
+
+stringToQ :: Reconstitutor -> String -> V w a
+stringToQ recon = (unqs recon) . read

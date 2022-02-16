@@ -2,6 +2,7 @@ module Main where
 
 import System.IO
 
+import Ledger
 import Log
 import Meta
 import Old
@@ -11,5 +12,6 @@ main = do
   hSetBuffering stdout NoBuffering
   -- metaMain logApp
   -- logMain
-  oldMain
+  -- oldMain
+  ledgerMain
   msp "hi"

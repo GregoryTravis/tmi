@@ -4,6 +4,8 @@ module V where
 
 import Ty
 
+import Data.Dynamic (Typeable)
+
 emptyWrite :: Write w
 emptyWrite = Writes []
 
@@ -13,8 +15,8 @@ instance Semigroup (Write w) where
 write :: R w a -> a -> Write w
 write (R rec) x = rec x
 
-k :: Show a => a -> V w a
-k a = VNamed "" a
+k :: (Typeable a, Eq a, Show a, Read a) => a -> V w a
+k a = VNice a
 
 mkR :: (a -> Write w) -> R w a
 mkR = R
