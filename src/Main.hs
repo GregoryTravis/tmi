@@ -2,12 +2,10 @@ module Main where
 
 import System.IO
 
+import Log
 import Util
 
 main = do
   hSetBuffering stdout NoBuffering
-  -- metaMain logApp
-  -- logMain
-  -- oldMain
-  -- ledgerMain
+  logMain
   msp "hi"
