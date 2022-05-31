@@ -1,7 +1,6 @@
 module Main where
 
 import Innards
-import ParrTest
 
 import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck

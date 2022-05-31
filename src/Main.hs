@@ -2,10 +2,6 @@ module Main where
 
 import System.IO
 
-import Ledger
-import Log
-import Meta
-import Old
 import Util
 
 main = do
@@ -13,5 +9,5 @@ main = do
   -- metaMain logApp
   -- logMain
   -- oldMain
-  ledgerMain
+  -- ledgerMain
   msp "hi"

@@ -14,7 +14,6 @@ import Data.Proxy
 -- import Data.Typeable (typeOf)
 import Unsafe.Coerce
 
-import Dyn
 import Ty hiding (S)
 import Util
 import V
