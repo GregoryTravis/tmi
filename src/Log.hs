@@ -27,11 +27,8 @@ vlogCalls :: V WW [V (W App) (Call (W App))]
 vlogCalls = field vsysLog "logCalls" logCalls $ \w logCalls -> w { logCalls }
 vlogEvents = field vsysLog "logEvents" logEvents $ \w logEvents -> w { logEvents }
 
-grabCall :: V WW (V (W App) (Call (W App)))
-grabCall = vlogCalls !!. (VNice 0)
-
-grabCall' :: V (W App) (Call (W App))
-grabCall' = VDeref (vlogCalls !!. (VNice 0))
+grabCall :: V (W App) (Call (W App))
+grabCall = deref (vlogCalls !!. (VNice 0))
 
 grabEvent :: V WW Event
 grabEvent = vlogEvents !!. (VNice 0)
@@ -97,14 +94,10 @@ vroot :: V WW WW
 vroot = VRoot
 
 logMain = do
-  msp $ rd theWorld grabEvent
-  msp $ rd theWorld grabCall
-  let call = rd theWorld $ rd theWorld grabCall
-      event = rd theWorld grabEvent
-      de = VDeref grabCall
-      de' = grabCall'
-      call' = rd theWorld de'
-  msp $ resolveCall call' event
+  let event = rd theWorld grabEvent
+      call = rd theWorld grabCall
+  msp $ resolveCall call event
+
   -- works
   -- msp vroot
   -- msp (show vroot)

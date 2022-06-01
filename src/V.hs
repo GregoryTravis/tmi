@@ -34,18 +34,5 @@ nope = VNamed "nope" (error "nope")
 nuni :: String -> (a -> b) -> Bi w (a -> b) (a -> R w a -> c)
 nuni name f = uni (VNamed name f)
 
--- instance Show (Write w) where
---   show (Write qa a) = "(Write " ++ show qa ++ {- " " ++ show a ++ -} ")"
---   show (VWrite qa qa') = "(VWrite " ++ show qa ++ " " ++ show qa' ++ ")"
---   show (Writes ws) = show ws
-
--- instance Show (V w a) where
---   show VDummy = "VDummy"
---   show VRoot = "VRoot"
---   show (VNice x) = "(VNice " ++ show x ++ ")"
---   show (VNamed name _) = "(VNamed " ++ name ++ ")"
---   show (VBiSeal bi) = "(VBiSeal " ++ show bi ++ ")"
-
--- instance Show (Bi w f r) where 
---   show (Bi qf qr) = "(Bi " ++ show qf ++ " " ++ show qr ++ ")"
---   show (BiApp bi qa) = "(BiApp " ++ show bi ++ " " ++ show qa ++ ")"
+deref :: V w (V w a) -> V w a
+deref = VDeref
