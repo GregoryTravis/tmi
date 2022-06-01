@@ -13,21 +13,23 @@ import Util
 data App = App {}
   deriving (Eq, Ord, Read, Show)
 
-data Log = Log
-  { logCalls :: [V W Call]
+type WW = W App
+
+data Log w = Log
+  { logCalls :: [V w (Call w)]
   , logEvents :: [Event]
   }
   -- deriving (Eq, Ord, Read, Show)
 
-data Sys = Sys { sysLog :: Log }
+data Sys w = Sys { sysLog :: Log w }
   -- deriving (Eq, Ord, Read, Show)
 
-data W = W { wApp :: App, wSys :: Sys }
+data W app = W { wApp :: app, wSys :: Sys (W app) }
   -- deriving (Eq, Ord, Read, Show)
 
-data TMI a = TMI a
+data TMI w a = TMI a
 
-data Call = forall a. Call (IO a) (a -> TMI ())
+data Call w = forall a. Call (IO a) (a -> TMI w ())
 
 data Event = RetVal String -- | Command
   deriving (Eq, Ord, Read, Show)
@@ -35,13 +37,13 @@ data Event = RetVal String -- | Command
 anExt :: IO Int
 anExt = return 12
 
-aCont :: Int -> TMI ()
+aCont :: Int -> TMI WW ()
 aCont x = TMI ()
 
-aCall :: Call
+aCall :: Call WW
 aCall = Call anExt aCont
 
-vACall :: V W Call
+vACall :: V WW (Call WW)
 vACall = VNamed "aCall" aCall
 
 recon :: String -> a
@@ -53,18 +55,18 @@ instance Show (V w a) where
 instance Read (V w a) where
   readsPrec i s = readsPrecer recon i s
 
-theWorld :: W
+theWorld :: WW
 theWorld = W
   { wApp = App {}
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall]
                      , logEvents = [] }
 
-vroot :: V W W
+vroot :: V WW WW
 vroot = VRoot
 
 logMain = do
   msp vroot
   msp (show vroot)
-  msp ((read (show vroot)) :: V W W)
+  msp ((read (show vroot)) :: V WW WW)
   msp "hi log"

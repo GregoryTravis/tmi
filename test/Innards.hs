@@ -1,4 +1,4 @@
-{-# Language NamedFieldPuns #-}
+{-# Language FlexibleInstances, NamedFieldPuns #-}
 
 module Innards (innardsSuite) where
 
@@ -9,6 +9,7 @@ import Unsafe.Coerce
 
 import Lift
 import Propagate
+import Storage
 import Ty hiding (V, Bi, R)
 import qualified Ty as Ty
 import V
@@ -25,6 +26,12 @@ type Bi = Ty.Bi W
 type R = Ty.R W
 root :: V W
 root = VRoot
+
+instance Show (Ty.V W a) where
+  show v = show (qs v)
+
+instance Read (Ty.V W a) where
+  readsPrec i s = readsPrecer recon i s
 
 theWorld :: W
 theWorld = W { aa = 13, bb = 100 }
@@ -94,7 +101,7 @@ innardsSuite = testGroup "Test Suite" [
   , added' /= added''' ~?= True
 
   , let pl = VBiSeal (BiApp (BiApp (Ty.Bi (unsafeCoerce (recon "bplus")) (unsafeCoerce (recon "bplus_"))) baa) bbb)
-        lala = "(VBiSeal (BiApp (BiApp (Bi (VNamed bplus) (VNamed bplus_)) (VBiSeal (BiApp (Bi (VNamed aa) (VNamed aa_)) VRoot))) (VBiSeal (BiApp (Bi (VNamed bb) (VNamed bb_)) VRoot))))"
+        lala = "SVBiSeal (BSBiApp (BSBiApp (BSBi (SNamed \"bplus\") (SNamed \"bplus_\")) (SVBiSeal (BSBiApp (BSBi (SNamed \"aa\") (SNamed \"aa_\")) SRoot))) (SVBiSeal (BSBiApp (BSBi (SNamed \"bb\") (SNamed \"bb_\")) SRoot)))"
      in testGroup "" [
           show pl ~?= lala
         , show added ~?= show pl
