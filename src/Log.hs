@@ -7,6 +7,7 @@ import Unsafe.Coerce
 
 import Lens
 import Lift
+import Propagate
 import Storage
 import Ty
 import V
@@ -45,10 +46,17 @@ vwApp = field vroot "wApp" wApp $ \w wApp -> w { wApp }
 vwSys = field vroot "wSys" wSys $ \w wSys -> w { wSys }
 
 data TMI w a = TMI a
+  deriving (Eq, Ord, Read, Show)
 
-data Call w = forall a. Call (IO a) (a -> TMI w ())
+data Call w = forall a. (Read a, Show a) => Call (IO a) (a -> TMI w ())
 -- vcallK :: V w (Call w) -> V w (a -> TMI w ())
 -- vcallK = lift1 $ nuni "callK" (\(Call _ k) -> k)
+
+resolveCall :: Call w -> Event -> TMI w ()
+resolveCall (Call _ k) (RetVal eventString) = k (read eventString)
+
+vresolveCall :: V w1 (Call w2) -> V w1 Event -> V w1 (TMI w2 ())
+vresolveCall = lift2 $ nuni "resolveCall" resolveCall
 
 data Event = RetVal String -- | Command
   deriving (Eq, Ord, Read, Show)
@@ -86,8 +94,14 @@ vroot :: V WW WW
 vroot = VRoot
 
 logMain = do
-  msp vroot
-  msp (show vroot)
-  msp ((read (show vroot)) :: V WW WW)
-  msp theWorld
+  msp $ rd theWorld grabEvent
+  msp $ rd theWorld grabCall
+  let call = rd theWorld $ rd theWorld grabCall
+      event = rd theWorld grabEvent
+  msp $ resolveCall call event
+  -- works
+  -- msp vroot
+  -- msp (show vroot)
+  -- msp ((read (show vroot)) :: V WW WW)
+  -- msp theWorld
   msp "hi log"
