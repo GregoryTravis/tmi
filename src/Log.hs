@@ -97,6 +97,11 @@ logMain = do
   let event = rd theWorld grabEvent
       call = rd theWorld grabCall
   msp $ resolveCall call event
+  msp $ rd theWorld $ vresolveCall grabCall grabEvent
+  msp theWorld
+  let tws = show theWorld
+      tw = read tws :: WW
+  msp $ rd tw $ vresolveCall grabCall grabEvent
 
   -- works
   -- msp vroot
