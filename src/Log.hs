@@ -19,13 +19,13 @@ data Log w = Log
   { logCalls :: [V w (Call w)]
   , logEvents :: [Event]
   }
-  -- deriving (Eq, Ord, Read, Show)
+  deriving (Read, Show)
 
 data Sys w = Sys { sysLog :: Log w }
-  -- deriving (Eq, Ord, Read, Show)
+  deriving (Read, Show)
 
 data W app = W { wApp :: app, wSys :: Sys (W app) }
-  -- deriving (Eq, Ord, Read, Show)
+  deriving (Read, Show)
 
 data TMI w a = TMI a
 
@@ -49,6 +49,7 @@ vACall = VNamed "aCall" aCall
 recon :: String -> a
 recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
+-- TODO: pull recon from a typeclass implemented by Ws and move this to V
 instance Show (V w a) where
   show v = show (qs v)
 
@@ -60,7 +61,7 @@ theWorld = W
   { wApp = App {}
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall]
-                     , logEvents = [] }
+                     , logEvents = [RetVal "12"] }
 
 vroot :: V WW WW
 vroot = VRoot
@@ -69,4 +70,5 @@ logMain = do
   msp vroot
   msp (show vroot)
   msp ((read (show vroot)) :: V WW WW)
+  msp theWorld
   msp "hi log"

@@ -15,7 +15,7 @@ data Bi w f r where
   BiApp :: Bi w (a -> b) (a -> R w a -> c) -> V w a -> Bi w b c
 
 data V w a where
-  VDummy :: V w w
+  -- VDummy :: V w w
   VRoot :: V w w
   VNice :: (Typeable a, Eq a, Show a, Read a) => a -> V w a
   VNamed :: String -> a -> V w a
