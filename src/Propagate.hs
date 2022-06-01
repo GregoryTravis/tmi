@@ -20,10 +20,10 @@ wr w (VBiSeal (Bi qfor qrev)) na =
 wr w (VBiSeal bi) a =
   let R rarec = getrev w bi
    in rarec a
-wr w q _ = error $ "wr " ++ show q
+wr w q _ = error $ "wr?" -- ++ show q
 
-vwr :: Show w => w -> V w b -> b -> Write w
-vwr w v b = eesp ("wr", v, w) $ wr w v b
+-- vwr :: Show w => w -> V w b -> b -> Write w
+-- vwr w v b = eesp ("wr", v, w) $ wr w v b
 
 getrev :: w -> Bi w f r -> r
 getrev w (Bi qf qr) =

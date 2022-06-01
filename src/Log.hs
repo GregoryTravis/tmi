@@ -3,6 +3,8 @@
 module Log
 ( logMain ) where
 
+import Unsafe.Coerce
+
 import Storage
 import Ty
 import V
@@ -40,7 +42,16 @@ aCall :: Call
 aCall = Call anExt aCont
 
 vACall :: V W Call
-vACall = VNamed "vACall" aCall
+vACall = VNamed "aCall" aCall
+
+recon :: String -> a
+recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
+
+instance Show (V w a) where
+  show v = show (qs v)
+
+instance Read (V w a) where
+  readsPrec i s = readsPrecer recon i s
 
 theWorld :: W
 theWorld = W
@@ -49,7 +60,11 @@ theWorld = W
   where sysLog = Log { logCalls = [vACall]
                      , logEvents = [] }
 
+vroot :: V W W
+vroot = VRoot
+
 logMain = do
-  -- let s = qs theWorld
-  -- msp s
+  msp vroot
+  msp (show vroot)
+  msp ((read (show vroot)) :: V W W)
   msp "hi log"

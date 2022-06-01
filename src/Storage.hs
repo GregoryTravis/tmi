@@ -4,8 +4,9 @@ module Storage
 ( Reconstitutor
 , qs
 , unqs
-, qToString
-, stringToQ
+, S
+, shower
+, readsPrecer
 ) where 
 
 import Data.Dynamic
@@ -85,8 +86,12 @@ unbs :: Reconstitutor -> BS -> Bi w f r
 unbs recon (BSBi sf sv) = Bi (unqs recon sf) (unqs recon sv)
 unbs recon (BSBiApp bs sv) = BiApp (unbs recon bs) (unqs recon sv)
 
-qToString :: V w a -> String
-qToString v = show (qs v)
+shower :: V w a -> String
+shower v = show (qs v)
 
-stringToQ :: Reconstitutor -> String -> V w a
-stringToQ recon = (unqs recon) . read
+readsPrecer :: Reconstitutor -> Int -> ReadS (V w a)
+readsPrecer recon i s =
+  let parses = readsPrec i s
+    in map (\(s, str) -> (unqs recon s, str)) parses
+-- readsPrecer :: Reconstitutor -> String -> V w a
+-- readsPrecer recon = (unqs recon) . read
