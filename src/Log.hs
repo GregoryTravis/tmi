@@ -30,6 +30,9 @@ vlogEvents = field vsysLog "logEvents" logEvents $ \w logEvents -> w { logEvents
 grabCall :: V WW (V (W App) (Call (W App)))
 grabCall = vlogCalls !!. (VNice 0)
 
+grabCall' :: V (W App) (Call (W App))
+grabCall' = VDeref (vlogCalls !!. (VNice 0))
+
 grabEvent :: V WW Event
 grabEvent = vlogEvents !!. (VNice 0)
 
@@ -98,7 +101,10 @@ logMain = do
   msp $ rd theWorld grabCall
   let call = rd theWorld $ rd theWorld grabCall
       event = rd theWorld grabEvent
-  msp $ resolveCall call event
+      de = VDeref grabCall
+      de' = grabCall'
+      call' = rd theWorld de'
+  msp $ resolveCall call' event
   -- works
   -- msp vroot
   -- msp (show vroot)

@@ -20,3 +20,4 @@ data V w a where
   VNice :: (Typeable a, Eq a, Show a, Read a) => a -> V w a
   VNamed :: String -> a -> V w a
   VBiSeal :: Bi w a (R w a) -> V w a
+  VDeref :: V w (V w a) -> V w a
