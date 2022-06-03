@@ -1,4 +1,4 @@
-{-# Language NamedFieldPuns #-}
+{-# Language AllowAmbiguousTypes, FlexibleInstances, NamedFieldPuns, StandaloneDeriving, TypeApplications, ScopedTypeVariables, UndecidableInstances #-}
 
 module Old
 ( oldMain ) where
@@ -17,6 +17,21 @@ import W
 
 data App = App {}
   deriving (Eq, Ord, Read, Show)
+
+class HasRecon w where
+  getRecon :: String -> a
+
+instance HasRecon WW where
+  getRecon = recon
+
+instance HasRecon App where
+  getRecon = recon
+
+-- class HasRecon w where
+--   getRecon :: V w a -> String -> a
+
+-- instance HasRecon App where
+--   getRecon _ = recon
 
 type WW = W App
 
@@ -49,8 +64,22 @@ recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 instance Show (V w a) where
   show v = show (qs v)
 
-instance Read (V w a) where
-  readsPrec i s = readsPrecer recon i s
+-- deriving instance (Read, Show) Log
+deriving instance HasRecon w => Read (Log w)
+deriving instance HasRecon w => Show (Log w)
+deriving instance HasRecon w => Read (Sys w)
+deriving instance HasRecon w => Show (Sys w)
+-- deriving instance Read WW
+-- deriving instance Show WW
+-- deriving instance (HasRecon a, Show a) => Show (W a)
+deriving instance Show WW
+deriving instance Read WW
+
+instance HasRecon w => Read (V w a) where
+  readsPrec i s = readsPrecer (getRecon @w) i s
+  -- readsPrec i s =
+  --   let result = readsPrecer (getRecon result) i s
+  --    in result
 
 vwApp = field vroot "wApp" wApp $ \w wApp -> w { wApp }
 vwSys = field vroot "wSys" wSys $ \w wSys -> w { wSys }
@@ -71,10 +100,10 @@ oldMain = do
   msp $ resolveCall call event
   msp $ rd theWorld $ vresolveCall grabCall grabEvent
   -- works if W is read/show
-  -- msp theWorld
-  -- let tws = show theWorld
-  --     tw = read tws :: WW
-  -- msp $ rd tw $ vresolveCall grabCall grabEvent
+  msp theWorld
+  let tws = show theWorld
+      tw = read tws :: WW
+  msp $ rd tw $ vresolveCall grabCall grabEvent
 
   -- works
   -- msp vroot
