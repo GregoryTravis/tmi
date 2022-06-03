@@ -1,0 +1,84 @@
+{-# Language NamedFieldPuns #-}
+
+module Old
+( oldMain ) where
+
+import Unsafe.Coerce
+
+import Lens
+import Lib
+import Log
+import Propagate
+import Storage
+import Ty
+import Util
+import V
+import W
+
+data App = App {}
+  deriving (Eq, Ord, Read, Show)
+
+type WW = W App
+
+vlogCalls :: V WW [V (W App) (Call (W App))]
+vlogCalls = field vsysLog "logCalls" logCalls $ \w logCalls -> w { logCalls }
+vlogEvents = field vsysLog "logEvents" logEvents $ \w logEvents -> w { logEvents }
+
+grabCall :: V (W App) (Call (W App))
+grabCall = deref (vlogCalls !!. (VNice 0))
+
+grabEvent :: V WW Event
+grabEvent = vlogEvents !!. (VNice 0)
+
+anExt :: IO Int
+anExt = return 12
+
+aCont :: Int -> TMI WW ()
+aCont x = TMI ()
+
+aCall :: Call WW
+aCall = Call anExt aCont
+
+vACall :: V WW (Call WW)
+vACall = VNamed "aCall" aCall
+
+recon :: String -> a
+recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
+
+-- TODO: pull recon from a typeclass implemented by Ws and move this to V
+instance Show (V w a) where
+  show v = show (qs v)
+
+instance Read (V w a) where
+  readsPrec i s = readsPrecer recon i s
+
+vwApp = field vroot "wApp" wApp $ \w wApp -> w { wApp }
+vwSys = field vroot "wSys" wSys $ \w wSys -> w { wSys }
+vsysLog = field vwSys "sysLog" sysLog $ \w sysLog -> w { sysLog }
+
+theWorld :: WW
+theWorld = W
+  { wApp = App {}
+  , wSys = Sys { sysLog } }
+  where sysLog = Log { logCalls = [vACall]
+                     , logEvents = [RetVal "12"] }
+vroot :: V WW WW
+vroot = VRoot
+
+oldMain = do
+  let event = rd theWorld grabEvent
+      call = rd theWorld grabCall
+  msp $ resolveCall call event
+  msp $ rd theWorld $ vresolveCall grabCall grabEvent
+  -- works if W is read/show
+  -- msp theWorld
+  -- let tws = show theWorld
+  --     tw = read tws :: WW
+  -- msp $ rd tw $ vresolveCall grabCall grabEvent
+
+  -- works
+  -- msp vroot
+  -- msp (show vroot)
+  -- msp ((read (show vroot)) :: V WW WW)
+  -- msp theWorld
+  msp "hi log"

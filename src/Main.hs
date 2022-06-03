@@ -2,10 +2,10 @@ module Main where
 
 import System.IO
 
-import Log
+import Old
 import Util
 
 main = do
   hSetBuffering stdout NoBuffering
-  logMain
+  oldMain
   msp "hi"

@@ -10,7 +10,7 @@ import Unsafe.Coerce
 import Lift
 import Propagate
 import Storage
-import Ty hiding (V, Bi, R)
+import Ty hiding (V, Bi, R, W)
 import qualified Ty as Ty
 import V
 import Veq
