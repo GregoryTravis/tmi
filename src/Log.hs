@@ -1,13 +1,22 @@
-{-# Language ExistentialQuantification #-}
+{-# Language ExistentialQuantification, NamedFieldPuns #-}
 
 module Log
-( resolveCall
+( flogCalls
+, flogEvents
+, resolveCall
 , vresolveCall ) where
 
+import Lens
 import Lift
 import Ty
 import V
 import Util
+
+flogCalls :: V w (Log w) -> V w [V w (Call w)]
+flogCalls log = field log "logCalls" logCalls $ \w logCalls -> w { logCalls }
+
+flogEvents :: V w (Log w) -> V w [Event]
+flogEvents log = field log "logEvents" logEvents $ \w logEvents -> w { logEvents }
 
 resolveCall :: Call w -> Event -> TMI w ()
 resolveCall (Call _ k) (RetVal eventString) = k (read eventString)

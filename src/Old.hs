@@ -27,9 +27,8 @@ instance HasRecon WW where
 
 type WW = W App
 
-vlogCalls :: V WW [V (W App) (Call (W App))]
-vlogCalls = field vsysLog "logCalls" logCalls $ \w logCalls -> w { logCalls }
-vlogEvents = field vsysLog "logEvents" logEvents $ \w logEvents -> w { logEvents }
+vlogCalls = flogCalls vsysLog
+vlogEvents = flogEvents vsysLog
 
 grabCall :: V (W App) (Call (W App))
 grabCall = deref (vlogCalls !!. (VNice 0))
