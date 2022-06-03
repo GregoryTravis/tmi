@@ -1,4 +1,5 @@
-{-# Language AllowAmbiguousTypes, FlexibleInstances, NamedFieldPuns, StandaloneDeriving, TypeApplications, ScopedTypeVariables, UndecidableInstances #-}
+{-# Language AllowAmbiguousTypes, FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables,
+             TypeApplications, UndecidableInstances #-}
 
 module Old
 ( oldMain ) where
@@ -23,15 +24,6 @@ class HasRecon w where
 
 instance HasRecon WW where
   getRecon = recon
-
-instance HasRecon App where
-  getRecon = recon
-
--- class HasRecon w where
---   getRecon :: V w a -> String -> a
-
--- instance HasRecon App where
---   getRecon _ = recon
 
 type WW = W App
 
@@ -60,26 +52,20 @@ vACall = VNamed "aCall" aCall
 recon :: String -> a
 recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
--- TODO: pull recon from a typeclass implemented by Ws and move this to V
-instance Show (V w a) where
-  show v = show (qs v)
-
 -- deriving instance (Read, Show) Log
 deriving instance HasRecon w => Read (Log w)
 deriving instance HasRecon w => Show (Log w)
 deriving instance HasRecon w => Read (Sys w)
 deriving instance HasRecon w => Show (Sys w)
--- deriving instance Read WW
--- deriving instance Show WW
--- deriving instance (HasRecon a, Show a) => Show (W a)
 deriving instance Show WW
 deriving instance Read WW
 
+-- TODO: pull recon from a typeclass implemented by Ws and move this to V
+instance Show (V w a) where
+  show v = show (qs v)
+
 instance HasRecon w => Read (V w a) where
   readsPrec i s = readsPrecer (getRecon @w) i s
-  -- readsPrec i s =
-  --   let result = readsPrecer (getRecon result) i s
-  --    in result
 
 vwApp = field vroot "wApp" wApp $ \w wApp -> w { wApp }
 vwSys = field vroot "wSys" wSys $ \w wSys -> w { wSys }
@@ -99,7 +85,7 @@ oldMain = do
       call = rd theWorld grabCall
   msp $ resolveCall call event
   msp $ rd theWorld $ vresolveCall grabCall grabEvent
-  -- works if W is read/show
+
   msp theWorld
   let tws = show theWorld
       tw = read tws :: WW
