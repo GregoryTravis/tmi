@@ -11,6 +11,7 @@ import Lib
 import Log
 import Propagate
 import Storage
+import Sys
 import Ty
 import Util
 import V
@@ -68,7 +69,7 @@ instance HasRecon w => Read (V w a) where
 
 vwApp = fwApp vroot
 vwSys = fwSys vroot
-vsysLog = field vwSys "sysLog" sysLog $ \w sysLog -> w { sysLog }
+vsysLog = fsysLog vwSys
 
 theWorld :: WW
 theWorld = W
