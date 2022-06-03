@@ -66,8 +66,8 @@ instance Show (V w a) where
 instance HasRecon w => Read (V w a) where
   readsPrec i s = readsPrecer (getRecon @w) i s
 
-vwApp = field vroot "wApp" wApp $ \w wApp -> w { wApp }
-vwSys = field vroot "wSys" wSys $ \w wSys -> w { wSys }
+vwApp = fwApp vroot
+vwSys = fwSys vroot
 vsysLog = field vwSys "sysLog" sysLog $ \w sysLog -> w { sysLog }
 
 theWorld :: WW
