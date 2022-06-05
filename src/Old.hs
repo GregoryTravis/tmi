@@ -1,5 +1,4 @@
-{-# Language AllowAmbiguousTypes, FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables,
-             TypeApplications, UndecidableInstances #-}
+{-# Language FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables, TypeApplications #-}
 
 module Old
 ( oldMain ) where

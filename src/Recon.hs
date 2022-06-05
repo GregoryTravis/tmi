@@ -1,5 +1,4 @@
-{-# Language AllowAmbiguousTypes, FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables,
-             TypeApplications, UndecidableInstances #-}
+{-# Language AllowAmbiguousTypes #-}
 
 module Recon
 ( HasRecon(..) ) where
