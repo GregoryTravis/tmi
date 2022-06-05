@@ -23,28 +23,11 @@ import W
 data App = App {}
   deriving (Eq, Ord, Read, Show)
 
-instance HasRecon WW where
-  getRecon = recon
-
-recon :: String -> a
-recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
-
 type WW = W App
 deriving instance Show WW
 deriving instance Read WW
-
-grabCall :: V (W App) (Call (W App))
-grabCall = deref (vlogCalls !!. (VNice 0))
-
-grabEvent :: V WW Event
-grabEvent = vlogEvents !!. (VNice 0)
-
-aCall :: Int -> Call WW
-aCall n = Call (return n) (\_ -> TMI ())
-
-vACall :: V WW Int -> V WW (Call WW)
--- vACall = VNamed "aCall" aCall
-vACall = lift1 $ nuni "aCall" aCall
+instance HasRecon WW where
+  getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
 theWorld :: WW
 theWorld = W
@@ -60,6 +43,18 @@ vwSys = fwSys vroot
 vsysLog = fsysLog vwSys
 vlogCalls = flogCalls vsysLog
 vlogEvents = flogEvents vsysLog
+
+grabCall :: V (W App) (Call (W App))
+grabCall = deref (vlogCalls !!. (VNice 0))
+
+grabEvent :: V WW Event
+grabEvent = vlogEvents !!. (VNice 0)
+
+aCall :: Int -> Call WW
+aCall n = Call (return n) (\_ -> TMI ())
+
+vACall :: V WW Int -> V WW (Call WW)
+vACall = lift1 $ nuni "aCall" aCall
 
 oldMain = do
   let event = rd theWorld grabEvent
