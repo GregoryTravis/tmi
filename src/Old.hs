@@ -26,10 +26,12 @@ data App = App {}
 instance HasRecon WW where
   getRecon = recon
 
-type WW = W App
+recon :: String -> a
+recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
-vlogCalls = flogCalls vsysLog
-vlogEvents = flogEvents vsysLog
+type WW = W App
+deriving instance Show WW
+deriving instance Read WW
 
 grabCall :: V (W App) (Call (W App))
 grabCall = deref (vlogCalls !!. (VNice 0))
@@ -37,33 +39,12 @@ grabCall = deref (vlogCalls !!. (VNice 0))
 grabEvent :: V WW Event
 grabEvent = vlogEvents !!. (VNice 0)
 
--- anExt :: IO Int
--- anExt = return 12
-
--- aCont :: Int -> TMI WW ()
--- aCont x = TMI ()
-
 aCall :: Int -> Call WW
 aCall n = Call (return n) (\_ -> TMI ())
 
 vACall :: V WW Int -> V WW (Call WW)
 -- vACall = VNamed "aCall" aCall
 vACall = lift1 $ nuni "aCall" aCall
-
-recon :: String -> a
-recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
-
--- deriving instance (Read, Show) Log
-deriving instance HasRecon w => Read (Log w)
-deriving instance HasRecon w => Show (Log w)
-deriving instance HasRecon w => Read (Sys w)
-deriving instance HasRecon w => Show (Sys w)
-deriving instance Show WW
-deriving instance Read WW
-
-vwApp = fwApp vroot
-vwSys = fwSys vroot
-vsysLog = fsysLog vwSys
 
 theWorld :: WW
 theWorld = W
@@ -73,6 +54,12 @@ theWorld = W
                      , logEvents = [RetVal "12"] }
 vroot :: V WW WW
 vroot = VRoot
+
+vwApp = fwApp vroot
+vwSys = fwSys vroot
+vsysLog = fsysLog vwSys
+vlogCalls = flogCalls vsysLog
+vlogEvents = flogEvents vsysLog
 
 oldMain = do
   let event = rd theWorld grabEvent
