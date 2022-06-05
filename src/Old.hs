@@ -14,25 +14,25 @@ import Propagate
 import Recon
 import Storage
 import Sys
-import Ty hiding (V)
-import qualified Ty (V)
+import Ty hiding (V, W)
+import qualified Ty (V, W(..))
 import Util
 import V
 import VReadShow
 import W
 
 -- start boilerplate
-type WW = W App
-type V = Ty.V WW
-deriving instance Show WW
-deriving instance Read WW
+type W = Ty.W App
+type V = Ty.V W
+deriving instance Show W
+deriving instance Read W
 
-vroot :: V WW
+vroot :: V W
 vroot = VRoot
 -- end boilerplate
 
-theWorld :: WW
-theWorld = W
+theWorld :: W
+theWorld = Ty.W
   { wApp = App {}
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall (k 13)]
@@ -40,7 +40,7 @@ theWorld = W
 data App = App {}
   deriving (Eq, Ord, Read, Show)
 
-instance HasRecon WW where
+instance HasRecon W where
   getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
 vwApp = fwApp vroot
@@ -49,16 +49,16 @@ vsysLog = fsysLog vwSys
 vlogCalls = flogCalls vsysLog
 vlogEvents = flogEvents vsysLog
 
-grabCall :: V (Call (W App))
+grabCall :: V (Call W)
 grabCall = deref (vlogCalls !!. (VNice 0))
 
 grabEvent :: V Event
 grabEvent = vlogEvents !!. (VNice 0)
 
-aCall :: Int -> Call WW
+aCall :: Int -> Call W
 aCall n = Call (return n) (\_ -> TMI ())
 
-vACall :: V Int -> V (Call WW)
+vACall :: V Int -> V (Call W)
 vACall = lift1 $ nuni "aCall" aCall
 
 oldMain = do
@@ -69,12 +69,12 @@ oldMain = do
 
   msp theWorld
   let tws = show theWorld
-      tw = read tws :: WW
+      tw = read tws :: W
   msp $ rd tw $ vresolveCall grabCall grabEvent
 
   -- works
   -- msp vroot
   -- msp (show vroot)
-  -- msp ((read (show vroot)) :: V WW WW)
+  -- msp ((read (show vroot)) :: V W W)
   -- msp theWorld
   msp "hi log"
