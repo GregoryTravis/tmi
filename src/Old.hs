@@ -10,6 +10,7 @@ import Lens
 import Lib
 import Log
 import Propagate
+import Recon
 import Storage
 import Sys
 import Ty
@@ -19,9 +20,6 @@ import W
 
 data App = App {}
   deriving (Eq, Ord, Read, Show)
-
-class HasRecon w where
-  getRecon :: String -> a
 
 instance HasRecon WW where
   getRecon = recon
