@@ -1,4 +1,5 @@
-{-# Language FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables, TypeApplications #-}
+{-# Language FlexibleInstances, NamedFieldPuns, StandaloneDeriving, ScopedTypeVariables,
+             TypeApplications #-}
 
 module Old
 ( oldMain ) where
@@ -6,6 +7,7 @@ module Old
 import Unsafe.Coerce
 
 import Lens
+import Lift
 import Lib
 import Log
 import Propagate
@@ -34,17 +36,18 @@ grabCall = deref (vlogCalls !!. (VNice 0))
 grabEvent :: V WW Event
 grabEvent = vlogEvents !!. (VNice 0)
 
-anExt :: IO Int
-anExt = return 12
+-- anExt :: IO Int
+-- anExt = return 12
 
-aCont :: Int -> TMI WW ()
-aCont x = TMI ()
+-- aCont :: Int -> TMI WW ()
+-- aCont x = TMI ()
 
-aCall :: Call WW
-aCall = Call anExt aCont
+aCall :: Int -> Call WW
+aCall n = Call (return n) (\_ -> TMI ())
 
-vACall :: V WW (Call WW)
-vACall = VNamed "aCall" aCall
+vACall :: V WW Int -> V WW (Call WW)
+-- vACall = VNamed "aCall" aCall
+vACall = lift1 $ nuni "aCall" aCall
 
 recon :: String -> a
 recon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
@@ -72,7 +75,7 @@ theWorld :: WW
 theWorld = W
   { wApp = App {}
   , wSys = Sys { sysLog } }
-  where sysLog = Log { logCalls = [vACall]
+  where sysLog = Log { logCalls = [vACall (k 13)]
                      , logEvents = [RetVal "12"] }
 vroot :: V WW WW
 vroot = VRoot
