@@ -14,8 +14,8 @@ import Propagate
 import Recon
 import Storage
 import Sys
-import Ty hiding (V, W)
-import qualified Ty (V, W(..))
+import Ty hiding (V, W, Call)
+import qualified Ty (V, W(..), Call(..))
 import Util
 import V
 import VReadShow
@@ -24,6 +24,7 @@ import W
 -- start boilerplate
 type W = Ty.W App
 type V = Ty.V W
+type Call = Ty.Call W
 deriving instance Show W
 deriving instance Read W
 
@@ -49,16 +50,16 @@ vsysLog = fsysLog vwSys
 vlogCalls = flogCalls vsysLog
 vlogEvents = flogEvents vsysLog
 
-grabCall :: V (Call W)
+grabCall :: V Call
 grabCall = deref (vlogCalls !!. (VNice 0))
 
 grabEvent :: V Event
 grabEvent = vlogEvents !!. (VNice 0)
 
-aCall :: Int -> Call W
-aCall n = Call (return n) (\_ -> TMI ())
+aCall :: Int -> Call
+aCall n = Ty.Call (return n) (\_ -> TMI ())
 
-vACall :: V Int -> V (Call W)
+vACall :: V Int -> V Call
 vACall = lift1 $ nuni "aCall" aCall
 
 oldMain = do
