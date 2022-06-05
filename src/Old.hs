@@ -17,6 +17,7 @@ import Sys
 import Ty
 import Util
 import V
+import VReadShow
 import W
 
 data App = App {}
@@ -59,13 +60,6 @@ deriving instance HasRecon w => Read (Sys w)
 deriving instance HasRecon w => Show (Sys w)
 deriving instance Show WW
 deriving instance Read WW
-
--- TODO: pull recon from a typeclass implemented by Ws and move this to V
-instance Show (V w a) where
-  show v = show (qs v)
-
-instance HasRecon w => Read (V w a) where
-  readsPrec i s = readsPrecer (getRecon @w) i s
 
 vwApp = fwApp vroot
 vwSys = fwSys vroot
