@@ -20,14 +20,14 @@ import V
 import VReadShow
 import W
 
-data App = App {}
-  deriving (Eq, Ord, Read, Show)
-
+-- start boilerplate
 type WW = W App
 deriving instance Show WW
 deriving instance Read WW
-instance HasRecon WW where
-  getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
+
+vroot :: V WW WW
+vroot = VRoot
+-- end boilerplate
 
 theWorld :: WW
 theWorld = W
@@ -35,8 +35,11 @@ theWorld = W
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall (k 13)]
                      , logEvents = [RetVal "12"] }
-vroot :: V WW WW
-vroot = VRoot
+data App = App {}
+  deriving (Eq, Ord, Read, Show)
+
+instance HasRecon WW where
+  getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
 
 vwApp = fwApp vroot
 vwSys = fwSys vroot
