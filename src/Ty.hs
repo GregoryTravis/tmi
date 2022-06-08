@@ -22,12 +22,13 @@ data V w a where
   VDeref :: V w (V w a) -> V w a
 
 data Log w = Log
-  { logCalls :: [V w (Call w)]
+  { logCalls :: [V w (TMI w ())]
+  , logWha :: [V w (CPS w ())]
   , logEvents :: [Event]
   }
   -- deriving (Read, Show)
 
-data Call w = forall a. (Read a, Show a) => Call (IO a) (a -> TMI w ())
+-- data Call w = forall a. (Read a, Show a) => Call (IO a) (a -> TMI w ())
 -- vcallK :: V w (Call w) -> V w (a -> TMI w ())
 -- vcallK = lift1 $ nuni "callK" (\(Call _ k) -> k)
 
@@ -40,5 +41,13 @@ data Sys w = Sys { sysLog :: Log w }
 data W app = W { wApp :: app, wSys :: Sys (W app) }
   -- deriving (Read, Show)
 
-data TMI w a = TMI a
-  deriving (Eq, Ord, Read, Show)
+data Step a = Ext (IO a) | Ret a
+data TMI w a where
+  Step :: Step a -> TMI w a
+  Bind :: (Read a, Show a) => TMI w a -> (a -> TMI w b) -> TMI w b
+  -- deriving (Eq, Ord, Read, Show)
+
+-- TMI in CPS form
+data CPS w a where
+  KBind :: (Read a, Show a) => Step a -> (a -> CPS w b) -> CPS w b
+  Done :: CPS w a

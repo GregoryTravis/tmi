@@ -14,8 +14,9 @@ import Propagate
 import Recon
 import Storage
 import Sys
-import Ty hiding (V, W, Call)
-import qualified Ty (V, W(..), Call(..))
+import TMI
+import Ty hiding (V, W)
+import qualified Ty (V, W(..))
 import Util
 import V
 import VReadShow
@@ -24,7 +25,7 @@ import W
 -- start boilerplate
 type W = Ty.W App
 type V = Ty.V W
-type Call = Ty.Call W
+-- type Call = Ty.Call W
 deriving instance Show W
 deriving instance Read W
 
@@ -37,6 +38,7 @@ theWorld = Ty.W
   { wApp = App {}
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall (k 13)]
+                     , logWha = [vACallCPS (k 13)]
                      , logEvents = [RetVal "12"] }
 data App = App {}
   deriving (Eq, Ord, Read, Show)
@@ -48,30 +50,42 @@ vwApp = fwApp vroot
 vwSys = fwSys vroot
 vsysLog = fsysLog vwSys
 vlogCalls = flogCalls vsysLog
+vlogWha = flogWha vsysLog
 vlogEvents = flogEvents vsysLog
 
-grabCall :: V Call
+grabCall :: V (TMI W ())
 grabCall = deref (vlogCalls !!. (VNice 0))
+
+grabCallCPS :: V (CPS W ())
+grabCallCPS = deref (vlogWha !!. (VNice 0))
 
 grabEvent :: V Event
 grabEvent = vlogEvents !!. (VNice 0)
 
-aCall :: Int -> Call
-aCall n = Ty.Call (return n) (\_ -> TMI ())
+aCall :: Int -> TMI w ()
+aCall n = Bind (Step (Ret n)) (\_ -> Step (Ret ()))
 
-vACall :: V Int -> V Call
+vACall :: V Int -> V (TMI W ())
 vACall = lift1 $ nuni "aCall" aCall
+
+aCallCPS :: Int -> CPS w ()
+aCallCPS n = cps (aCall n)
+--aCallCPS n = Bind (Step (Ret n)) (\_ -> Step (Ret ()))
+
+vACallCPS :: V Int -> V (CPS W ())
+vACallCPS = lift1 $ nuni "aCallCPS" aCallCPS
 
 oldMain = do
   let event = rd theWorld grabEvent
       call = rd theWorld grabCall
-  msp $ resolveCall call event
-  msp $ rd theWorld $ vresolveCall grabCall grabEvent
+  let tmi = resolveCall call event
+  let tmi' = rd theWorld $ vresolveCall grabCall grabEvent
 
   msp theWorld
   let tws = show theWorld
       tw = read tws :: W
-  msp $ rd tw $ vresolveCall grabCall grabEvent
+  let tmi'' = rd tw $ vresolveCall grabCall grabEvent
+  let cpstmi'' = rd tw $ vresolveCallCPS grabCallCPS grabEvent
 
   -- works
   -- msp vroot

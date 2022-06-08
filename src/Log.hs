@@ -2,9 +2,11 @@
 
 module Log
 ( flogCalls
+, flogWha
 , flogEvents
 , resolveCall
-, vresolveCall ) where
+, vresolveCall
+, vresolveCallCPS ) where
 
 import Lens
 import Lift
@@ -12,14 +14,23 @@ import Ty
 import V
 import Util
 
-flogCalls :: V w (Log w) -> V w [V w (Call w)]
+flogCalls :: V w (Log w) -> V w [V w (TMI w ())]
 flogCalls log = field log "logCalls" logCalls $ \w logCalls -> w { logCalls }
+
+flogWha :: V w (Log w) -> V w [V w (CPS w ())]
+flogWha log = field log "logWha" logWha $ \w logWha -> w { logWha }
 
 flogEvents :: V w (Log w) -> V w [Event]
 flogEvents log = field log "logEvents" logEvents $ \w logEvents -> w { logEvents }
 
-resolveCall :: Call w -> Event -> TMI w ()
-resolveCall (Call _ k) (RetVal eventString) = k (read eventString)
+resolveCall :: TMI w () -> Event -> TMI w ()
+resolveCall (Bind _ k) (RetVal eventString) = k (read eventString)
 
-vresolveCall :: V w1 (Call w2) -> V w1 Event -> V w1 (TMI w2 ())
+vresolveCall :: V w (TMI w ()) -> V w Event -> V w (TMI w ())
 vresolveCall = lift2 $ nuni "resolveCall" resolveCall
+
+resolveCallCPS :: CPS w () -> Event -> CPS w ()
+resolveCallCPS (KBind _ k) (RetVal eventString) = k (read eventString)
+
+vresolveCallCPS :: V w (CPS w ()) -> V w Event -> V w (CPS w ())
+vresolveCallCPS = lift2 $ nuni "resolveCallCPS" resolveCallCPS
