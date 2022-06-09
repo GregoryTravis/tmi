@@ -35,13 +35,17 @@ vroot = VRoot
 
 theWorld :: W
 theWorld = Ty.W
-  { wApp = App {}
+  { wApp = App { anInt = 12 }
   , wSys = Sys { sysLog } }
   where sysLog = Log { logCalls = [vACall (k 13)]
                      , logWha = [vACallCPS (k 13)]
                      , logEvents = [RetVal "12"] }
-data App = App {}
+data App = App
+  { anInt :: Int
+  }
   deriving (Eq, Ord, Read, Show)
+fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
+vanInt = fanInt vwApp
 
 instance HasRecon W where
   getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
@@ -76,16 +80,24 @@ vACallCPS :: V Int -> V (CPS W ())
 vACallCPS = lift1 $ nuni "aCallCPS" aCallCPS
 
 oldMain = do
-  let event = rd theWorld grabEvent
-      call = rd theWorld grabCall
-  let tmi = resolveCall call event
-  let tmi' = rd theWorld $ vresolveCall grabCall grabEvent
-
+  let i = rd theWorld vanInt
+  msp i
+  let write = Write vanInt 14
+      w' = propWrite theWorld write
   msp theWorld
-  let tws = show theWorld
-      tw = read tws :: W
-  let tmi'' = rd tw $ vresolveCall grabCall grabEvent
-  let cpstmi'' = rd tw $ vresolveCallCPS grabCallCPS grabEvent
+  msp w'
+
+  -- works
+  -- let event = rd theWorld grabEvent
+  --     call = rd theWorld grabCall
+  -- let tmi = resolveCall call event
+  -- let tmi' = rd theWorld $ vresolveCall grabCall grabEvent
+
+  -- msp theWorld
+  -- let tws = show theWorld
+  --     tw = read tws :: W
+  -- let tmi'' = rd tw $ vresolveCall grabCall grabEvent
+  -- let cpstmi'' = rd tw $ vresolveCallCPS grabCallCPS grabEvent
 
   -- works
   -- msp vroot
