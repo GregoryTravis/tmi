@@ -22,15 +22,10 @@ data V w a where
   VDeref :: V w (V w a) -> V w a
 
 data Log w = Log
-  { logCalls :: [V w (TMI w ())]
-  , logWha :: [V w (CPS w ())]
+  { logCPSs :: [V w (CPS w ())]
   , logEvents :: [Event]
   }
   -- deriving (Read, Show)
-
--- data Call w = forall a. (Read a, Show a) => Call (IO a) (a -> TMI w ())
--- vcallK :: V w (Call w) -> V w (a -> TMI w ())
--- vcallK = lift1 $ nuni "callK" (\(Call _ k) -> k)
 
 data Event = RetVal String -- | Command
   deriving (Eq, Ord, Read, Show)

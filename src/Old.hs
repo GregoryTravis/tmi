@@ -25,7 +25,6 @@ import W
 -- start boilerplate
 type W = Ty.W App
 type V = Ty.V W
--- type Call = Ty.Call W
 deriving instance Show W
 deriving instance Read W
 
@@ -37,8 +36,7 @@ theWorld :: W
 theWorld = Ty.W
   { wApp = App { anInt = 12 }
   , wSys = Sys { sysLog } }
-  where sysLog = Log { logCalls = [vACall (k 13)]
-                     , logWha = [vACallCPS (k 13)]
+  where sysLog = Log { logCPSs = [vaCPS (k 13)]
                      , logEvents = [RetVal "12"] }
 data App = App
   { anInt :: Int
@@ -48,56 +46,46 @@ fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
 vanInt = fanInt vwApp
 
 instance HasRecon W where
-  getRecon "aCall" = unsafeCoerce $ VNamed "aCall" aCall
+  getRecon "aCPS" = unsafeCoerce $ VNamed "aCPS" aCPS
 
 vwApp = fwApp vroot
 vwSys = fwSys vroot
 vsysLog = fsysLog vwSys
-vlogCalls = flogCalls vsysLog
-vlogWha = flogWha vsysLog
+vlogCPSs = flogCPSs vsysLog
 vlogEvents = flogEvents vsysLog
 
-grabCall :: V (TMI W ())
-grabCall = deref (vlogCalls !!. (VNice 0))
-
-grabCallCPS :: V (CPS W ())
-grabCallCPS = deref (vlogWha !!. (VNice 0))
+grabCPS :: V (CPS W ())
+grabCPS = deref (vlogCPSs !!. (VNice 0))
 
 grabEvent :: V Event
 grabEvent = vlogEvents !!. (VNice 0)
 
-aCall :: Int -> TMI w ()
-aCall n = Bind (Step (Ret n)) (\_ -> Step (Ret ()))
+aCPS :: Int -> CPS w ()
+aCPS n = cps $ Bind (Step (Ret n)) (\_ -> Step (Ret ()))
 
-vACall :: V Int -> V (TMI W ())
-vACall = lift1 $ nuni "aCall" aCall
-
-aCallCPS :: Int -> CPS w ()
-aCallCPS n = cps (aCall n)
---aCallCPS n = Bind (Step (Ret n)) (\_ -> Step (Ret ()))
-
-vACallCPS :: V Int -> V (CPS W ())
-vACallCPS = lift1 $ nuni "aCallCPS" aCallCPS
+vaCPS :: V Int -> V (CPS W ())
+vaCPS = lift1 $ nuni "aCPS" aCPS
 
 oldMain = do
-  let i = rd theWorld vanInt
-  msp i
-  let write = Write vanInt 14
-      w' = propWrite theWorld write
-  msp theWorld
-  msp w'
+  -- works
+  -- let i = rd theWorld vanInt
+  -- msp i
+  -- let write = Write vanInt 14
+  --     w' = propWrite theWorld write
+  -- msp theWorld
+  -- msp w'
 
   -- works
-  -- let event = rd theWorld grabEvent
-  --     call = rd theWorld grabCall
-  -- let tmi = resolveCall call event
-  -- let tmi' = rd theWorld $ vresolveCall grabCall grabEvent
+  let event = rd theWorld grabEvent
+      cps = rd theWorld grabCPS
+  let tmi = resolveCPS cps event
+  let tmi' = rd theWorld $ vresolveCPS grabCPS grabEvent
 
-  -- msp theWorld
-  -- let tws = show theWorld
-  --     tw = read tws :: W
-  -- let tmi'' = rd tw $ vresolveCall grabCall grabEvent
-  -- let cpstmi'' = rd tw $ vresolveCallCPS grabCallCPS grabEvent
+  msp theWorld
+  let tws = show theWorld
+      tw = read tws :: W
+  let tmi'' = rd tw $ vresolveCPS grabCPS grabEvent
+  let cpstmi'' = rd tw $ vresolveCPS grabCPS grabEvent
 
   -- works
   -- msp vroot
