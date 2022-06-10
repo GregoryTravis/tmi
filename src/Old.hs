@@ -60,11 +60,20 @@ grabCPS = deref (vlogCPSs !!. (VNice 0))
 grabEvent :: V Event
 grabEvent = vlogEvents !!. (VNice 0)
 
+-- aCPS :: Int -> CPS w ()
+-- aCPS n = cps $ Bind (Step (Ret n)) (\_ -> Step (Ret ()))
+
 aCPS :: Int -> CPS w ()
-aCPS n = cps $ Bind (Step (Ret n)) (\_ -> Step (Ret ()))
+aCPS n = cps $ do
+  Step $ Ext (return n)
+  Step (Ret ())
 
 vaCPS :: V Int -> V (CPS W ())
 vaCPS = lift1 $ nuni "aCPS" aCPS
+
+isDone :: CPS w a -> Bool
+isDone Done = True
+isDone _ = False
 
 oldMain = do
   -- works
@@ -86,6 +95,7 @@ oldMain = do
       tw = read tws :: W
   let tmi'' = rd tw $ vresolveCPS grabCPS grabEvent
   let cpstmi'' = rd tw $ vresolveCPS grabCPS grabEvent
+  msp $ isDone cpstmi''
 
   -- works
   -- msp vroot

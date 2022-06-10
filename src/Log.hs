@@ -19,7 +19,8 @@ flogEvents :: V w (Log w) -> V w [Event]
 flogEvents log = field log "logEvents" logEvents $ \w logEvents -> w { logEvents }
 
 resolveCPS :: CPS w () -> Event -> CPS w ()
-resolveCPS (KBind _ k) (RetVal eventString) = k (read eventString)
+resolveCPS (KBind (Ext _) k) (RetVal eventString) = k (read eventString)
+resolveCPS _ e = error $ "Can't resolve: " ++ show e
 
 vresolveCPS :: V w (CPS w ()) -> V w Event -> V w (CPS w ())
 vresolveCPS = lift2 $ nuni "resolveCPS" resolveCPS
