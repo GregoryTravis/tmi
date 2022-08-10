@@ -8,5 +8,7 @@ import Log
 import Ty
 import Util
 
+-- field lenses
+
 fsysLog :: V w (Sys w) -> V w (Log w)
 fsysLog sys = field sys "sysLog" sysLog $ \w sysLog -> w { sysLog }

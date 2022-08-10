@@ -12,11 +12,15 @@ import Ty
 import V
 import Util
 
+-- field lenses
+
 flogCPSs :: V w (Log w) -> V w [V w (CPS w ())]
 flogCPSs log = field log "logCPSs" logCPSs $ \w logCPSs -> w { logCPSs }
 
 flogEvents :: V w (Log w) -> V w [Event]
 flogEvents log = field log "logEvents" logEvents $ \w logEvents -> w { logEvents }
+
+-- pass retval to call continuation, and lens
 
 resolveCPS :: CPS w () -> Event -> CPS w ()
 resolveCPS (KBind (Ext _) k) (RetVal eventString) = k (read eventString)

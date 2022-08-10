@@ -21,6 +21,11 @@ data V w a where
   VBiSeal :: Bi w a (R w a) -> V w a
   VDeref :: V w (V w a) -> V w a
 
+-- Interaction log.
+-- logCPSs is a sequence of calls, each roughly a pair of (IO a, a -> CPS b), in
+-- order that they were executed by the program.
+-- logEvents is a sequence of retvals which are passed to the continuations, in
+-- order of their arrival.
 data Log w = Log
   { logCPSs :: [V w (CPS w ())]
   , logEvents :: [Event]
