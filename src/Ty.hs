@@ -21,25 +21,18 @@ data V w a where
   VBiSeal :: Bi w a (R w a) -> V w a
   VDeref :: V w (V w a) -> V w a
 
--- Interaction log.
--- logCPSs is a sequence of calls, each roughly a pair of (IO a, a -> CPS b), in
--- order that they were executed by the program.
--- logEvents is a sequence of retvals which are passed to the continuations, in
--- order of their arrival.
-data Log w = Log
-  { logCPSs :: [V w (CPS w ())]
-  , logEvents :: [Event]
+-- TODO is b every anything but ()?
+data Call w b = forall a. Call (Step a) (a -> CPS w b)
+
+data H w = H
+  { calls :: [V w (Call w ())]
+  , events :: [Event]
+  , generations :: [w]
+  , todo :: [V w (CPS w ())]
   }
-  -- deriving (Read, Show)
 
 data Event = RetVal String -- | Command
   deriving (Eq, Ord, Read, Show)
-
-data Sys w = Sys { sysLog :: Log w }
-  -- deriving (Read, Show)
-
-data W app = W { wApp :: app, wSys :: Sys (W app) }
-  -- deriving (Read, Show)
 
 data Step a where
   Ext :: (Read a, Show a) => IO a -> Step a

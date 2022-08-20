@@ -1,9 +1,11 @@
 module TMI
-( cps ) where
+( cps
+, vcps ) where
 
 import Control.Applicative -- Otherwise you can't do the Applicative instance.
 import Control.Monad (liftM, ap)
 
+import Lift
 import Ty
 import Util
 
@@ -22,6 +24,9 @@ instance Monad (TMI w) where
 
 cps :: (Read a, Show a) => TMI w a -> CPS w a
 cps tmi = cps' tmi (\_ -> Done)
+
+vcps :: (Read a, Show a) => V w (TMI w a) -> V w (CPS w a)
+vcps = ulift1 "cps" cps
 
 cps' :: (Read a, Show a) => TMI w a -> (a -> CPS w b) -> CPS w b
 cps' (Step a) k = KBind a k

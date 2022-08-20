@@ -1,7 +1,8 @@
 module Lift
 ( lift1
 , lift2
-, liftV ) where
+, liftV
+, ulift1 ) where
 
 import Data.Dynamic
 
@@ -17,3 +18,5 @@ lift2 bi qa qb = VBiSeal (BiApp (BiApp bi qa) qb)
 liftV :: (a -> b -> a) -> (a -> R w a -> R w b)
 liftV f a ra = mkR ir
   where ir b = write ra (f a b)
+
+ulift1 s f = lift1 $ nuni s f
