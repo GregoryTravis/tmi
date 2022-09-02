@@ -12,6 +12,7 @@ import Lift
 import Lib
 import Propagate
 import Recon
+import Runtime
 import Storage
 import TMI
 import Ty hiding (V, H, TMI, CPS)
@@ -43,6 +44,7 @@ fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
 vanInt = fanInt vroot
 
 instance HasRecon W where
+  getRecon _ = error "unimplemented"
   -- getRecon "aCPS" = unsafeCoerce $ VNamed "aCPS" aCPS
 
 theMain :: TMI ()
@@ -51,5 +53,7 @@ theMain = Step (Ret ())
 vTheMain :: V (TMI ())
 vTheMain = VNamed "theMain" theMain
 
+oldMain :: IO ()
 oldMain = do
+  mainLoop theHistory
   msp "hi oldMain"

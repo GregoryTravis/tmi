@@ -46,4 +46,5 @@ data TMI w a where
 -- TMI in CPS form
 data CPS w a where
   KBind :: Step a -> (a -> CPS w b) -> CPS w b
+  -- TODO shouln'd this be CPS w ()?
   Done :: CPS w a
