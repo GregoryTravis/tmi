@@ -2,7 +2,8 @@ module Lift
 ( lift1
 , lift2
 , liftV
-, ulift1 ) where
+, ulift1
+, ulift2 ) where
 
 import Data.Dynamic
 
@@ -20,3 +21,4 @@ liftV f a ra = mkR ir
   where ir b = write ra (f a b)
 
 ulift1 s f = lift1 $ nuni s f
+ulift2 s f = lift2 $ nuni s f

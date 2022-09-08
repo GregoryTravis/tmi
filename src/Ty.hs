@@ -21,11 +21,12 @@ data V w a where
   VBiSeal :: Bi w a (R w a) -> V w a
   VDeref :: V w (V w a) -> V w a
 
--- TODO is b every anything but ()?
-data Call w b = forall a. Call (Step a) (a -> CPS w b)
+-- TODO is b ever anything but ()?
+-- TODO just use KBind?
+data Call w = forall a. Call (Step a) (a -> CPS w ())
 
 data H w = H
-  { calls :: [V w (Call w ())]
+  { calls :: [V w (Call w)]
   , events :: [Event]
   , generations :: [w]
   , todo :: [V w (CPS w ())]
@@ -44,6 +45,7 @@ data TMI w a where
   -- deriving (Eq, Ord, Read, Show)
 
 -- TMI in CPS form
+-- TODO is a always ()?
 data CPS w a where
   KBind :: Step a -> (a -> CPS w b) -> CPS w b
   -- TODO shouln'd this be CPS w ()?
