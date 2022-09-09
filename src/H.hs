@@ -1,14 +1,18 @@
-{-# Language NamedFieldPuns #-}
+{-# Language StandaloneDeriving, NamedFieldPuns #-}
+
 module H where
 
 import Lens
 import TMI
 import Ty
 import Util
+import VReadShow
 
 initHistory :: V w (TMI w ()) -> w -> H w
 initHistory main w = H { calls = [], events = [], generations = [w], todo = [cpsMain] }
   where cpsMain = vcps main
+
+deriving instance Show w => Show (H w)
 
 fcalls app = field app "calls" calls $ \r calls -> r { calls }
 fevents app = field app "events" events $ \r events -> r { events }

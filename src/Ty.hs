@@ -50,3 +50,15 @@ data CPS w a where
   KBind :: Step a -> (a -> CPS w b) -> CPS w b
   -- TODO shouln'd this be CPS w ()?
   Done :: CPS w a
+
+instance Show (TMI w a) where
+  show (Step step) = "(Step " ++ (show step) ++ ")"
+  show (Bind tmi' k) = "(Bind " ++ (show tmi') ++ " ...k)"
+
+instance Show (CPS w a) where
+  show (KBind step k) = "(KBind " ++ (show step) ++ " ...k)"
+  show Done = "Done"
+
+instance Show (Step a) where
+  show (Ext x) = "(Ext _)"
+  show (Ret a) = "(Ret _)"

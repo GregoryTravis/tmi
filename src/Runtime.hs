@@ -4,6 +4,7 @@ module Runtime
 ( mainLoop ) where
 
 import Control.Monad.State.Lazy
+import H
 import Lib
 import Lift
 import Propagate
@@ -63,15 +64,26 @@ runATodo = do
                                                        put $ h { todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
-step :: St w ()
+step :: Show w => St w ()
 step = do
   -- Handle new retvals
   -- Start new calls
   -- Run a todo TMI
+  showHistory
+  showNextTodo
   runATodo
+  showHistory
+  showNextTodo
   liftIO $ msp "runtime mainLoop Hi"
+  where showHistory = get >>= (liftIO . msp)
+        showNextTodo :: St w ()
+        showNextTodo = do
+          h@H { todo } <- get
+          case todo of
+            [] -> liftIO $ msp "no todos"
+            (todo:todos) -> liftIO $ msp $ rd (last (generations h)) todo
 
-mainLoop :: H w -> IO ()
+mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
   liftIO $ msp "mainLoop start"
   ((), h') <- runStateT step h
