@@ -5,6 +5,8 @@ module Ty where
 import Control.Monad.State.Lazy hiding (execState)
 import Data.Dynamic (Typeable)
 
+import CoatCheck
+
 data Write w = forall a. Write (V w a) a | forall a. VWrite (V w a) (V w a) | Writes [Write w]
 
 data R w a = R (a -> Write w)
@@ -21,12 +23,8 @@ data V w a where
   VBiSeal :: Bi w a (R w a) -> V w a
   VDeref :: V w (V w a) -> V w a
 
--- TODO is b ever anything but ()?
--- TODO just use KBind?
-data Call w = forall a. Call (Step a) (a -> CPS w ())
-
 data H w = H
-  { calls :: [V w (Call w)]
+  { calls :: CoatCheck (V w (CPS w ()))
   , events :: [Event]
   , generations :: [w]
   , todo :: [V w (CPS w ())]

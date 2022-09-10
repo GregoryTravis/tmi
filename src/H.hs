@@ -2,6 +2,7 @@
 
 module H where
 
+import qualified CoatCheck as CC
 import Lens
 import TMI
 import Ty
@@ -9,7 +10,7 @@ import Util
 import VReadShow
 
 initHistory :: V w (TMI w ()) -> w -> H w
-initHistory main w = H { calls = [], events = [], generations = [w], todo = [cpsMain] }
+initHistory main w = H { calls = CC.empty, events = [], generations = [w], todo = [cpsMain] }
   where cpsMain = vcps main
 
 deriving instance Show w => Show (H w)

@@ -4,6 +4,8 @@ module Runtime
 ( mainLoop ) where
 
 import Control.Monad.State.Lazy
+
+import qualified CoatCheck as CC
 import H
 import Lib
 import Lift
@@ -25,14 +27,14 @@ addTodo tmi = do
 --         (KBind (Ret _) _) -> Just (advanceRetBindV vcps)
 --         Done -> Nothing
 
-data StepResult w = Stepped (V w (CPS w ())) | Called (Call w) | Nada
+data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Nada
 
 stepCPS :: w -> V w (CPS w ()) -> StepResult w
 stepCPS w vcps =
   let cps = rd w vcps
    in case cps of
         (KBind (Ret _) _) -> Stepped (advanceRetBindV vcps)
-        (KBind e@(Ext _) k) -> Called (Call e k)
+        (KBind e@(Ext _) k) -> Called vcps
         Done -> Nada
 
 -- Resolve a Ret immediately
@@ -52,16 +54,20 @@ advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 -- TODO don't run an Ext immedaitely
 runATodo :: St w ()
 runATodo = do
-  h@H { todo, generations } <- get
+  h@H { calls, todo, generations } <- get
   let latestW = last generations
   case todo of
     [] -> return ()
     (vcps:vcpss) -> do case stepCPS latestW vcps of
                         Stepped vcps' -> put $ h { todo = vcps' : vcpss }
-                        Called (Call (Ext io) k) -> do retval <- liftIO io
-                                                       let retvalS = show retval
-                                                           vcps' = advanceExtBindV vcps (VNice retvalS)
-                                                       put $ h { todo = vcps' : vcpss }
+                        Called vcps -> do
+                          let (tag, cc') = CC.check calls vcps
+                          -- use tag
+                          put $ h { calls = cc', todo = vcpss }
+                        -- Called (CPS (Ext io) k) -> do retval <- liftIO io 
+                        --                                let retvalS = show retval
+                        --                                    vcps' = advanceExtBindV vcps (VNice retvalS)
+                        --                                put $ h { todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
 step :: Show w => St w ()
