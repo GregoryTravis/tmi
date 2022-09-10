@@ -6,6 +6,7 @@ import Control.Monad.State.Lazy hiding (execState)
 import Data.Dynamic (Typeable)
 
 import CoatCheck
+import NiceMap
 
 data Write w = forall a. Write (V w a) a | forall a. VWrite (V w a) (V w a) | Writes [Write w]
 
@@ -28,6 +29,7 @@ data H w = H
   , events :: [Event]
   , generations :: [w]
   , todo :: [V w (CPS w ())]
+  , store :: NiceMap
   }
 
 data Event = RetVal String -- | Command

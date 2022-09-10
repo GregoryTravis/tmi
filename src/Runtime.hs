@@ -11,6 +11,7 @@ import ExtRunner
 import H
 import Lib
 import Lift
+import qualified NiceMap as NM
 import Propagate
 import Ty
 import Util
