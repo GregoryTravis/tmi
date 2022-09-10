@@ -50,7 +50,10 @@ instance HasRecon W where
 theMain :: TMI ()
 -- theMain = Step (Ret ())
 -- theMain = Step (Ext (msp "uff da"))
-theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
+-- theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
+theMain = do
+  s <- call $ readFile "asdf"
+  call $ msp $ "ooo " ++ s
 
 vTheMain :: V (TMI ())
 vTheMain = VNamed "theMain" theMain

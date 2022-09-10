@@ -1,6 +1,7 @@
 module TMI
 ( cps
-, vcps ) where
+, vcps
+, call ) where
 
 import Control.Applicative -- Otherwise you can't do the Applicative instance.
 import Control.Monad (liftM, ap)
@@ -19,6 +20,9 @@ instance Applicative (TMI w) where
 instance Monad (TMI w) where
   (>>=) = Bind
   return = Step . Ret
+
+call :: (Read a, Show a) => IO a -> TMI w a
+call = Step . Ext
 
 -- Convert a TMI to a CPS
 
