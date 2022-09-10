@@ -48,7 +48,9 @@ instance HasRecon W where
   -- getRecon "aCPS" = unsafeCoerce $ VNamed "aCPS" aCPS
 
 theMain :: TMI ()
-theMain = Step (Ret ())
+-- theMain = Step (Ret ())
+-- theMain = Step (Ext (msp "uff da"))
+theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
 
 vTheMain :: V (TMI ())
 vTheMain = VNamed "theMain" theMain

@@ -66,15 +66,18 @@ runATodo = do
 
 step :: Show w => St w ()
 step = do
-  -- Handle new retvals
-  -- Start new calls
-  -- Run a todo TMI
-  showHistory
-  showNextTodo
-  runATodo
-  showHistory
-  showNextTodo
-  liftIO $ msp "runtime mainLoop Hi"
+  atd <- anythingToDo
+  if not atd
+    then return ()
+    else do
+           -- Handle new retvals
+           -- Start new calls
+           -- Run a todo TMI
+           doLog
+           runATodo
+           doLog
+           -- liftIO $ msp "runtime mainLoop Hi"
+           step
   where showHistory = get >>= (liftIO . msp)
         showNextTodo :: St w ()
         showNextTodo = do
@@ -82,9 +85,21 @@ step = do
           case todo of
             [] -> liftIO $ msp "no todos"
             (todo:todos) -> liftIO $ msp $ rd (last (generations h)) todo
+        verbose = False
+        doLog = do
+          if verbose
+            then do
+                   showHistory
+                   showNextTodo
+            else return ()
+        anythingToDo :: St w Bool
+        anythingToDo = do
+          H { todo } <- get
+          return $ not $ null todo
 
 mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
-  liftIO $ msp "mainLoop start"
+  -- liftIO $ msp "mainLoop start"
   ((), h') <- runStateT step h
-  liftIO $ msp "mainLoop done"
+  -- liftIO $ msp "mainLoop done"
+  return ()
