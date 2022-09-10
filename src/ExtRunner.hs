@@ -3,7 +3,8 @@
 module ExtRunner
 ( ExtRunner
 , mkExtRunner
-, run ) where
+, run
+, nextResult ) where
 
 import Control.Concurrent
 import Control.Concurrent.Chan
@@ -24,3 +25,6 @@ run (ExtRunner chan) ioa = do
     msp "RUNNING IOTS 2"
     writeChan chan a
   return ()
+
+nextResult :: ExtRunner a -> IO a
+nextResult (ExtRunner chan) = readChan chan

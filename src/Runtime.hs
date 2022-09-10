@@ -5,7 +5,8 @@ module Runtime
 
 import Control.Monad.State.Lazy
 
-import CoatCheck
+import CoatCheck hiding (null)
+import qualified CoatCheck
 import ExtRunner
 import H
 import Lib
@@ -104,15 +105,34 @@ startCall er w tag vcps = do
       iots = externalize cps tag
   run er iots
 
+waitForRetval :: ExtRunner (Tag, String) -> St w ()
+waitForRetval er = do
+  h@H { calls, todo } <- get
+  (tag, retvalS) <- liftIO $ nextResult er
+  liftIO $ msp $ "Retrieve " ++ retvalS ++ " for " ++ show tag
+  let Just (vcps, calls') = retrieve calls tag
+      vcps' = advanceExtBindV vcps (VNice retvalS)
+      h' = h { calls = calls', todo = vcps':todo }
+  put h'
+
 loop :: Show w => ExtRunner (Tag, String) -> St w ()
 loop er = do
   atd <- anythingToDo
   if not atd
-    then return ()
+    then do
+      aosc <- anyOutStandingCalls
+      if aosc
+        then do
+          liftIO $ msp "wait for retval"
+          waitForRetval er
+        else do
+          liftIO $ msp "Nothing to do and nothing doing"
+          return ()
     else do
       -- Handle new retvals
       -- Start new calls
       -- Run a todo TMI
+      liftIO $ msp "there's a todo"
       doLog
       runATodo er
       doLog
@@ -123,8 +143,14 @@ anythingToDo = do
   H { todo } <- get
   return $ not $ null todo
 
+anyOutStandingCalls :: St w Bool
+anyOutStandingCalls = do
+  H { calls } <- get
+  return $ not $ CoatCheck.null calls
+
 mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
   runStateT (loop er) h
+  msp "loop done"
   return ()

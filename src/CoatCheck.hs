@@ -4,11 +4,12 @@ module CoatCheck
 ( CoatCheck
 , Tag
 , empty
+, null
 , check
 , retrieve ) where
 
-import Prelude hiding (map)
-import Data.Map.Strict hiding (empty, map)
+import Prelude hiding (map, null)
+import Data.Map.Strict hiding (empty, map, null)
 import qualified Data.Map.Strict as M
 
 data Tag = Tag Int
@@ -23,6 +24,9 @@ deriving instance Show a => Show (CoatCheck a)
 
 empty :: CoatCheck a
 empty = CoatCheck { serial = 0, map = M.empty }
+
+null :: CoatCheck a -> Bool
+null (CoatCheck {..}) = M.null map
 
 check :: CoatCheck a -> a -> (Tag, CoatCheck a)
 check (CoatCheck {..}) a =
