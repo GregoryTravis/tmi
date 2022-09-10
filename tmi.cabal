@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 executable tmi
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       V, Veq, Storage, Ty, Util, Propagate, Lift, Flags, Lens, Lib, Old, TMI, Recon, VReadShow, H, Runtime, CoatCheck
+  other-modules:       V, Veq, Storage, Ty, Util, Propagate, Lift, Flags, Lens, Lib, Old, TMI, Recon, VReadShow, H, Runtime, CoatCheck, ExtRunner
   default-language:    Haskell2010
   ghc-options:         -threaded
   build-depends:       base >= 4.7 && < 5
@@ -41,7 +41,7 @@ test-suite test
   hs-source-dirs:      test, src
   main-is:             Tests.hs
   other-modules:       V, Veq, Storage, Ty, Util, Propagate, Lift, Flags, Lens, Lib, Old, TMI, Recon, VReadShow, H, Runtime
-                       Innards, TestUtil, CoatCheck
+                       Innards, TestUtil, CoatCheck, ExtRunner
                      , Innards
   build-depends:       base >= 4.8
                      , QuickCheck

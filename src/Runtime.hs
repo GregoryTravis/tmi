@@ -5,7 +5,8 @@ module Runtime
 
 import Control.Monad.State.Lazy
 
-import qualified CoatCheck as CC
+import CoatCheck
+import ExtRunner
 import H
 import Lib
 import Lift
@@ -52,8 +53,8 @@ advanceExtBindV :: V w (CPS w b) -> V w String -> V w (CPS w b)
 advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 
 -- TODO don't run an Ext immedaitely
-runATodo :: St w ()
-runATodo = do
+runATodo :: ExtRunner (Tag, String) -> St w ()
+runATodo er = do
   h@H { calls, todo, generations } <- get
   let latestW = last generations
   case todo of
@@ -61,8 +62,8 @@ runATodo = do
     (vcps:vcpss) -> do case stepCPS latestW vcps of
                         Stepped vcps' -> put $ h { todo = vcps' : vcpss }
                         Called vcps -> do
-                          let (tag, cc') = CC.check calls vcps
-                          -- use tag
+                          let (tag, cc') = check calls vcps
+                          liftIO $ startCall er latestW tag vcps
                           put $ h { calls = cc', todo = vcpss }
                         -- Called (CPS (Ext io) k) -> do retval <- liftIO io
                         --                                let retvalS = show retval
@@ -70,8 +71,21 @@ runATodo = do
                         --                                put $ h { todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
-step :: Show w => St w ()
-step = do
+externalize :: (CPS w ()) -> Tag -> IO (Tag, String)
+externalize (KBind (Ext ioa) _) tag = do
+  msp "RUNNING IOTS"
+  a <- ioa
+  let s = show a
+  return (tag, s)
+
+startCall :: ExtRunner (Tag, String) -> w -> Tag -> V w (CPS w ()) -> IO ()
+startCall er w tag vcps = do
+  let cps = rd w vcps
+      iots = externalize cps tag
+  run er iots
+
+step :: Show w => ExtRunner (Tag, String) -> St w ()
+step er = do
   atd <- anythingToDo
   if not atd
     then return ()
@@ -80,10 +94,10 @@ step = do
            -- Start new calls
            -- Run a todo TMI
            doLog
-           runATodo
+           runATodo er
            doLog
            -- liftIO $ msp "runtime mainLoop Hi"
-           step
+           step er
   where showHistory = get >>= (liftIO . msp)
         showNextTodo :: St w ()
         showNextTodo = do
@@ -105,7 +119,8 @@ step = do
 
 mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
+  er <- mkExtRunner
   -- liftIO $ msp "mainLoop start"
-  ((), h') <- runStateT step h
+  ((), h') <- runStateT (step er) h
   -- liftIO $ msp "mainLoop done"
   return ()
