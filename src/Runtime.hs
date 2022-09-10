@@ -64,7 +64,7 @@ runATodo = do
                           let (tag, cc') = CC.check calls vcps
                           -- use tag
                           put $ h { calls = cc', todo = vcpss }
-                        -- Called (CPS (Ext io) k) -> do retval <- liftIO io 
+                        -- Called (CPS (Ext io) k) -> do retval <- liftIO io
                         --                                let retvalS = show retval
                         --                                    vcps' = advanceExtBindV vcps (VNice retvalS)
                         --                                put $ h { todo = vcps' : vcpss }
