@@ -14,7 +14,27 @@ import Propagate
 import Ty
 import Util
 
+verbose = False
+
 type St w a = StateT (H w) IO a
+
+showHistory :: Show w => St w ()
+showHistory = get >>= (liftIO . msp)
+
+showNextTodo :: St w ()
+showNextTodo = do
+  h@H { todo } <- get
+  case todo of
+    [] -> liftIO $ msp "no todos"
+    (todo:todos) -> liftIO $ msp $ rd (last (generations h)) todo
+
+doLog :: Show w => St w ()
+doLog = do
+  if verbose
+    then do
+           showHistory
+           showNextTodo
+    else return ()
 
 addTodo :: V w (CPS w ()) -> St w ()
 addTodo tmi = do
@@ -84,43 +104,27 @@ startCall er w tag vcps = do
       iots = externalize cps tag
   run er iots
 
-step :: Show w => ExtRunner (Tag, String) -> St w ()
-step er = do
+loop :: Show w => ExtRunner (Tag, String) -> St w ()
+loop er = do
   atd <- anythingToDo
   if not atd
     then return ()
     else do
-           -- Handle new retvals
-           -- Start new calls
-           -- Run a todo TMI
-           doLog
-           runATodo er
-           doLog
-           -- liftIO $ msp "runtime mainLoop Hi"
-           step er
-  where showHistory = get >>= (liftIO . msp)
-        showNextTodo :: St w ()
-        showNextTodo = do
-          h@H { todo } <- get
-          case todo of
-            [] -> liftIO $ msp "no todos"
-            (todo:todos) -> liftIO $ msp $ rd (last (generations h)) todo
-        verbose = False
-        doLog = do
-          if verbose
-            then do
-                   showHistory
-                   showNextTodo
-            else return ()
-        anythingToDo :: St w Bool
-        anythingToDo = do
-          H { todo } <- get
-          return $ not $ null todo
+      -- Handle new retvals
+      -- Start new calls
+      -- Run a todo TMI
+      doLog
+      runATodo er
+      doLog
+      loop er
+
+anythingToDo :: St w Bool
+anythingToDo = do
+  H { todo } <- get
+  return $ not $ null todo
 
 mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
-  -- liftIO $ msp "mainLoop start"
-  ((), h') <- runStateT (step er) h
-  -- liftIO $ msp "mainLoop done"
+  runStateT (loop er) h
   return ()
