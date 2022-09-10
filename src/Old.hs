@@ -55,6 +55,9 @@ theMain = do
   s <- call $ readFile "asdf"
   call $ msp $ "ooo " ++ s
 
+-- theParMain = do
+--   (a, b) <- par (call $ readFile "asdf") (call $ readFile "zxcv")
+
 vTheMain :: V (TMI ())
 vTheMain = VNamed "theMain" theMain
 

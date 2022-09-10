@@ -42,6 +42,7 @@ data Step a where
 data TMI w a where
   Step :: Step a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
+  Par :: TMI w a -> TMI w b -> ((a, b) -> TMI w c) -> TMI w c
   -- deriving (Eq, Ord, Read, Show)
 
 -- TMI in CPS form
