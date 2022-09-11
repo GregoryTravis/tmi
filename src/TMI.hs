@@ -1,3 +1,5 @@
+{-# Language GADTs #-}
+
 module TMI
 ( cps
 , vcps
@@ -9,6 +11,7 @@ import Control.Monad (liftM, ap)
 import Lift
 import Ty
 import Util
+import VReadShow
 
 instance Functor (TMI w) where
   fmap = liftM
@@ -36,3 +39,16 @@ cps' :: (Read a, Show a) => TMI w a -> (a -> CPS w b) -> CPS w b
 cps' (Step a) k = KBind a k
 cps' (Bind (Step a) k') k = KBind a (\a -> cps' (k' a) k)
 -- TODO handle case of a bind with a bind on the left
+
+instance Show (TMI w a) where
+  show (Step step) = "(Step " ++ (show step) ++ ")"
+  show (Bind tmi' k) = "(Bind " ++ (show tmi') ++ " ...k)"
+
+instance Show (CPS w a) where
+  show (KBind step k) = "(KBind " ++ (show step) ++ " ...k)"
+  show Done = "Done"
+
+instance Show (Step a) where
+  show (Ext x) = "(Ext _)"
+  show (Ret a) = "(Ret _)"
+  show (WriteStep (Write va a)) = "(WriteStep " ++ show va ++ ")"

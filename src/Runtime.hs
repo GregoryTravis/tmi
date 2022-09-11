@@ -1,4 +1,4 @@
-{-# Language NamedFieldPuns #-}
+{-# Language GADTs, NamedFieldPuns #-}
 
 module Runtime
 ( mainLoop ) where
@@ -16,7 +16,7 @@ import Propagate
 import Ty
 import Util
 
-verbose = False
+verbose = True
 
 type St w a = StateT (H w) IO a
 
@@ -50,7 +50,7 @@ addTodo tmi = do
 --         (KBind (Ret _) _) -> Just (advanceRetBindV vcps)
 --         Done -> Nothing
 
-data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Nada
+data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Wrote (Write w) (V w (CPS w ())) | Nada
 
 stepCPS :: w -> V w (CPS w ()) -> StepResult w
 stepCPS w vcps =
@@ -58,6 +58,7 @@ stepCPS w vcps =
    in case cps of
         (KBind (Ret _) _) -> Stepped (advanceRetBindV vcps)
         (KBind e@(Ext _) k) -> Called vcps
+        -- (KBind (WriteStep write) k) -> Wrote write (advanceWriteBindV vcps)
         Done -> Nada
 
 -- Resolve a Ret immediately
@@ -67,6 +68,13 @@ advanceRetBind (KBind (Ret x) k) = k x
 advanceRetBindV :: V w (CPS w b) -> V w (CPS w b)
 advanceRetBindV = ulift1 "advanceRetBind" advanceRetBind
 
+-- Continue after a write
+advanceWriteBind :: CPS w b -> CPS w b
+advanceWriteBind (KBind (WriteStep _) k) = k ()
+
+advanceWriteBindV :: V w (CPS w b) -> V w (CPS w b)
+advanceWriteBindV = ulift1 "advanceWriteBind" advanceWriteBind
+
 -- Resolve a call with the retval string
 advanceExtBind :: CPS w b -> String -> CPS w b
 advanceExtBind (KBind (Ext _) k) retvalS = k (read retvalS)
@@ -75,7 +83,7 @@ advanceExtBindV :: V w (CPS w b) -> V w String -> V w (CPS w b)
 advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 
 -- TODO don't run an Ext immedaitely
-runATodo :: ExtRunner (Tag, String) -> St w ()
+runATodo :: Show w => ExtRunner (Tag, String) -> St w ()
 runATodo er = do
   h@H { calls, todo, generations } <- get
   let latestW = last generations
@@ -87,10 +95,9 @@ runATodo er = do
                           let (tag, cc') = check calls vcps
                           liftIO $ startCall er latestW tag vcps
                           put $ h { calls = cc', todo = vcpss }
-                        -- Called (CPS (Ext io) k) -> do retval <- liftIO io
-                        --                                let retvalS = show retval
-                        --                                    vcps' = advanceExtBindV vcps (VNice retvalS)
-                        --                                put $ h { todo = vcps' : vcpss }
+                        Wrote write vcps' -> do
+                          let w' = propWrite latestW write
+                          put $ h { generations = w' : generations, todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
 externalize :: (CPS w ()) -> Tag -> IO (Tag, String)

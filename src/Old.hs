@@ -55,6 +55,9 @@ theMain = do
   s <- call $ readFile "asdf"
   call $ msp $ "ooo " ++ s
 
+  -- () <- Step $ WriteStep (Write vanInt 120)
+  -- call $ msp $ "ooo done"
+
 -- theParMain = do
 --   (a, b) <- par (call $ readFile "asdf") (call $ readFile "zxcv")
 

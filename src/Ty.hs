@@ -38,11 +38,13 @@ data Event = RetVal String -- | Command
 data Step a where
   Ext :: (Read a, Show a) => IO a -> Step a
   Ret :: a -> Step a
+  -- WriteStep :: V w a -> a -> Step ()
+  WriteStep :: Write w -> Step ()
 
 data TMI w a where
   Step :: Step a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
-  Par :: TMI w a -> TMI w b -> ((a, b) -> TMI w c) -> TMI w c
+  -- Par :: TMI w a -> TMI w b -> ((a, b) -> TMI w c) -> TMI w c
   -- deriving (Eq, Ord, Read, Show)
 
 -- TMI in CPS form
@@ -51,15 +53,3 @@ data CPS w a where
   KBind :: Step a -> (a -> CPS w b) -> CPS w b
   -- TODO shouln'd this be CPS w ()?
   Done :: CPS w a
-
-instance Show (TMI w a) where
-  show (Step step) = "(Step " ++ (show step) ++ ")"
-  show (Bind tmi' k) = "(Bind " ++ (show tmi') ++ " ...k)"
-
-instance Show (CPS w a) where
-  show (KBind step k) = "(KBind " ++ (show step) ++ " ...k)"
-  show Done = "Done"
-
-instance Show (Step a) where
-  show (Ext x) = "(Ext _)"
-  show (Ret a) = "(Ret _)"
