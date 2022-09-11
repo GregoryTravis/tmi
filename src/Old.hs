@@ -53,10 +53,11 @@ theMain :: TMI ()
 -- theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
 theMain = do
   s <- call $ readFile "asdf"
+  () <- Step $ WriteStep (Write vanInt 120)
   call $ msp $ "ooo " ++ s
-
-  -- () <- Step $ WriteStep (Write vanInt 120)
-  -- call $ msp $ "ooo done"
+  s' <- call $ readFile "asdf"
+  call $ msp $ "oooo " ++ s'
+  call $ msp $ "ooo done"
 
 -- theParMain = do
 --   (a, b) <- par (call $ readFile "asdf") (call $ readFile "zxcv")

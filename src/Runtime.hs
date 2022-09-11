@@ -16,7 +16,7 @@ import Propagate
 import Ty
 import Util
 
-verbose = True
+verbose = False
 
 type St w a = StateT (H w) IO a
 
@@ -58,7 +58,7 @@ stepCPS w vcps =
    in case cps of
         (KBind (Ret _) _) -> Stepped (advanceRetBindV vcps)
         (KBind e@(Ext _) k) -> Called vcps
-        -- (KBind (WriteStep write) k) -> Wrote write (advanceWriteBindV vcps)
+        (KBind (WriteStep write) k) -> Wrote write (advanceWriteBindV vcps)
         Done -> Nada
 
 -- Resolve a Ret immediately
@@ -86,7 +86,8 @@ advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 runATodo :: Show w => ExtRunner (Tag, String) -> St w ()
 runATodo er = do
   h@H { calls, todo, generations } <- get
-  let latestW = last generations
+  let latestW = case generations of (w:ws) -> w
+                                    [] -> error "runATodo: no generations"
   case todo of
     [] -> return ()
     (vcps:vcpss) -> do case stepCPS latestW vcps of
@@ -133,6 +134,7 @@ loop er = do
         then do
           liftIO $ msp "wait for retval"
           waitForRetval er
+          loop er
         else do
           liftIO $ msp "Nothing to do and nothing doing"
           return ()
@@ -159,6 +161,8 @@ anyOutStandingCalls = do
 mainLoop :: Show w => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
-  runStateT (loop er) h
+  ((), h') <- runStateT (loop er) h
+  msp $ "final state:"
+  msp h'
   msp "loop done"
   return ()

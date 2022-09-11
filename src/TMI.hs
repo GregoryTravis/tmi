@@ -48,7 +48,7 @@ instance Show (CPS w a) where
   show (KBind step k) = "(KBind " ++ (show step) ++ " ...k)"
   show Done = "Done"
 
-instance Show (Step a) where
+instance Show (Step w a) where
   show (Ext x) = "(Ext _)"
   show (Ret a) = "(Ret _)"
   show (WriteStep (Write va a)) = "(WriteStep " ++ show va ++ ")"

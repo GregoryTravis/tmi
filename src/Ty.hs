@@ -27,7 +27,7 @@ data V w a where
 data H w = H
   { calls :: CoatCheck (V w (CPS w ()))
   , events :: [Event]
-  , generations :: [w]
+  , generations :: [w] -- newest first
   , todo :: [V w (CPS w ())]
   , store :: NiceMap
   }
@@ -35,14 +35,14 @@ data H w = H
 data Event = RetVal String -- | Command
   deriving (Eq, Ord, Read, Show)
 
-data Step a where
-  Ext :: (Read a, Show a) => IO a -> Step a
-  Ret :: a -> Step a
+data Step w a where
+  Ext :: (Read a, Show a) => IO a -> Step w a
+  Ret :: a -> Step w a
   -- WriteStep :: V w a -> a -> Step ()
-  WriteStep :: Write w -> Step ()
+  WriteStep :: Write w -> Step w ()
 
 data TMI w a where
-  Step :: Step a -> TMI w a
+  Step :: Step w a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
   -- Par :: TMI w a -> TMI w b -> ((a, b) -> TMI w c) -> TMI w c
   -- deriving (Eq, Ord, Read, Show)
@@ -50,6 +50,6 @@ data TMI w a where
 -- TMI in CPS form
 -- TODO is a always ()?
 data CPS w a where
-  KBind :: Step a -> (a -> CPS w b) -> CPS w b
+  KBind :: Step w a -> (a -> CPS w b) -> CPS w b
   -- TODO shouln'd this be CPS w ()?
   Done :: CPS w a
