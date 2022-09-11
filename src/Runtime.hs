@@ -97,6 +97,7 @@ runATodo er = do
                           liftIO $ startCall er latestW tag vcps
                           put $ h { calls = cc', todo = vcpss }
                         Wrote write vcps' -> do
+                          -- liftIO $ msp "propWrite"
                           let w' = propWrite latestW write
                           put $ h { generations = w' : generations, todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }

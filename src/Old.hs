@@ -57,6 +57,8 @@ theMain = do
   call $ msp $ "ooo " ++ s
   s' <- call $ readFile "asdf"
   call $ msp $ "oooo " ++ s'
+  s'' <- call $ readFile "asdf"
+  call $ msp $ "oooo " ++ s''
   call $ msp $ "ooo done"
 
 -- theParMain = do
