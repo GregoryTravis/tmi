@@ -5,6 +5,8 @@ module NiceMap
 , Tag
 , empty
 , null
+, alloc
+, store
 , insert
 , lookup
 , delete ) where
