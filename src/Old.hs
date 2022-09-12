@@ -44,8 +44,10 @@ fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
 vanInt = fanInt vroot
 
 instance HasRecon W where
-  getRecon _ = error "unimplemented"
-  -- getRecon "aCPS" = unsafeCoerce $ VNamed "aCPS" aCPS
+  getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
+  getRecon "nope" = unsafeCoerce $ VNamed "nope" nope
+  getRecon "theMain" = unsafeCoerce $ VNamed "theMain" theMain
+  getRecon name = error $ "unimplemented " ++ name
 
 theMain :: TMI ()
 -- theMain = Step (Ret ())

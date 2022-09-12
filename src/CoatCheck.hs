@@ -21,6 +21,7 @@ data CoatCheck a = CoatCheck
   }
 
 deriving instance Show a => Show (CoatCheck a)
+deriving instance Read a => Read (CoatCheck a)
 
 empty :: CoatCheck a
 empty = CoatCheck { serial = 0, map = M.empty }

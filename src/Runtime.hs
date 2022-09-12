@@ -4,6 +4,8 @@ module Runtime
 ( mainLoop ) where
 
 import Control.Monad.State.Lazy
+import System.IO
+import System.Directory
 
 import CoatCheck hiding (null)
 import qualified CoatCheck
@@ -13,6 +15,7 @@ import Lib
 import Lift
 import qualified NiceMap as NM
 import Propagate
+import Recon
 import Ty
 import Util
 
@@ -125,8 +128,28 @@ waitForRetval er = do
       h' = h { calls = calls', todo = vcps':todo }
   put h'
 
-loop :: Show w => ExtRunner (Tag, String) -> St w ()
+testBounce :: (HasRecon w, Read w, Show w) => St w ()
+testBounce = do
+  h <- get
+  let s = show h
+  s' <- liftIO $ bounce s
+  let h' = read s'
+  put h'
+  -- liftIO $ massert "bounce ok" (h == h')
+  where bounce s = do
+          writeFile tmpfile s
+          s' <- readFile tmpfile
+          msp "bounce compare"
+          msp s
+          msp s'
+          removeFile tmpfile
+          -- writeFile "/tmp/tmibounce2" s'
+          return s'
+        tmpfile = "/tmp/tmibounce"
+
+loop :: (HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
 loop er = do
+  -- testBounce
   atd <- anythingToDo
   if not atd
     then do
@@ -159,7 +182,7 @@ anyOutStandingCalls = do
   H { calls } <- get
   return $ not $ CoatCheck.null calls
 
-mainLoop :: Show w => H w -> IO ()
+mainLoop :: (HasRecon w, Read w, Show w) => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
   ((), h') <- runStateT (loop er) h
