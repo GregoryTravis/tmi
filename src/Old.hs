@@ -44,9 +44,12 @@ fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
 vanInt = fanInt vroot
 
 instance HasRecon W where
-  getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
+  -- getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
+  getRecon "cps" = unsafeCoerce $ VNamed "cps" (cps :: TMI Int -> CPS Int)
   getRecon "nope" = unsafeCoerce $ VNamed "nope" nope
   getRecon "theMain" = unsafeCoerce $ VNamed "theMain" theMain
+  getRecon "advanceExtBind" = unsafeCoerce $ VNamed "advanceExtBind" advanceExtBind
+  getRecon "advanceWriteBind" = unsafeCoerce $ VNamed "advanceWriteBind" advanceWriteBind
   getRecon name = error $ "unimplemented " ++ name
 
 theMain :: TMI ()

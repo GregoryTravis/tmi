@@ -1,7 +1,10 @@
 {-# Language GADTs, NamedFieldPuns #-}
 
 module Runtime
-( mainLoop ) where
+( mainLoop
+-- for recon
+, advanceExtBind
+, advanceWriteBind ) where
 
 import Control.Monad.State.Lazy
 import System.IO
@@ -107,7 +110,7 @@ runATodo er = do
 
 externalize :: (CPS w ()) -> Tag -> IO (Tag, String)
 externalize (KBind (Ext ioa) _) tag = do
-  msp "RUNNING IOTS"
+  -- msp "RUNNING IOTS"
   a <- ioa
   let s = show a
   return (tag, s)
@@ -135,21 +138,17 @@ testBounce = do
   s' <- liftIO $ bounce s
   let h' = read s'
   put h'
-  -- liftIO $ massert "bounce ok" (h == h')
   where bounce s = do
           writeFile tmpfile s
           s' <- readFile tmpfile
-          msp "bounce compare"
-          msp s
-          msp s'
           removeFile tmpfile
-          -- writeFile "/tmp/tmibounce2" s'
           return s'
         tmpfile = "/tmp/tmibounce"
 
 loop :: (HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
 loop er = do
-  -- testBounce
+  doLog
+  testBounce
   atd <- anythingToDo
   if not atd
     then do
@@ -167,9 +166,8 @@ loop er = do
       -- Start new calls
       -- Run a todo TMI
       liftIO $ msp "there's a todo"
-      doLog
       runATodo er
-      doLog
+      -- doLog
       loop er
 
 anythingToDo :: St w Bool

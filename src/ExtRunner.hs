@@ -22,7 +22,7 @@ run :: ExtRunner a -> IO a -> IO ()
 run (ExtRunner chan) ioa = do
   forkIO $ do
     a <- ioa
-    msp "RUNNING IOTS 2"
+    -- msp "RUNNING IOTS 2"
     writeChan chan a
   return ()
 
