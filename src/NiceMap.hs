@@ -28,13 +28,24 @@ empty = NiceMap { serial = 0, mapp = M.empty }
 null :: NiceMap -> Bool
 null (NiceMap {..}) = M.null mapp
 
-insert :: (Read a, Show a) => a -> NiceMap -> (Tag, NiceMap)
-insert a (NiceMap {..}) =
+alloc :: NiceMap -> (Tag, NiceMap)
+alloc nm@(NiceMap {..}) =
   let tag = Tag serial
       serial' = serial + 1
-      mapp' = M.insert tag (show a) mapp
-      cc' = NiceMap { serial = serial', mapp = mapp' }
+      cc' = nm { serial = serial' }
    in (tag, cc')
+
+store :: (Read a, Show a) => Tag -> a -> NiceMap -> NiceMap
+store tag a nm@(NiceMap {..}) =
+  let mapp' = M.insert tag (show a) mapp
+      cc' = nm { mapp = mapp' }
+   in cc'
+
+insert :: (Read a, Show a) => a -> NiceMap -> (Tag, NiceMap)
+insert a nm =
+  let (tag, nm') = alloc nm
+      nm'' = store tag a nm'
+   in (tag, nm'')
 
 lookup :: (Read a, Show a) => Tag -> NiceMap -> Maybe a
 lookup tag cc = read <$> M.lookup tag (mapp cc)
