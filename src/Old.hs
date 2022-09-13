@@ -66,7 +66,8 @@ theMain = do
   -- works
   s <- call $ readFile "asdf"
   -- () <- Step $ WriteStep (Write vanInt 120)
-  () <- Step $ WriteStep (VWrite vanInt (incer vanInt))
+  -- vanInt <--* 120
+  vanInt <-- incer vanInt
   call $ msp $ "ooo " ++ s
   s' <- call $ readFile "asdf"
   call $ msp $ "oooo " ++ s'

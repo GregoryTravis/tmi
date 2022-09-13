@@ -3,7 +3,9 @@
 module TMI
 ( cps
 , vcps
-, call ) where
+, call
+, (<--)
+, (<--*) ) where
 
 import Control.Applicative -- Otherwise you can't do the Applicative instance.
 import Control.Monad (liftM, ap)
@@ -52,3 +54,11 @@ instance Show (Step w a) where
   show (Ext x) = "(Ext _)"
   show (Ret a) = "(Ret _)"
   show (WriteStep (Write va a)) = "(WriteStep " ++ show va ++ ")"
+
+infixl 1 <--*
+(<--*) :: V w a -> a -> TMI w ()
+va <--* a = Step $ WriteStep (Write va a)
+
+infixl 1 <--
+(<--) :: V w a -> V w a -> TMI w ()
+va <-- va' = Step $ WriteStep (VWrite va va')
