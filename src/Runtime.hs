@@ -4,6 +4,7 @@ module Runtime
 ( mainLoop
 -- for recon
 , advanceExtBind
+, advanceRetBind
 , advanceWriteBind ) where
 
 import Control.Monad.State.Lazy

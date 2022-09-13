@@ -55,27 +55,30 @@ instance HasRecon W where
   getRecon "theMain" = unsafeCoerce $ VNamed "theMain" theMain
   getRecon "advanceExtBind" = unsafeCoerce $ VNamed "advanceExtBind" advanceExtBind
   getRecon "advanceWriteBind" = unsafeCoerce $ VNamed "advanceWriteBind" advanceWriteBind
+  getRecon "advanceRetBind" = unsafeCoerce $ VNamed "advanceRetBind" advanceRetBind
+  getRecon "incer" = unsafeCoerce $ VNamed "incer" incer
   getRecon name = error $ "unimplemented " ++ name
 
-theMain :: TMI ()
--- theMain = Step (Ret ())
--- theMain = Step (Ext (msp "uff da"))
--- theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
-theMain = do
-  -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
-  -- vsl <- (mkSlot vanm :: TMI (V Int))
-  -- -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
-  -- return ()
+incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
 
+theMain :: TMI ()
+theMain = do
   -- works
   s <- call $ readFile "asdf"
-  () <- Step $ WriteStep (Write vanInt 120)
+  -- () <- Step $ WriteStep (Write vanInt 120)
+  () <- Step $ WriteStep (VWrite vanInt (incer vanInt))
   call $ msp $ "ooo " ++ s
   s' <- call $ readFile "asdf"
   call $ msp $ "oooo " ++ s'
   s'' <- call $ readFile "asdf"
   call $ msp $ "oooo " ++ s''
   call $ msp $ "ooo done"
+
+  -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
+  vsl <- (mkSlot vanm :: TMI (V Int))
+  () <- Step $ WriteStep (Write vsl 23)
+  -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
+  return ()
 
 -- theParMain = do
 --   (a, b) <- par (call $ readFile "asdf") (call $ readFile "zxcv")
