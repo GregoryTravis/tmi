@@ -10,6 +10,7 @@ import H
 import Lens
 import Lift
 import Lib
+import NiceMap
 import Propagate
 import Recon
 import Runtime
@@ -19,6 +20,7 @@ import Ty hiding (V, H, TMI, CPS)
 import qualified Ty (V, H(..), TMI(..), CPS(..))
 import Util
 import V
+import VNiceMap
 import VReadShow
 
 -- start boilerplate
@@ -31,17 +33,20 @@ vroot = VRoot
 -- end boilerplate
 
 theWorld :: W
-theWorld = W { anInt = 12 }
+theWorld = W { anInt = 12, anm = empty }
 
 theHistory :: H
 theHistory = initHistory vTheMain theWorld
 
 data W = W
   { anInt :: Int
+  , anm :: NiceMap
   }
   deriving (Eq, Ord, Read, Show)
 fanInt app = field app "anInt" anInt $ \w anInt -> w { anInt }
 vanInt = fanInt vroot
+fanm app = field app "anm" anm $ \w anm -> w { anm }
+vanm = fanm vroot
 
 instance HasRecon W where
   -- getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
@@ -57,6 +62,12 @@ theMain :: TMI ()
 -- theMain = Step (Ext (msp "uff da"))
 -- theMain = Bind (Step (Ext (readFile "asdf"))) (\s -> Step (Ext (msp $ "ooo " ++ s)))
 theMain = do
+  -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
+  -- vsl <- (mkSlot vanm :: TMI (V Int))
+  -- -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
+  -- return ()
+
+  -- works
   s <- call $ readFile "asdf"
   () <- Step $ WriteStep (Write vanInt 120)
   call $ msp $ "ooo " ++ s

@@ -38,6 +38,8 @@ vcps = ulift1 "cps" cps
 cps' :: (Read a, Show a) => TMI w a -> (a -> CPS w b) -> CPS w b
 cps' (Step a) k = KBind a k
 cps' (Bind (Step a) k') k = KBind a (\a -> cps' (k' a) k)
+-- cps' (Bind b@(Bind _ _) k') k = cps' b (\a -> cps' (k' a) k)
+-- cps' (Bind (Bind (Step a) k'') k') k = KBind a (\a -> cps' (k'' a) (\a -> cps' (k' a) k))
 -- TODO handle case of a bind with a bind on the left
 
 instance Show (TMI w a) where

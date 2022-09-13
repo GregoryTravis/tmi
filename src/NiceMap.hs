@@ -22,7 +22,7 @@ data NiceMap = NiceMap
   { serial :: Int
   , mapp :: M.Map Tag String
   }
-  deriving (Read, Show)
+  deriving (Eq, Ord, Read, Show)
 
 empty :: NiceMap
 empty = NiceMap { serial = 0, mapp = M.empty }
