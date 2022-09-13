@@ -41,6 +41,8 @@ cps' :: TMI w a -> (a -> CPS w b) -> CPS w b
 cps' (Step a) k = KBind a k
 cps' (Bind (Step a) k') k = KBind a (\a -> cps' (k' a) k)
 cps' (Bind b@(Bind _ _) k') k = cps' b (\a -> cps' (k' a) k)
+-- cps' (CallCC kr) k = cps' (kr' k) (\_ -> Done)
+--   where kr' a = cps' (kr a)
 
 instance Show (TMI w a) where
   show (Step step) = "(Step " ++ (show step) ++ ")"
