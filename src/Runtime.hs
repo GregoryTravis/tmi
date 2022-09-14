@@ -20,10 +20,12 @@ import Lift
 import qualified NiceMap as NM
 import Propagate
 import Recon
+import TMI
 import Ty
 import Util
 
 verbose = False
+verbose2 = False
 
 type St w a = StateT (H w) IO a
 
@@ -57,7 +59,7 @@ addTodo tmi = do
 --         (KBind (Ret _) _) -> Just (advanceRetBindV vcps)
 --         Done -> Nothing
 
-data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Wrote (Write w) (V w (CPS w ())) | Nada
+data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Wrote (Write w) (V w (CPS w ())) | Nada -- | CalledCC (V w (CPS w ()))
 
 stepCPS :: w -> V w (CPS w ()) -> StepResult w
 stepCPS w vcps =
@@ -66,7 +68,22 @@ stepCPS w vcps =
         (KBind (Ret _) _) -> Stepped (advanceRetBindV vcps)
         (KBind e@(Ext _) k) -> Called vcps
         (KBind (WriteStep write) k) -> Wrote write (advanceWriteBindV vcps)
+        -- (KBind (CallCC kr) k) -> CalledCC (advanceCallCCV vcps)
         Done -> Nada
+
+-- advanceCallCC :: CPS w () -> CPS w ()
+-- advanceCallCC (KBind (CallCC kr) k) = -- cps (kr k)
+--   -- kr :: ((a -> TMI w ()) -> TMI w ())
+--   -- k :: (a -> CPS w ())
+--   -- cps (kr (\x -> (\a -> cps (x a))))
+--   cps (kr (\x -> (\a -> (x a))))
+--   -- kr (\x :: (a -> TMI w ())
+--   --      -> (\a :: a
+--   --           -> x a :: TMI w ()
+--   --              cps (x a) :: CPS w ()
+
+-- advanceCallCCV :: V w (CPS w ()) -> V w (CPS w ())
+-- advanceCallCCV = ulift1 "advanceCallCC" advanceCallCC
 
 -- Resolve a Ret immediately
 advanceRetBind :: CPS w b -> CPS w b
@@ -126,7 +143,7 @@ waitForRetval :: ExtRunner (Tag, String) -> St w ()
 waitForRetval er = do
   h@H { calls, todo } <- get
   (tag, retvalS) <- liftIO $ nextResult er
-  liftIO $ msp $ "Retrieve " ++ retvalS ++ " for " ++ show tag
+  when verbose2 $ liftIO $ msp $ "Retrieve " ++ retvalS ++ " for " ++ show tag
   let Just (vcps, calls') = retrieve calls tag
       vcps' = advanceExtBindV vcps (VNice retvalS)
       h' = h { calls = calls', todo = vcps':todo }
@@ -156,17 +173,17 @@ loop er = do
       aosc <- anyOutStandingCalls
       if aosc
         then do
-          liftIO $ msp "wait for retval"
+          when verbose2 $ liftIO $ msp "wait for retval"
           waitForRetval er
           loop er
         else do
-          liftIO $ msp "Nothing to do and nothing doing"
+          when verbose2 $ liftIO $ msp "Nothing to do and nothing doing"
           return ()
     else do
       -- Handle new retvals
       -- Start new calls
       -- Run a todo TMI
-      liftIO $ msp "there's a todo"
+      when verbose2 $ liftIO $ msp "there's a todo"
       runATodo er
       -- doLog
       loop er
@@ -185,7 +202,7 @@ mainLoop :: (HasRecon w, Read w, Show w) => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
   ((), h') <- runStateT (loop er) h
-  msp $ "final state:"
-  msp h'
-  msp "loop done"
+  when verbose2 $ msp $ "final state:"
+  when verbose2 $ msp h'
+  -- msp "loop done"
   return ()

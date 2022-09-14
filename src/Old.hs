@@ -50,7 +50,8 @@ vanm = fanm vroot
 
 instance HasRecon W where
   -- getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
-  getRecon "cps" = unsafeCoerce $ VNamed "cps" (cps :: TMI Int -> CPS Int)
+  -- TODO is it bad? Is it wrong?
+  getRecon "cps" = unsafeCoerce $ VNamed "cps" (cps :: TMI Int -> CPS ())
   getRecon "nope" = unsafeCoerce $ VNamed "nope" nope
   getRecon "theMain" = unsafeCoerce $ VNamed "theMain" theMain
   getRecon "advanceExtBind" = unsafeCoerce $ VNamed "advanceExtBind" advanceExtBind
@@ -63,7 +64,32 @@ incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
 
 theMain :: TMI ()
 theMain = do
-  -- works
+  a <- do b <- Step $ Ret 1
+          call $ msp $ "inner " ++ show b
+          c <- do call $ msp $ "innerinner " ++ show b
+                  call $ msp $ "innerinner2 " ++ show b
+                  Step $ Ret b
+          Step $ Ret c
+  call $ msp $ "outer " ++ show a
+
+  -- nested callcc stuff?
+  -- a <- do b <- CallCC (\x -> ...)
+  --         doStuff b :: TMI a
+  -- doStuff a
+
+  -- -- callcc
+  -- -- calls the k
+  -- a <- (CallCC (\k -> k (14::Int))) :: TMI Int
+  -- call $ msp $ "welp " ++ show a
+  -- -- doesn't call the k, does something else
+  -- a <- CallCC (\k -> call $ msp "nope")
+  -- call $ msp $ "welp " ++ show a
+
+  -- Does Ret work? yes.
+  a <- Step $ Ret (12::Int)
+  call $ msp $ "twelve " ++ show a
+
+  -- -- works
   s <- call $ readFile "asdf"
   -- () <- Step $ WriteStep (Write vanInt 120)
   -- vanInt <--* 120
@@ -75,10 +101,11 @@ theMain = do
   call $ msp $ "oooo " ++ s''
   call $ msp $ "ooo done"
 
-  -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
-  vsl <- (mkSlot vanm :: TMI (V Int))
-  () <- Step $ WriteStep (Write vsl 23)
-  -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
+  -- -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
+  -- vsl <- (mkSlot vanm :: TMI (V Int))
+  -- () <- Step $ WriteStep (Write vsl 23)
+  -- -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
+
   return ()
 
 -- theParMain = do
