@@ -41,8 +41,12 @@ cps' (Step (CallCC kr)) k = Bind (Step (CallCC kr')) k
   where kr' k = cps' (kr k) (\() -> Done)
 cps' (Step a) k = Bind (Step a) k
 cps' (Bind b k') k = cps' b (kcps k' k)
--- TODO very questionable
-cps' Done k = k ()
+-- TODO very questionable, why does Done have a continuation?
+cps' Done k = expectDone $ k ()
+
+expectDone :: TMI w a -> TMI w a
+expectDone Done = Done
+expectDone x = error $ "expectDone: not done, but " ++ show x
 
 kcps :: (a -> TMI w b) -> (b -> TMI w c) -> (a -> TMI w c)
 kcps tk ck = \a -> cps' (tk a) ck
