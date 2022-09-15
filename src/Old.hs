@@ -90,9 +90,27 @@ mutRecBar i end = do
            call $ msp $ "lewp bar " ++ show i
            mutRecFoo (i + 1) end
 
+deepK0 :: Int -> TMI ()
+deepK0 i = do
+  a <- do b <- deepK1 i
+          call $ msp $ "b " ++ show b
+          Step $ Ret $ b + 1
+  call $ msp $ "a " ++ show a
+
+deepK1 :: Int -> TMI  Int
+deepK1 i = do
+  c <- do d <- Step $ CallCC (\k -> do if i == 20
+                                         then k i
+                                         else do call $ msp "stopping"
+                                                 Step $ Ret ())
+          call $ msp $ "d " ++ show d
+          Step $ Ret $ d + 1
+  call $ msp $ "c " ++ show c
+  Step $ Ret i
+
 theMain :: TMI ()
 theMain = do
-  mutRecFoo 0 10
+  deepK0 21
 
   -- works
   -- a <- do b <- Step $ Ret 1
