@@ -38,6 +38,7 @@ data Event = RetVal String -- | Command
 data Step w a where
   Ext :: (Read a, Show a) => IO a -> Step w a
   Ret :: a -> Step w a
+  -- CallCC :: ((a -> TMI w ()) -> TMI w ()) -> Step w ()
   -- WriteStep :: V w a -> a -> Step ()
   WriteStep :: Write w -> Step w ()
 
@@ -45,6 +46,7 @@ data TMI w a where
   Step :: Step w a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
   -- CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w ()
+  CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w a
   -- Fork :: TMI w () -> TMI w ()
   -- deriving (Eq, Ord, Read, Show)
 
@@ -52,7 +54,8 @@ data TMI w a where
 -- TODO is a always ()?
 data CPS w a where
   KBind :: Step w a -> (a -> CPS w b) -> CPS w b
+  KCallCC :: ((a -> CPS w b) -> CPS w b) -> CPS w b
   -- KCallCC :: ((a -> CPS w ()) -> CPS w ()) -> (a -> CPS w ()) -> CPS w ()
   -- KFork :: CPS w () -> (() -> CPS w ()) -> CPS w ()
   -- TODO shouln'd this be CPS w ()?
-  Done :: CPS w a
+  Done :: CPS w ()

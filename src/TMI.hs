@@ -30,19 +30,41 @@ call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
 -- Convert a TMI to a CPS
-
-cps :: (Read a, Show a) => TMI w a -> CPS w a
+cps :: (Read a, Show a) => TMI w a -> CPS w ()
 cps tmi = cps' tmi (\_ -> Done)
 
-vcps :: (Read a, Show a) => V w (TMI w a) -> V w (CPS w a)
+vcps :: (Read a, Show a) => V w (TMI w a) -> V w (CPS w ())
 vcps = ulift1 "cps" cps
 
 cps' :: TMI w a -> (a -> CPS w b) -> CPS w b
 cps' (Step a) k = KBind a k
-cps' (Bind (Step a) k') k = KBind a (\a -> cps' (k' a) k)
-cps' (Bind b@(Bind _ _) k') k = cps' b (\a -> cps' (k' a) k)
--- cps' (CallCC kr) k = cps' (kr' k) (\_ -> Done)
---   where kr' a = cps' (kr a)
+-- cps' (Bind b k') k = cps' b (\a -> cps' (k' a) k)
+cps' (Bind b k') k = cps' b (kcps k' k)
+
+-- cps' (CallCC tkr) ck =
+-- (CallCC tkr) :: TMI w a
+-- ck :: a -> CPS w b
+-- tkr :: (a -> TMI w ()) -> TMI w ()
+
+ugh :: CPS w a -> TMI w a
+ugh (KBind step k) = Bind (Step step) k'
+  where k' = \a -> ugh (k a)
+
+ugh2 :: (a -> CPS w b) -> (a -> TMI w b)
+ugh2 ck = \a -> ugh (ck a)
+
+-- ugh3 :: ((a -> TMI w b) -> TMI w b) -> ((a -> CPS w b) -> CPS w b)
+-- ugh3 tkr = \ckr -> cps $ tkr (ugh2 ckr)
+
+-- a <- CallCC (\a2b -> a2b a)
+-- doStuff a :: TMI b
+--    aka
+-- Bind (CallCC (\a2b -> a2b a)) (a -> doStuff a)
+
+-- ((a -> TMI w b) -> TMI w b) -> ((a -> CPS w b) -> CPS w b)
+
+kcps :: (a -> TMI w b) -> (b -> CPS w c) -> (a -> CPS w c)
+kcps tk ck = \a -> cps' (tk a) ck
 
 instance Show (TMI w a) where
   show (Step step) = "(Step " ++ (show step) ++ ")"
