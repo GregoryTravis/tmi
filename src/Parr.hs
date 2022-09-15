@@ -43,15 +43,15 @@ runIfDone :: (Maybe a, Maybe b)
           -> ((a, b) -> TMI w ())
           -> TMI w ()
 runIfDone (Just a, Just b) pairK = do
-  liftIO $ msp $ "runIfDone: have both"
+  call $ msp $ "runIfDone: have both"
   pairK (a, b)
-runIfDone (Just _, _) = do
-  liftIO $ msp $ "runIfDone: have left"
+runIfDone (Just _, _) _ = do
+  call $ msp $ "runIfDone: have left"
   return ()
-runIfDone (_, Just _) = do
-  liftIO $ msp $ "runIfDone: have right"
+runIfDone (_, Just _) _ = do
+  call $ msp $ "runIfDone: have right"
   return ()
-runIfDone _ = error "runIfDone: empty??"
+runIfDone _ _ = error "runIfDone: empty??"
 
   -- vsl <- (mkSlot vanm :: TMI (V Int))
   -- () <- Step $ WriteStep (Write vsl 23)
