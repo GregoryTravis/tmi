@@ -15,11 +15,11 @@ import Util
 
 slot :: (Read a, Show a) => NiceMap -> Tag -> a
 slot nm tag =
-  case eeesp ("read slot", tag) $ lookup tag nm
+  case lookup tag nm
     of Just a -> a
        Nothing -> error $ "VNiceMap slot: no such slot " ++ show tag ++ " " -- ++ nm
 slot_ :: (Read a, Show a) => NiceMap -> R w NiceMap -> Tag -> R w Tag -> R w a
-slot_ nm rnm tag _ = eesp ("write slot", tag) $ mkR r
+slot_ nm rnm tag _ = mkR r
   where r a = write rnm nm'
               where nm' = store tag a nm
 
@@ -30,8 +30,10 @@ mkSlot vnm initialValue = do
       -- vtag = vfst alloced
       -- vnm' = vsnd alloced
       (vtag, vnm') = vPairSplit alloced
+  tag <- Step $ Read vtag
+  let vtag' = k tag
   () <- Step $ WriteStep (VWrite vnm vnm')
-  let vs = vslot vnm vtag
+  let vs = vslot vnm vtag'
   vs <--* initialValue
   return vs
 

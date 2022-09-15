@@ -55,7 +55,7 @@ lookup :: (Read a, Show a) => Tag -> NiceMap -> Maybe a
 -- lookup tag cc = read <$> M.lookup tag (mapp cc)
 lookup tag cc =
   let sm = M.lookup tag (mapp cc)
-   in leesp "abner" ("nm lookup read", sm) $ read <$> sm
+   in read <$> sm
 
 delete :: Tag -> NiceMap -> NiceMap
 delete tag cc = cc { mapp = M.delete tag (mapp cc) }

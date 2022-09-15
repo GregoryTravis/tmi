@@ -101,7 +101,8 @@ tsPutStrLn s = do
   putStrLn s
   putMVar tsPutStrLnLock ()
 
-ourPutStrLn = tsPutStrLn
+-- ourPutStrLn = tsPutStrLn
+ourPutStrLn = putStrLn
 
 -- blah = do
 --   mapM_ yeah [0..10]

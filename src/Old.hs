@@ -131,7 +131,7 @@ sleepAndRet n = do
 
 theMain :: TMI ()
 theMain = do
-  (a, (b, c)) <- parr vanm (sleepAndRet 2) (parr vanm (sleepAndRet 3) (sleepAndRet 4))
+  (a, (b, c)) <- parr "outer" vanm (sleepAndRet 2) (parr "inner" vanm (sleepAndRet 3) (sleepAndRet 4))
   call $ msp $ "welp " ++ show (a, b, c)
   -- call $ msp $ "welp2"
   -- call $ msp $ "welp3"

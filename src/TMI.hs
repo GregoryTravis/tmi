@@ -69,8 +69,10 @@ instance Show (TMI w a) where
 instance Show (Step w a) where
   show (Ext x) = "(Ext _)"
   show (Ret a) = "(Ret _)"
+  show (WriteStep write) = "(WriteStep " ++ show write ++ ")"
   show (CallCC _) = "(CallCC _)"
-  show (WriteStep (Write va a)) = "(WriteStep " ++ show va ++ ")"
+  show (Fork _) = "(Fork _)"
+  show (Read _) = "(Read _)"
 
 infixl 1 <--*
 (<--*) :: V w a -> a -> TMI w ()
