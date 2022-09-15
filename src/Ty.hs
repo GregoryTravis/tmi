@@ -45,22 +45,11 @@ data Step w a where
 data TMI w a where
   Step :: Step w a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
-  -- CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w ()
-  CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w a
-  -- Fork :: TMI w () -> TMI w ()
   -- deriving (Eq, Ord, Read, Show)
-
--- data J w where
---   JBind :: Step w a -> (a -> J w) -> J w
---   JCallCC :: ((a -> J w) -> J w) -> J w
---   JDone :: J w
 
 -- TMI in CPS form
 -- TODO is a always ()?
 data CPS w a where
   KBind :: Step w a -> (a -> CPS w b) -> CPS w b
-  KCallCC :: ((a -> CPS w ()) -> CPS w ()) -> CPS w ()
-  -- KCallCC :: ((a -> CPS w ()) -> CPS w ()) -> (a -> CPS w ()) -> CPS w ()
-  -- KFork :: CPS w () -> (() -> CPS w ()) -> CPS w ()
   -- TODO shouln'd this be CPS w ()?
   Done :: CPS w ()
