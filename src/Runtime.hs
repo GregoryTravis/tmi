@@ -72,7 +72,7 @@ stepTMI w vcps =
         (Bind (Step (WriteStep write)) k) -> Wrote write (advanceWriteBindV vcps)
         (Bind (Step (CallCC kr)) k) -> CalledCC (advanceCallCCV vcps)
         Done -> Nada
-        -- (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
+        (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
         x -> error $ "?? " ++ show cps
 
 advanceCallCC :: TMI w () -> TMI w ()
