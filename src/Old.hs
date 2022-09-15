@@ -131,8 +131,11 @@ sleepAndRet n = do
 
 theMain :: TMI ()
 theMain = do
-  (a, b) <- parr vanm (sleepAndRet 2) (sleepAndRet 3)
-  call $ msp $ "welp " ++ show (a, b)
+  (a, (b, c)) <- parr vanm (sleepAndRet 2) (parr vanm (sleepAndRet 3) (sleepAndRet 4))
+  call $ msp $ "welp " ++ show (a, b, c)
+  -- call $ msp $ "welp2"
+  -- call $ msp $ "welp3"
+  -- call $ msp $ "welp4"
 
   -- w <- Step $ Read VRoot
   -- call $ msp $ "heh " ++ show w

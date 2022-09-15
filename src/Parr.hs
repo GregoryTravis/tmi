@@ -54,7 +54,7 @@ runIfDone :: (Maybe a, Maybe b)
           -> TMI w ()
 runIfDone (Just a, Just b) pairK = do
   call $ msp $ "runIfDone: have both"
-  pairK (a, b)
+  eesp "golly" $ pairK (a, b)
 runIfDone (Just _, _) _ = do
   call $ msp $ "runIfDone: have left"
   return ()
