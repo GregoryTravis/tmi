@@ -29,6 +29,19 @@ instance Monad (TMI w) where
 call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
+-- -- Convert a TMI to a CPS
+-- jps :: (Read a, Show a) => TMI w a -> J w
+-- jps tmi = jps' tmi (\_ -> JDone)
+
+-- jps' :: TMI w a -> (a -> J w) -> J w
+-- jps' (Step a) k = JBind a k
+-- jps' (Bind b k') k = jps' b (jkcps k' k)
+-- -- jps' (CallCC tkr) k = JCallCC k'
+-- --   where k' = \
+
+-- jkcps :: (a -> TMI w b) -> (b -> J w) -> (a -> J w)
+-- jkcps tk ck = \a -> jps' (tk a) ck
+
 -- Convert a TMI to a CPS
 cps :: (Read a, Show a) => TMI w a -> CPS w ()
 cps tmi = cps' tmi (\_ -> Done)

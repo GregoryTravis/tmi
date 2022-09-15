@@ -50,6 +50,11 @@ data TMI w a where
   -- Fork :: TMI w () -> TMI w ()
   -- deriving (Eq, Ord, Read, Show)
 
+-- data J w where
+--   JBind :: Step w a -> (a -> J w) -> J w
+--   JCallCC :: ((a -> J w) -> J w) -> J w
+--   JDone :: J w
+
 -- TMI in CPS form
 -- TODO is a always ()?
 data CPS w a where
