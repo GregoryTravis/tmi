@@ -38,9 +38,9 @@ data Event = RetVal String -- | Command
 data Step w a where
   Ext :: (Read a, Show a) => IO a -> Step w a
   Ret :: a -> Step w a
-  CallCC :: ((a -> TMI w ()) -> TMI w ()) -> Step w a
-  -- WriteStep :: V w a -> a -> Step ()
   WriteStep :: Write w -> Step w ()
+  CallCC :: ((a -> TMI w ()) -> TMI w ()) -> Step w a
+  Fork :: (TMI w ()) -> Step w ()
 
 data TMI w a where
   Step :: Step w a -> TMI w a

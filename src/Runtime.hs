@@ -6,7 +6,9 @@ module Runtime
 , advanceExtBind
 , advanceRetBind
 , advanceWriteBind
-, advanceCallCC ) where
+, advanceCallCC
+, getForkTMI
+, getForkNext ) where
 
 import Control.Monad.State.Lazy
 import System.IO
@@ -25,6 +27,7 @@ import Recon
 import TMI
 import Ty
 import Util
+import VReadShow
 
 verbose = False
 verbose2 = False
@@ -62,6 +65,8 @@ addTodo tmi = do
 --         Done -> Nothing
 
 data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (Write w) (V w (TMI w ())) | Nada | CalledCC (V w (TMI w ()))
+                  | Forked (V w (TMI w ())) (V w (TMI w ()))
+                  deriving Show
 
 stepTMI :: w -> V w (TMI w ()) -> StepResult w
 stepTMI w vcps =
@@ -71,8 +76,9 @@ stepTMI w vcps =
         (Bind (Step e@(Ext _)) k) -> Called vcps
         (Bind (Step (WriteStep write)) k) -> Wrote write (advanceWriteBindV vcps)
         (Bind (Step (CallCC kr)) k) -> CalledCC (advanceCallCCV vcps)
-        Done -> Nada
+        (Bind (Step (Fork _)) _) -> Forked (getForkTMIV vcps) (getForkNextV vcps)
         (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
+        Done -> Nada
         x -> error $ "?? " ++ show cps
 
 advanceCallCC :: TMI w () -> TMI w ()
@@ -102,6 +108,18 @@ advanceExtBind (Bind (Step (Ext _)) k) retvalS = k (read retvalS)
 advanceExtBindV :: V w (TMI w b) -> V w String -> V w (TMI w b)
 advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 
+getForkTMI :: TMI w () -> TMI w ()
+getForkTMI (Bind (Step (Fork tmi)) k) = tmi
+
+getForkTMIV :: V w (TMI w ()) -> V w (TMI w ())
+getForkTMIV = ulift1 "getForkTMI" getForkTMI
+
+getForkNext :: TMI w () -> TMI w ()
+getForkNext (Bind (Step (Fork tmi)) k) = k ()
+
+getForkNextV :: V w (TMI w ()) -> V w (TMI w ())
+getForkNextV = ulift1 "getForkNext" getForkNext
+
 -- TODO don't run an Ext immedaitely
 runATodo :: Show w => ExtRunner (Tag, String) -> St w ()
 runATodo er = do
@@ -121,6 +139,7 @@ runATodo er = do
                           -- liftIO $ msp "propWrite"
                           let w' = propWrite latestW write
                           put $ h { generations = w' : generations, todo = vcps' : vcpss }
+                        Forked vtmi vnext -> put $ h { todo = (vnext : vcpss) ++ [vtmi] }
                         Nada -> put $ h { todo = vcpss }
 
 externalize :: (TMI w ()) -> Tag -> IO (Tag, String)

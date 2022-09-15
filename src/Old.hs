@@ -4,6 +4,7 @@
 module Old
 ( oldMain ) where
 
+import Control.Concurrent
 import Unsafe.Coerce
 
 import H
@@ -57,6 +58,8 @@ instance HasRecon W where
   getRecon "advanceRetBind" = unsafeCoerce $ VNamed "advanceRetBind" advanceRetBind
   getRecon "advanceCallCC" = unsafeCoerce $ VNamed "advanceCallCC" advanceCallCC
   getRecon "incer" = unsafeCoerce $ VNamed "incer" incer
+  getRecon "getForkTMI" = unsafeCoerce $ VNamed "getForkTMI" getForkTMI
+  getRecon "getForkNext" = unsafeCoerce $ VNamed "getForkNext" getForkNext
   getRecon name = error $ "recon: unimplemented: " ++ name
 
 incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
@@ -108,9 +111,19 @@ deepK1 i = do
   call $ msp $ "c " ++ show c
   Step $ Ret i
 
+slep :: Int -> TMI ()
+slep n = call $ threadDelay (n * 1000000)
+
+vslep :: Int -> TMI ()
+vslep n = do
+  call $ msp "a"
+  slep n
+  call $ msp "b"
+
 theMain :: TMI ()
 theMain = do
-  deepK0 21
+  Step $ Fork (vslep 3)
+  Step $ Fork (vslep 4)
 
   -- works
   -- a <- do b <- Step $ Ret 1

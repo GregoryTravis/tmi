@@ -39,6 +39,8 @@ cps' :: TMI w a -> (a -> TMI w b) -> TMI w b
 -- TODO why not use the orig k instead of the extra Done k? And why doesn't that work?
 cps' (Step (CallCC kr)) k = Bind (Step (CallCC kr')) k
   where kr' k = cps' (kr k) (\() -> Done)
+cps' (Step (Fork tmi)) k = Bind (Step (Fork tmi')) k
+  where tmi' = cps tmi
 cps' (Step a) k = Bind (Step a) k
 cps' (Bind b k') k = cps' b (kcps k' k)
 -- TODO very questionable, why does Done have a continuation?
