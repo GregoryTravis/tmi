@@ -60,6 +60,9 @@ instance HasRecon W where
   getRecon "incer" = unsafeCoerce $ VNamed "incer" incer
   getRecon "getForkTMI" = unsafeCoerce $ VNamed "getForkTMI" getForkTMI
   getRecon "getForkNext" = unsafeCoerce $ VNamed "getForkNext" getForkNext
+  -- getRecon "getReadV" = unsafeCoerce $ VNamed "getReadV" getReadV
+  -- getRecon "getReadK" = unsafeCoerce $ VNamed "getReadK" getReadK
+  getRecon "doRead" = unsafeCoerce $ VNamed "doRead" doRead
   getRecon name = error $ "recon: unimplemented: " ++ name
 
 incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
@@ -122,8 +125,14 @@ vslep n = do
 
 theMain :: TMI ()
 theMain = do
-  Step $ Fork (vslep 3)
-  Step $ Fork (vslep 4)
+  w <- Step $ Read VRoot
+  call $ msp $ "heh " ++ show w
+  i <- Step $ Read vanInt
+  call $ msp $ "heh " ++ show i
+
+  -- mutRecFoo 0 5
+  -- Step $ Fork (vslep 3)
+  -- Step $ Fork (vslep 4)
 
   -- works
   -- a <- do b <- Step $ Ret 1

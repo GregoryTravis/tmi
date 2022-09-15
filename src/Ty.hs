@@ -40,6 +40,7 @@ data Step w a where
   Ret :: a -> Step w a
   WriteStep :: Write w -> Step w ()
   CallCC :: ((a -> TMI w ()) -> TMI w ()) -> Step w a
+  Read :: V w a -> Step w a
   Fork :: (TMI w ()) -> Step w ()
 
 data TMI w a where
