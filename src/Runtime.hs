@@ -47,63 +47,63 @@ doLog = do
            showNextTodo
     else return ()
 
-addTodo :: V w (CPS w ()) -> St w ()
+addTodo :: V w (TMI w ()) -> St w ()
 addTodo tmi = do
   h@H { todo } <- get
   put $ h { todo = todo ++ [tmi] }
 
--- stepTmi :: w -> V w (CPS w ()) -> Maybe (V w (CPS w ()))
+-- stepTmi :: w -> V w (TMI w ()) -> Maybe (V w (TMI w ()))
 -- stepTmi w vcps =
 --   let cps = rd w vcps
 --    in case cps of
---         (KBind (Ret _) _) -> Just (advanceRetBindV vcps)
+--         (Bind (Ret _) _) -> Just (advanceRetBindV vcps)
 --         Done -> Nothing
 
-data StepResult w = Stepped (V w (CPS w ())) | Called (V w (CPS w ())) | Wrote (Write w) (V w (CPS w ())) | Nada -- | CalledCC (V w (CPS w ()))
+data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (Write w) (V w (TMI w ())) | Nada -- | CalledCC (V w (TMI w ()))
 
-stepCPS :: w -> V w (CPS w ()) -> StepResult w
-stepCPS w vcps =
+stepTMI :: w -> V w (TMI w ()) -> StepResult w
+stepTMI w vcps =
   let cps = rd w vcps
    in case cps of
-        (KBind (Ret _) _) -> Stepped (advanceRetBindV vcps)
-        (KBind e@(Ext _) k) -> Called vcps
-        (KBind (WriteStep write) k) -> Wrote write (advanceWriteBindV vcps)
-        -- (KBind (CallCC kr) k) -> CalledCC (advanceCallCCV vcps)
+        (Bind (Step (Ret _)) _) -> Stepped (advanceRetBindV vcps)
+        (Bind (Step e@(Ext _)) k) -> Called vcps
+        (Bind (Step (WriteStep write)) k) -> Wrote write (advanceWriteBindV vcps)
+        -- (Bind (CallCC kr) k) -> CalledCC (advanceCallCCV vcps)
         Done -> Nada
 
--- advanceCallCC :: CPS w () -> CPS w ()
--- advanceCallCC (KBind (CallCC kr) k) = -- cps (kr k)
+-- advanceCallCC :: TMI w () -> TMI w ()
+-- advanceCallCC (Bind (CallCC kr) k) = -- cps (kr k)
 --   -- kr :: ((a -> TMI w ()) -> TMI w ())
---   -- k :: (a -> CPS w ())
+--   -- k :: (a -> TMI w ())
 --   -- cps (kr (\x -> (\a -> cps (x a))))
 --   cps (kr (\x -> (\a -> (x a))))
 --   -- kr (\x :: (a -> TMI w ())
 --   --      -> (\a :: a
 --   --           -> x a :: TMI w ()
---   --              cps (x a) :: CPS w ()
+--   --              cps (x a) :: TMI w ()
 
--- advanceCallCCV :: V w (CPS w ()) -> V w (CPS w ())
+-- advanceCallCCV :: V w (TMI w ()) -> V w (TMI w ())
 -- advanceCallCCV = ulift1 "advanceCallCC" advanceCallCC
 
 -- Resolve a Ret immediately
-advanceRetBind :: CPS w b -> CPS w b
-advanceRetBind (KBind (Ret x) k) = k x
+advanceRetBind :: TMI w b -> TMI w b
+advanceRetBind (Bind (Step (Ret x)) k) = k x
 
-advanceRetBindV :: V w (CPS w b) -> V w (CPS w b)
+advanceRetBindV :: V w (TMI w b) -> V w (TMI w b)
 advanceRetBindV = ulift1 "advanceRetBind" advanceRetBind
 
 -- Continue after a write
-advanceWriteBind :: CPS w b -> CPS w b
-advanceWriteBind (KBind (WriteStep _) k) = k ()
+advanceWriteBind :: TMI w b -> TMI w b
+advanceWriteBind (Bind (Step (WriteStep _)) k) = k ()
 
-advanceWriteBindV :: V w (CPS w b) -> V w (CPS w b)
+advanceWriteBindV :: V w (TMI w b) -> V w (TMI w b)
 advanceWriteBindV = ulift1 "advanceWriteBind" advanceWriteBind
 
 -- Resolve a call with the retval string
-advanceExtBind :: CPS w b -> String -> CPS w b
-advanceExtBind (KBind (Ext _) k) retvalS = k (read retvalS)
+advanceExtBind :: TMI w b -> String -> TMI w b
+advanceExtBind (Bind (Step (Ext _)) k) retvalS = k (read retvalS)
 
-advanceExtBindV :: V w (CPS w b) -> V w String -> V w (CPS w b)
+advanceExtBindV :: V w (TMI w b) -> V w String -> V w (TMI w b)
 advanceExtBindV = ulift2 "advanceExtBind" advanceExtBind
 
 -- TODO don't run an Ext immedaitely
@@ -114,7 +114,7 @@ runATodo er = do
                                     [] -> error "runATodo: no generations"
   case todo of
     [] -> return ()
-    (vcps:vcpss) -> do case stepCPS latestW vcps of
+    (vcps:vcpss) -> do case stepTMI latestW vcps of
                         Stepped vcps' -> put $ h { todo = vcps' : vcpss }
                         Called vcps -> do
                           let (tag, cc') = check calls vcps
@@ -126,14 +126,14 @@ runATodo er = do
                           put $ h { generations = w' : generations, todo = vcps' : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
-externalize :: (CPS w ()) -> Tag -> IO (Tag, String)
-externalize (KBind (Ext ioa) _) tag = do
+externalize :: (TMI w ()) -> Tag -> IO (Tag, String)
+externalize (Bind (Step (Ext ioa)) _) tag = do
   -- msp "RUNNING IOTS"
   a <- ioa
   let s = show a
   return (tag, s)
 
-startCall :: ExtRunner (Tag, String) -> w -> Tag -> V w (CPS w ()) -> IO ()
+startCall :: ExtRunner (Tag, String) -> w -> Tag -> V w (TMI w ()) -> IO ()
 startCall er w tag vcps = do
   let cps = rd w vcps
       iots = externalize cps tag

@@ -29,27 +29,22 @@ instance Monad (TMI w) where
 call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
--- Convert a TMI to a CPS
-cps :: (Read a, Show a) => TMI w a -> CPS w ()
+cps :: (Read a, Show a) => TMI w a -> TMI w ()
 cps tmi = cps' tmi (\_ -> Done)
 
-vcps :: (Read a, Show a) => V w (TMI w a) -> V w (CPS w ())
+vcps :: (Read a, Show a) => V w (TMI w a) -> V w (TMI w ())
 vcps = ulift1 "cps" cps
 
-cps' :: TMI w a -> (a -> CPS w b) -> CPS w b
-cps' (Step a) k = KBind a k
+cps' :: TMI w a -> (a -> TMI w b) -> TMI w b
+cps' (Step a) k = Bind (Step a) k
 cps' (Bind b k') k = cps' b (kcps k' k)
 
-kcps :: (a -> TMI w b) -> (b -> CPS w c) -> (a -> CPS w c)
+kcps :: (a -> TMI w b) -> (b -> TMI w c) -> (a -> TMI w c)
 kcps tk ck = \a -> cps' (tk a) ck
 
 instance Show (TMI w a) where
   show (Step step) = "(Step " ++ (show step) ++ ")"
   show (Bind tmi' k) = "(Bind " ++ (show tmi') ++ " ...k)"
-
-instance Show (CPS w a) where
-  show (KBind step k) = "(KBind " ++ (show step) ++ " ...k)"
-  show Done = "Done"
 
 instance Show (Step w a) where
   show (Ext x) = "(Ext _)"

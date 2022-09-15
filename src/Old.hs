@@ -16,8 +16,8 @@ import Recon
 import Runtime
 import Storage
 import TMI
-import Ty hiding (V, H, TMI, CPS)
-import qualified Ty (V, H(..), TMI(..), CPS(..))
+import Ty hiding (V, H, TMI)
+import qualified Ty (V, H(..), TMI(..))
 import Util
 import V
 import VNiceMap
@@ -27,7 +27,6 @@ import VReadShow
 type V = Ty.V W
 type H = Ty.H W
 type TMI = Ty.TMI W
-type CPS = Ty.CPS W
 vroot :: V W
 vroot = VRoot
 -- end boilerplate
@@ -49,9 +48,8 @@ fanm app = field app "anm" anm $ \w anm -> w { anm }
 vanm = fanm vroot
 
 instance HasRecon W where
-  -- getRecon "cps" = unsafeCoerce $ VNamed "cps" (vcps :: V (TMI Int) -> V (CPS Int))
   -- TODO is it bad? Is it wrong?
-  getRecon "cps" = unsafeCoerce $ VNamed "cps" (cps :: TMI Int -> CPS ())
+  getRecon "cps" = unsafeCoerce $ VNamed "cps" (cps :: TMI Int -> TMI ())
   getRecon "nope" = unsafeCoerce $ VNamed "nope" nope
   getRecon "theMain" = unsafeCoerce $ VNamed "theMain" theMain
   getRecon "advanceExtBind" = unsafeCoerce $ VNamed "advanceExtBind" advanceExtBind

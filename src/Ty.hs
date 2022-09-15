@@ -25,10 +25,10 @@ data V w a where
   VDeref :: V w (V w a) -> V w a
 
 data H w = H
-  { calls :: CoatCheck (V w (CPS w ()))
+  { calls :: CoatCheck (V w (TMI w ()))
   , events :: [Event]
   , generations :: [w] -- newest first
-  , todo :: [V w (CPS w ())]
+  , todo :: [V w (TMI w ())]
   , store :: NiceMap
   }
 
@@ -45,11 +45,5 @@ data Step w a where
 data TMI w a where
   Step :: Step w a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
+  Done :: TMI w ()
   -- deriving (Eq, Ord, Read, Show)
-
--- TMI in CPS form
--- TODO is a always ()?
-data CPS w a where
-  KBind :: Step w a -> (a -> CPS w b) -> CPS w b
-  -- TODO shouln'd this be CPS w ()?
-  Done :: CPS w ()
