@@ -55,20 +55,22 @@ instance HasRecon W where
   getRecon "advanceExtBind" = unsafeCoerce $ VNamed "advanceExtBind" advanceExtBind
   getRecon "advanceWriteBind" = unsafeCoerce $ VNamed "advanceWriteBind" advanceWriteBind
   getRecon "advanceRetBind" = unsafeCoerce $ VNamed "advanceRetBind" advanceRetBind
+  getRecon "advanceCallCC" = unsafeCoerce $ VNamed "advanceCallCC" advanceCallCC
   getRecon "incer" = unsafeCoerce $ VNamed "incer" incer
-  getRecon name = error $ "unimplemented " ++ name
+  getRecon name = error $ "recon: unimplemented: " ++ name
 
 incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
 
 theMain :: TMI ()
 theMain = do
-  a <- do b <- Step $ Ret 1
-          call $ msp $ "inner " ++ show b
-          c <- do call $ msp $ "innerinner " ++ show b
-                  call $ msp $ "innerinner2 " ++ show b
-                  Step $ Ret b
-          Step $ Ret c
-  call $ msp $ "outer " ++ show a
+  -- works
+  -- a <- do b <- Step $ Ret 1
+  --         call $ msp $ "inner " ++ show b
+  --         c <- do call $ msp $ "innerinner " ++ show b
+  --                 call $ msp $ "innerinner2 " ++ show b
+  --                 Step $ Ret b
+  --         Step $ Ret c
+  -- call $ msp $ "outer " ++ show a
 
   -- nested callcc stuff?
   -- a <- do b <- CallCC (\x -> ...)
@@ -79,27 +81,28 @@ theMain = do
 
   -- -- callcc
   -- -- calls the k
-  -- a <- (CallCC (\k -> k (14::Int))) :: TMI Int
-  -- call $ msp $ "welp " ++ show a
+  a <- Step $ (CallCC (\k -> k (14::Int))) :: TMI Int
+  call $ msp $ "welp " ++ show a
   -- -- doesn't call the k, does something else
-  -- a <- CallCC (\k -> call $ msp "nope")
-  -- call $ msp $ "welp " ++ show a
+  -- a <- Step $ CallCC (\k -> do () <- call $ msp "noper"
+  --                              return ())
+  call $ msp $ "welp2"
 
-  -- Does Ret work? yes.
-  a <- Step $ Ret (12::Int)
-  call $ msp $ "twelve " ++ show a
+  -- -- Does Ret work? yes.
+  -- a <- Step $ Ret (12::Int)
+  -- call $ msp $ "twelve " ++ show a
 
-  -- -- works
-  s <- call $ readFile "asdf"
-  -- () <- Step $ WriteStep (Write vanInt 120)
-  -- vanInt <--* 120
-  vanInt <-- incer vanInt
-  call $ msp $ "ooo " ++ s
-  s' <- call $ readFile "asdf"
-  call $ msp $ "oooo " ++ s'
-  s'' <- call $ readFile "asdf"
-  call $ msp $ "oooo " ++ s''
-  call $ msp $ "ooo done"
+  -- -- -- works
+  -- s <- call $ readFile "asdf"
+  -- -- () <- Step $ WriteStep (Write vanInt 120)
+  -- -- vanInt <--* 120
+  -- vanInt <-- incer vanInt
+  -- call $ msp $ "ooo " ++ s
+  -- s' <- call $ readFile "asdf"
+  -- call $ msp $ "oooo " ++ s'
+  -- s'' <- call $ readFile "asdf"
+  -- call $ msp $ "oooo " ++ s''
+  -- call $ msp $ "ooo done"
 
   -- -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
   -- vsl <- (mkSlot vanm :: TMI (V Int))

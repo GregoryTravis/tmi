@@ -5,11 +5,13 @@ module Runtime
 -- for recon
 , advanceExtBind
 , advanceRetBind
-, advanceWriteBind ) where
+, advanceWriteBind
+, advanceCallCC ) where
 
 import Control.Monad.State.Lazy
 import System.IO
 import System.Directory
+import System.IO.Unsafe
 
 import CoatCheck hiding (null)
 import qualified CoatCheck
@@ -59,7 +61,7 @@ addTodo tmi = do
 --         (Bind (Ret _) _) -> Just (advanceRetBindV vcps)
 --         Done -> Nothing
 
-data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (Write w) (V w (TMI w ())) | Nada -- | CalledCC (V w (TMI w ()))
+data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (Write w) (V w (TMI w ())) | Nada | CalledCC (V w (TMI w ()))
 
 stepTMI :: w -> V w (TMI w ()) -> StepResult w
 stepTMI w vcps =
@@ -68,22 +70,16 @@ stepTMI w vcps =
         (Bind (Step (Ret _)) _) -> Stepped (advanceRetBindV vcps)
         (Bind (Step e@(Ext _)) k) -> Called vcps
         (Bind (Step (WriteStep write)) k) -> Wrote write (advanceWriteBindV vcps)
-        -- (Bind (CallCC kr) k) -> CalledCC (advanceCallCCV vcps)
+        (Bind (Step (CallCC kr)) k) -> CalledCC (advanceCallCCV vcps)
         Done -> Nada
+        -- (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
+        x -> error $ "?? " ++ show cps
 
--- advanceCallCC :: TMI w () -> TMI w ()
--- advanceCallCC (Bind (CallCC kr) k) = -- cps (kr k)
---   -- kr :: ((a -> TMI w ()) -> TMI w ())
---   -- k :: (a -> TMI w ())
---   -- cps (kr (\x -> (\a -> cps (x a))))
---   cps (kr (\x -> (\a -> (x a))))
---   -- kr (\x :: (a -> TMI w ())
---   --      -> (\a :: a
---   --           -> x a :: TMI w ()
---   --              cps (x a) :: TMI w ()
+advanceCallCC :: TMI w () -> TMI w ()
+advanceCallCC (Bind (Step (CallCC kr)) k) = kr k
 
--- advanceCallCCV :: V w (TMI w ()) -> V w (TMI w ())
--- advanceCallCCV = ulift1 "advanceCallCC" advanceCallCC
+advanceCallCCV :: V w (TMI w ()) -> V w (TMI w ())
+advanceCallCCV = ulift1 "advanceCallCC" advanceCallCC
 
 -- Resolve a Ret immediately
 advanceRetBind :: TMI w b -> TMI w b
@@ -120,6 +116,7 @@ runATodo er = do
                           let (tag, cc') = check calls vcps
                           liftIO $ startCall er latestW tag vcps
                           put $ h { calls = cc', todo = vcpss }
+                        CalledCC vcps' -> put $ h { todo = vcps' : vcpss }
                         Wrote write vcps' -> do
                           -- liftIO $ msp "propWrite"
                           let w' = propWrite latestW write
