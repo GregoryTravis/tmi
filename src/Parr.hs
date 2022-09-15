@@ -33,15 +33,6 @@ startHalf vpair tmi picker pairK = do
   intoSlot <--* Just c
   runIfDoneV vpair pairK
 
---   let doneTmiV = runIfDoneV vpair pairK
---   doneTmi <- Step $ Read doneTmiV
---   doneTmi
-
--- runIfDoneV :: V w (Maybe a, Maybe b)
---            -> V w ((a, b) -> TMI w ())
---            -> V w (TMI w ())
--- runIfDoneV = lift2 $ nuni "runIfDone" runIfDone
-
 runIfDoneV :: V w (Maybe a, Maybe b)
            -> ((a, b) -> TMI w ())
            -> TMI w ()
@@ -62,6 +53,3 @@ runIfDone (_, Just _) _ = do
   call $ msp $ "runIfDone: have right"
   return ()
 runIfDone _ _ = error "runIfDone: empty??"
-
-  -- vsl <- (mkSlot vanm :: TMI (V Int))
-  -- () <- Step $ WriteStep (Write vsl 23)
