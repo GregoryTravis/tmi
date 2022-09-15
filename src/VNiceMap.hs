@@ -22,15 +22,17 @@ slot_ nm rnm tag _ = mkR r
   where r a = write rnm nm'
               where nm' = store tag a nm
 
-mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
-mkSlot vnm = do
+mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> a -> TMI w (V w a)
+mkSlot vnm initialValue = do
   let vtag :: V w Tag
       alloced = valloc vnm
       -- vtag = vfst alloced
       -- vnm' = vsnd alloced
       (vtag, vnm') = vPairSplit alloced
   () <- Step $ WriteStep (VWrite vnm vnm')
-  return $ vslot vnm vtag
+  let vs = vslot vnm vtag
+  vs <--* initialValue
+  return vs
 
 valloc :: V w NiceMap -> V w (Tag, NiceMap)
 valloc = lift1 $ nuni "alloc" alloc

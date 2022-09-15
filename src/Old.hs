@@ -12,6 +12,7 @@ import Lens
 import Lift
 import Lib
 import NiceMap
+import Parr
 import Propagate
 import Recon
 import Runtime
@@ -123,12 +124,20 @@ vslep n = do
   slep n
   call $ msp "b"
 
+sleepAndRet :: Int -> TMI Int
+sleepAndRet n = do
+  slep n
+  Step $ Ret n
+
 theMain :: TMI ()
 theMain = do
-  w <- Step $ Read VRoot
-  call $ msp $ "heh " ++ show w
-  i <- Step $ Read vanInt
-  call $ msp $ "heh " ++ show i
+  (a, b) <- parr vanm (sleepAndRet 2) (sleepAndRet 3)
+  call $ msp $ "welp " ++ show (a, b)
+
+  -- w <- Step $ Read VRoot
+  -- call $ msp $ "heh " ++ show w
+  -- i <- Step $ Read vanInt
+  -- call $ msp $ "heh " ++ show i
 
   -- mutRecFoo 0 5
   -- Step $ Fork (vslep 3)
