@@ -33,7 +33,7 @@ startHalf vpair tmi picker pairK tag = do
   c <- tmi
   let intoSlot = picker vpair
   -- TODO should confirm there isn't a value there already, but how?
-      call $ msp $ "WRITE " ++ tag
+  -- call $ msp $ "WRITE " ++ tag
   intoSlot <--* Just c
   runIfDoneV vpair pairK
 
