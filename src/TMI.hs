@@ -41,7 +41,7 @@ cps' (Step a) k = KBind a k
 -- cps' (Bind b k') k = cps' b (\a -> cps' (k' a) k)
 cps' (Bind b k') k = cps' b (kcps k' k)
 
--- cps' (CallCC tkr) ck =
+-- cps' (CallCC tkr) ck = KCallCC (ugh3 tkr)
 -- (CallCC tkr) :: TMI w a
 -- ck :: a -> CPS w b
 -- tkr :: (a -> TMI w ()) -> TMI w ()
@@ -50,11 +50,11 @@ ugh :: CPS w a -> TMI w a
 ugh (KBind step k) = Bind (Step step) k'
   where k' = \a -> ugh (k a)
 
-ugh2 :: (a -> CPS w b) -> (a -> TMI w b)
+ugh2 :: (a -> CPS w ()) -> (a -> TMI w ())
 ugh2 ck = \a -> ugh (ck a)
 
--- ugh3 :: ((a -> TMI w b) -> TMI w b) -> ((a -> CPS w b) -> CPS w b)
--- ugh3 tkr = \ckr -> cps $ tkr (ugh2 ckr)
+ugh3 :: ((a -> TMI w ()) -> TMI w ()) -> ((a -> CPS w ()) -> CPS w ())
+ugh3 tkr = \ckr -> cps $ tkr (ugh2 ckr)
 
 -- a <- CallCC (\a2b -> a2b a)
 -- doStuff a :: TMI b

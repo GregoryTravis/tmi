@@ -54,7 +54,7 @@ data TMI w a where
 -- TODO is a always ()?
 data CPS w a where
   KBind :: Step w a -> (a -> CPS w b) -> CPS w b
-  KCallCC :: ((a -> CPS w b) -> CPS w b) -> CPS w b
+  KCallCC :: ((a -> CPS w ()) -> CPS w ()) -> CPS w ()
   -- KCallCC :: ((a -> CPS w ()) -> CPS w ()) -> (a -> CPS w ()) -> CPS w ()
   -- KFork :: CPS w () -> (() -> CPS w ()) -> CPS w ()
   -- TODO shouln'd this be CPS w ()?
