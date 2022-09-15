@@ -61,49 +61,73 @@ instance HasRecon W where
 
 incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
 
+lewp :: Int -> TMI ()
+lewp i = do
+  call $ msp $ "lewp " ++ show i
+  lewp (i + 1)
+
+lewpTo :: Int -> Int -> TMI ()
+lewpTo i end = do
+  if i >= end
+    then return ()
+    else do
+           call $ msp $ "lewp " ++ show i
+           lewpTo (i + 1) end
+
+mutRecFoo :: Int -> Int -> TMI ()
+mutRecFoo i end = do
+  if i >= end
+    then return ()
+    else do
+           call $ msp $ "lewp foo " ++ show i
+           mutRecBar (i + 1) end
+
+mutRecBar :: Int -> Int -> TMI ()
+mutRecBar i end = do
+  if i >= end
+    then return ()
+    else do
+           call $ msp $ "lewp bar " ++ show i
+           mutRecFoo (i + 1) end
+
 theMain :: TMI ()
 theMain = do
+  mutRecFoo 0 10
+
   -- works
-  a <- do b <- Step $ Ret 1
-          call $ msp $ "inner " ++ show b
-          c <- do call $ msp $ "innerinner " ++ show b
-                  call $ msp $ "innerinner2 " ++ show b
-                  Step $ Ret b
-          Step $ Ret c
-  call $ msp $ "outer " ++ show a
+  -- a <- do b <- Step $ Ret 1
+  --         call $ msp $ "inner " ++ show b
+  --         c <- do call $ msp $ "innerinner " ++ show b
+  --                 call $ msp $ "innerinner2 " ++ show b
+  --                 Step $ Ret b
+  --         Step $ Ret c
+  -- call $ msp $ "outer " ++ show a
 
-  -- -- callcc
-  -- -- calls the k
-  a <- Step $ (CallCC (\k -> k (14::Int))) :: TMI Int
-  call $ msp $ "welp " ++ show a
+  -- -- -- callcc
+  -- -- -- calls the k
+  -- a <- Step $ (CallCC (\k -> k (14::Int))) :: TMI Int
+  -- call $ msp $ "welp " ++ show a
 
-  -- -- doesn't call the k, does something else
-  -- a <- Step $ CallCC (\k -> call $ msp "noper2")
-  -- -- doesn't call the k, does something else
-  -- a <- Step $ CallCC (\k -> do () <- call $ msp "noper"
-  --                              return ())
-  call $ msp $ "welp2" -- ++ show a -- doesn't know what a is
+  -- -- -- doesn't call the k, does something else
+  -- -- a <- Step $ CallCC (\k -> call $ msp "noper2")
+  -- -- -- doesn't call the k, does something else
+  -- -- a <- Step $ CallCC (\k -> do () <- call $ msp "noper"
+  -- --                              return ())
+  -- call $ msp $ "welp2" -- ++ show a -- doesn't know what a is
 
-  -- Does Ret work? yes.
-  a <- Step $ Ret (12::Int)
-  call $ msp $ "twelve " ++ show a
+  -- -- Does Ret work? yes.
+  -- a <- Step $ Ret (12::Int)
+  -- call $ msp $ "twelve " ++ show a
 
-  -- -- works
-  s <- call $ readFile "asdf"
-  -- () <- Step $ WriteStep (Write vanInt 120)
-  -- vanInt <--* 120
-  vanInt <-- incer vanInt
-  call $ msp $ "ooo " ++ s
-  s' <- call $ readFile "asdf"
-  call $ msp $ "oooo " ++ s'
-  s'' <- call $ readFile "asdf"
-  call $ msp $ "oooo " ++ s''
-  call $ msp $ "ooo done"
-
-  -- -- TODO does not work because cps' is not complete and cannot be completed because the inner type is not Read
-  -- vsl <- (mkSlot vanm :: TMI (V Int))
-  -- () <- Step $ WriteStep (Write vsl 23)
-  -- -- mkSlot :: forall a w. (Read a, Show a) => V w NiceMap -> TMI w (V w a)
+  -- -- -- works
+  -- s <- call $ readFile "asdf"
+  -- vanInt <-- incer vanInt
+  -- call $ msp $ "ooo " ++ s
+  -- s' <- call $ readFile "asdf"
+  -- call $ msp $ "oooo " ++ s'
+  -- s'' <- call $ readFile "asdf"
+  -- call $ msp $ "oooo " ++ s''
+  -- call $ msp $ "ooo done"
 
   return ()
 
