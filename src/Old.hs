@@ -76,6 +76,8 @@ theMain = do
   -- a <- do b <- CallCC (\x -> ...)
   --         doStuff b :: TMI a
   -- doStuff a
+  -- Bind (Bind (CallCC (\x -> ...)) (\b -> doStuff b))
+  --      (\a -> doStuff a)
 
   -- -- callcc
   -- -- calls the k

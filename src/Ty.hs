@@ -46,7 +46,7 @@ data TMI w a where
   Step :: Step w a -> TMI w a
   Bind :: TMI w a -> (a -> TMI w b) -> TMI w b
   -- CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w ()
-  CallCC :: ((a -> TMI w b) -> TMI w b) -> TMI w b
+  CallCC :: ((a -> TMI w ()) -> TMI w ()) -> TMI w a
   -- Fork :: TMI w () -> TMI w ()
   -- deriving (Eq, Ord, Read, Show)
 
