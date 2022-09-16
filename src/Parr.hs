@@ -1,5 +1,9 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Parr
 ( parr ) where
+
+import System.IO.Unsafe
 
 import Lib
 import Lift
@@ -10,10 +14,10 @@ import V
 import VNiceMap
 import Util
 
-parr :: (Show a, Show b, Read a, Read b) => String -> V w NiceMap -> TMI w a -> TMI w b -> TMI w (a, b)
+parr :: (Show w, Show a, Show b, Read a, Read b) => String -> V w NiceMap -> TMI w a -> TMI w b -> TMI w (a, b)
 parr tag vnm tmia tmib = do
   -- TODO need annotation?
-  vslot <- (mkSlot vnm (Nothing, Nothing)) -- :: TMI w (V w (Maybe a, Maybe b)))
+  vslot <- (mkSlot tag vnm (Nothing, Nothing)) -- :: TMI w (V w (Maybe a, Maybe b)))
   -- slot <- Step $ Read vslot
   -- let vslot' = VNice slot
   Step $ CallCC (cr vslot)
@@ -22,7 +26,7 @@ parr tag vnm tmia tmib = do
 
 -- c might be a or b but it doesn't matter here (?)
 -- TODO move forks into here?
-startHalf :: V w (Maybe a, Maybe b)
+startHalf :: Show w => V w (Maybe a, Maybe b)
           -> TMI w c
           -> (V w (Maybe a, Maybe b) -> V w (Maybe c))
           -> ((a, b) -> TMI w ())
@@ -34,7 +38,14 @@ startHalf vpair tmi picker pairK tag = do
   let intoSlot = picker vpair
   -- TODO should confirm there isn't a value there already, but how?
   -- call $ msp $ "WRITE " ++ tag
-  intoSlot <--* Just c
+  w <- Step $ Read VRoot
+  -- let debug = leesp "abner" ("writing", intoSlot, w)
+  let debug a = unsafePerformIO $ do
+                  msp "writing"
+                  msp intoSlot
+                  msp w
+                  return a
+  debug $ intoSlot <--* Just c
   runIfDoneV vpair pairK
 
 runIfDoneV :: V w (Maybe a, Maybe b)

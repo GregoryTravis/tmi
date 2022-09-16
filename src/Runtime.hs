@@ -11,7 +11,8 @@ module Runtime
 , getForkNext
 -- , getReadV
 -- , getReadK
-, doRead ) where
+, doRead
+, doLogK ) where
 
 import Control.Monad.State.Lazy
 import System.IO
@@ -69,7 +70,8 @@ addTodo tmi = do
 
 data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (Write w) (V w (TMI w ())) | Nada | CalledCC (V w (TMI w ()))
                   | Forked (V w (TMI w ())) (V w (TMI w ()))
-                  |  Readed (V w (TMI w ()))
+                  | Readed (V w (TMI w ()))
+                  | Logged (V w (TMI w ()))
                   -- | forall a. Readed (V w (V w a)) (V w (a -> TMI w ()))
 
 stepTMI :: w -> V w (TMI w ()) -> StepResult w
@@ -82,6 +84,7 @@ stepTMI w vcps =
         (Bind (Step (CallCC kr)) k) -> CalledCC (advanceCallCCV vcps)
         (Bind (Step (Fork _)) _) -> Forked (getForkTMIV vcps) (getForkNextV vcps)
         (Bind (Step (Read _)) _) -> Readed vcps -- (getReadVV vcps) (getReadKV vcps)
+        (Bind (Step (Log _)) _) -> Logged vcps
         (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
         Done -> Nada
         x -> error $ "?? " ++ show cps
@@ -159,7 +162,17 @@ runATodo er = do
                         Forked vtmi vnext -> put $ h { todo = (vnext : vcpss) ++ [vtmi] }
                         Readed vcps -> put $ h { todo = vtmi : vcpss }
                           where vtmi = doReadV VRoot vcps
+                        Logged vcps -> do let s = case (rd latestW vcps) of (Bind (Step (Log s)) _) -> s
+                                          let vtmi = doLogKV vcps
+                                          liftIO $ msp $ "Runtime log: " ++ s
+                                          put $ h { todo = vtmi : vcpss }
                         Nada -> put $ h { todo = vcpss }
+
+doLogK :: TMI w () -> TMI w ()
+doLogK (Bind (Step (Log s)) k) = k ()
+
+doLogKV :: V w (TMI w ()) -> V w (TMI w ())
+doLogKV = ulift1 "doLogK" doLogK
 
 doRead :: w -> TMI w () -> TMI w ()
 doRead w (Bind (Step (Read va)) k) =

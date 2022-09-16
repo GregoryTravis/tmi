@@ -64,6 +64,7 @@ instance HasRecon W where
   -- getRecon "getReadV" = unsafeCoerce $ VNamed "getReadV" getReadV
   -- getRecon "getReadK" = unsafeCoerce $ VNamed "getReadK" getReadK
   getRecon "doRead" = unsafeCoerce $ VNamed "doRead" doRead
+  getRecon "doLogK" = unsafeCoerce $ VNamed "doLogK" doLogK
   getRecon name = error $ "recon: unimplemented: " ++ name
 
 incer = lift1 $ nuni "(+(1::Int))" (+(1::Int))
