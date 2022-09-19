@@ -2,21 +2,27 @@
 
 module NiceMap
 ( NiceMap
-, Tag
+, Tag(..) -- TODO don't expose
 , empty
 , null
 , alloc
 , store
 , insert
 , lookup
-, delete ) where
+, delete
+, unTag ) where
 
 import Prelude hiding (null, lookup, insert, delete)
 import qualified Data.Map.Strict as M
 import Unsafe.Coerce
 
+import Util
+
 data Tag = Tag Int
   deriving (Eq, Ord, Read, Show)
+
+unTag :: Tag -> Int
+unTag (Tag n) = n
 
 data NiceMap = NiceMap
   { serial :: Int
@@ -50,7 +56,10 @@ insert a nm =
    in (tag, nm'')
 
 lookup :: (Read a, Show a) => Tag -> NiceMap -> Maybe a
-lookup tag cc = read <$> M.lookup tag (mapp cc)
+-- lookup tag cc = read <$> M.lookup tag (mapp cc)
+lookup tag cc =
+  let sm = M.lookup tag (mapp cc)
+   in read <$> sm
 
 delete :: Tag -> NiceMap -> NiceMap
 delete tag cc = cc { mapp = M.delete tag (mapp cc) }
