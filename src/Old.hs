@@ -117,7 +117,10 @@ deepK1 i = do
   Step $ Ret i
 
 slep :: Int -> TMI ()
-slep n = call $ threadDelay (n * 1000000)
+slep n = do
+  -- call $ msp $ "before " ++ show n
+  call $ threadDelay (n * 1000000)
+  -- call $ msp $ "after " ++ show n
 
 vslep :: Int -> TMI ()
 vslep n = do
