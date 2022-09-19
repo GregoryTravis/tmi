@@ -2,7 +2,8 @@
 {-# LANGUAGE MagicHash, BangPatterns #-}
 
 module VNiceMap
-( mkSlot ) where
+( mkSlot
+, unTagV ) where
 
 import GHC.Exts
 import Prelude hiding (lookup)
@@ -17,15 +18,17 @@ import Ty hiding (store)
 import V
 import Util
 
--- A datatype that has the same layout as Word and so can be casted to it.
-data Ptr' a = Ptr' a
+-- -- A datatype that has the same layout as Word and so can be casted to it.
+-- data Ptr' a = Ptr' a
 
--- Any is a type to which any type can be safely unsafeCoerced to.
-aToWord# :: Any -> Word#
-aToWord# a = let !mb = Ptr' a in case unsafeCoerce# mb :: Word of W# addr -> addr
+-- -- Any is a type to which any type can be safely unsafeCoerced to.
+-- aToWord# :: Any -> Word#
+-- aToWord# a = let !mb = Ptr' a in case unsafeCoerce# mb :: Word of W# addr -> addr
 
-unsafeAddr :: a -> Int
-unsafeAddr a = I# (word2Int# (aToWord# (unsafeCoerce# a)))
+-- unsafeAddr :: a -> Int
+-- unsafeAddr a = I# (word2Int# (aToWord# (unsafeCoerce# a)))
+
+unTagV = ulift1 "unTag" unTag
 
 slot :: (Read a, Show a) => NiceMap -> Tag -> a
 slot nm tag =
@@ -46,40 +49,20 @@ mkSlot tags vnm initialValue = do
       -- vtag = vfst alloced
       -- vnm' = vsnd alloced
       (vtag, vnm') = vPairSplit alloced
-  vtag'' <- Step $ Ret $ k (rd w vtag)
-  let vtag''' = vtag''
-  let tag = rd w vtag
-  Step $ Log $ show ("tag", show tag)
-  let vtag' = k tag
-  let vtag'addr = unsafeAddr vtag'
-  let vtag'addr' = unsafeAddr vtag'
+  tagn <- Step $ Read (unTagV vtag)
+  let vtag' = k (Tag tagn)
   let debug a = unsafePerformIO $ do
-                  msp "mkSlot"
-                  msp tags
-                  msp vtag
-                  msp tag
-                  msp vtag'
-                  msp vtag''
-                  msp vtag'''
-                  msp vtag'addr
-                  msp vtag'addr'
-                  msp w
+                  -- msp "mkSlot"
+                  -- msp tagn
+                  -- msp vtag'
                   return a
   let wrt = (VWrite vnm vnm')
   () <- Step $ WriteStep (debug wrt)
-  let vtag'addr2 = unsafeAddr vtag'
   let vs = vslot vnm vtag'
   let debug2 a = unsafePerformIO $ do
-                  msp "mkSlot2"
-                  msp tags
-                  msp vtag
-                  msp tag
-                  msp vtag'
-                  msp vtag''
-                  msp vtag'''
-                  msp vtag'addr2
-                  msp vs
-                  msp w
+                  -- msp "mkSlot2"
+                  -- msp tagn
+                  -- msp vtag'
                   return a
   vs <--* debug2 initialValue
   return $ vs

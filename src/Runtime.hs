@@ -1,4 +1,4 @@
-{-# Language GADTs, NamedFieldPuns #-}
+{-# Language GADTs, NamedFieldPuns, RankNTypes #-}
 
 module Runtime
 ( mainLoop
@@ -15,6 +15,7 @@ module Runtime
 , doLogK ) where
 
 import Control.Monad.State.Lazy
+import Data.Typeable
 import System.IO
 import System.Directory
 import System.IO.Unsafe
@@ -141,7 +142,7 @@ getForkNextV = ulift1 "getForkNext" getForkNext
 -- getReadKV = ulift1 "getReadK" getReadK
 
 -- TODO don't run an Ext immedaitely
-runATodo :: Show w => ExtRunner (Tag, String) -> St w ()
+runATodo :: (Eq w, Read w, Typeable w, Show w) => ExtRunner (Tag, String) -> St w ()
 runATodo er = do
   h@H { calls, todo, generations } <- get
   let latestW = case generations of (w:ws) -> w
@@ -160,8 +161,15 @@ runATodo er = do
                           let w' = propWrite latestW write
                           put $ h { generations = w' : generations, todo = vcps' : vcpss }
                         Forked vtmi vnext -> put $ h { todo = (vnext : vcpss) ++ [vtmi] }
-                        Readed vcps -> put $ h { todo = vtmi : vcpss }
-                          where vtmi = doReadV VRoot vcps
+                        Readed vcps -> do
+                          -- let reader = (ulift1 "rd" rd) (VNice latestW)
+                          --     vtmi = doReadV reader vcps
+                          -- let cps = rd w vcps
+                          --     a = case cps of (Bind (Step (Read va)) k) -> rd latestW va
+                          --     vtmi = doReadV (k a) vcps
+                          let -- cps = rd latestW vcps
+                              vtmi = doReadV (VNice latestW) vcps
+                          put $ h { todo = vtmi : vcpss }
                         Logged vcps -> do let s = case (rd latestW vcps) of (Bind (Step (Log s)) _) -> s
                                           let vtmi = doLogKV vcps
                                           liftIO $ msp $ "Runtime log: " ++ s
@@ -174,12 +182,17 @@ doLogK (Bind (Step (Log s)) k) = k ()
 doLogKV :: V w (TMI w ()) -> V w (TMI w ())
 doLogKV = ulift1 "doLogK" doLogK
 
+-- doRead :: (forall a. V w a -> a) -> TMI w () -> TMI w ()
+-- doRead reader (Bind (Step (Read va)) k) = k (reader va)
+
+-- doRead :: a -> TMI w () -> TMI w ()
+-- doRead a (Bind (Step (Read va)) k) = k a
+
 doRead :: w -> TMI w () -> TMI w ()
-doRead w (Bind (Step (Read va)) k) =
-  let a = rd w va
-   in k a
+doRead w (Bind (Step (Read va)) k) = k (rd w va)
 
 doReadV :: V w w -> V w (TMI w ()) -> V w (TMI w ())
+-- doReadV :: V w (forall a. V w a -> a) -> V w (TMI w ()) -> V w (TMI w ())
 doReadV = ulift2 "doRead" doRead
 
 -- doRead :: w -> V w (V w a) -> V w (a -> TMI w ()) -> TMI w ()
@@ -224,10 +237,10 @@ testBounce = do
           return s'
         tmpfile = "/tmp/tmibounce"
 
-loop :: (HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
+loop :: (Eq w, Ord w, Typeable w, HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
 loop er = do
   doLog
-  testBounce
+  -- testBounce
   atd <- anythingToDo
   if not atd
     then do
@@ -259,7 +272,7 @@ anyOutStandingCalls = do
   H { calls } <- get
   return $ not $ CoatCheck.null calls
 
-mainLoop :: (HasRecon w, Read w, Show w) => H w -> IO ()
+mainLoop :: (Eq w, Ord w, Typeable w, HasRecon w, Read w, Show w) => H w -> IO ()
 mainLoop h = do
   er <- mkExtRunner
   ((), h') <- runStateT (loop er) h

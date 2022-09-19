@@ -41,9 +41,9 @@ startHalf vpair tmi picker pairK tag = do
   w <- Step $ Read VRoot
   -- let debug = leesp "abner" ("writing", intoSlot, w)
   let debug a = unsafePerformIO $ do
-                  msp "writing"
-                  msp intoSlot
-                  msp w
+                  -- msp "writing"
+                  -- msp intoSlot
+                  -- msp w
                   return a
   debug $ intoSlot <--* Just c
   runIfDoneV vpair pairK
@@ -60,7 +60,7 @@ runIfDone :: (Maybe a, Maybe b)
           -> TMI w ()
 runIfDone (Just a, Just b) pairK = do
   call $ msp $ "runIfDone: have both"
-  eesp "golly" $ pairK (a, b)
+  -- eesp "golly" $ pairK (a, b)
 runIfDone (Just _, _) _ = do
   call $ msp $ "runIfDone: have left"
   return ()

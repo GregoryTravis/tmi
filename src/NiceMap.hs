@@ -2,14 +2,15 @@
 
 module NiceMap
 ( NiceMap
-, Tag
+, Tag(..) -- TODO don't expose
 , empty
 , null
 , alloc
 , store
 , insert
 , lookup
-, delete ) where
+, delete
+, unTag ) where
 
 import Prelude hiding (null, lookup, insert, delete)
 import qualified Data.Map.Strict as M
@@ -19,6 +20,9 @@ import Util
 
 data Tag = Tag Int
   deriving (Eq, Ord, Read, Show)
+
+unTag :: Tag -> Int
+unTag (Tag n) = n
 
 data NiceMap = NiceMap
   { serial :: Int
