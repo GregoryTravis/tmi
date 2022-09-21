@@ -133,10 +133,16 @@ sleepAndRet n = do
   slep n
   Step $ Ret n
 
+-- theMain :: MonadFail w => Ty.TMI w ()
 theMain :: TMI ()
 theMain = do
-  (a, (b, c)) <- parr "outer" vanm (sleepAndRet 2) (parr "inner" vanm (sleepAndRet 3) (sleepAndRet 4))
-  call $ msp $ "welp " ++ show (a, b, c)
+  results <- parrList vanm (map sleepAndRet [1, 2, 3, 4, 5, 6])
+  call $ msp $ "welp " ++ show results
+
+  -- works
+  -- (a, (b, c)) <- parr vanm (sleepAndRet 2) (parr "inner" vanm (sleepAndRet 3) (sleepAndRet 4))
+  -- call $ msp $ "welp " ++ show (a, b, c)
+
   -- call $ msp $ "welp2"
   -- call $ msp $ "welp3"
   -- call $ msp $ "welp4"

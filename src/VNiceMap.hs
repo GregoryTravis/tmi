@@ -40,8 +40,8 @@ slot_ nm rnm tag _ = mkR r
   where r a = write rnm nm'
               where nm' = store tag a nm
 
-mkSlot :: forall a w. (Show w, Read a, Show a) => String -> V w NiceMap -> a -> TMI w (V w a)
-mkSlot tags vnm initialValue = do
+mkSlot :: forall a w. (Show w, Read a, Show a) => V w NiceMap -> a -> TMI w (V w a)
+mkSlot vnm initialValue = do
   w <- Step $ Read VRoot
   Step $ Log $ show ("W", show w)
   let vtag :: V w Tag

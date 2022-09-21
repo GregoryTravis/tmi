@@ -26,6 +26,11 @@ instance Monad (TMI w) where
   (>>=) = Bind
   return = Step . Ret
 
+-- TODO no idea how to implement this
+instance MonadFail (TMI w) where
+  fail s = do call $ msp "TMI MonadFail fail"
+              return undefined
+
 call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
