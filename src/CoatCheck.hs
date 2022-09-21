@@ -6,10 +6,11 @@ module CoatCheck
 , empty
 , null
 , check
-, retrieve ) where
+, retrieve
+, size ) where
 
 import Prelude hiding (map, null)
-import Data.Map.Strict hiding (empty, map, null)
+import Data.Map.Strict hiding (empty, map, null, size)
 import qualified Data.Map.Strict as M
 
 data Tag = Tag Int
@@ -44,3 +45,6 @@ retrieve cc tag =
        Just a -> Just (a, cc')
   where map' = delete tag (map cc)
         cc' = cc { map = map' }
+
+size :: CoatCheck a -> Int
+size cc = M.size (map cc)

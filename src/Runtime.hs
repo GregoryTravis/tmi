@@ -240,6 +240,7 @@ testBounce = do
 loop :: (Eq w, Ord w, Typeable w, HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
 loop er = do
   doLog
+  doStats
   -- testBounce
   atd <- anythingToDo
   if not atd
@@ -271,6 +272,11 @@ anyOutStandingCalls :: St w Bool
 anyOutStandingCalls = do
   H { calls } <- get
   return $ not $ CoatCheck.null calls
+
+doStats :: St w ()
+doStats = do
+  h <- get
+  liftIO $ msp (stats h)
 
 mainLoop :: (Eq w, Ord w, Typeable w, HasRecon w, Read w, Show w) => H w -> IO ()
 mainLoop h = do

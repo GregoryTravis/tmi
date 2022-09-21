@@ -10,7 +10,8 @@ module NiceMap
 , insert
 , lookup
 , delete
-, unTag ) where
+, unTag
+, size ) where
 
 import Prelude hiding (null, lookup, insert, delete)
 import qualified Data.Map.Strict as M
@@ -63,3 +64,6 @@ lookup tag cc =
 
 delete :: Tag -> NiceMap -> NiceMap
 delete tag cc = cc { mapp = M.delete tag (mapp cc) }
+
+size :: NiceMap -> Int
+size nm = M.size (mapp nm)

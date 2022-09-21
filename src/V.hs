@@ -1,6 +1,15 @@
 {-# Language GADTs, NamedFieldPuns, TypeApplications #-}
 
-module V where
+module V
+( write
+, k
+, mkR
+, bi
+, vbi
+, nope
+, nuni
+, vSize
+) where
 
 import Ty
 
@@ -36,3 +45,14 @@ nuni name f = uni (VNamed name f)
 
 deref :: V w (V w a) -> V w a
 deref = VDeref
+
+vSize :: V w a -> Int
+vSize VRoot = 1
+vSize (VNice _) = 1
+vSize (VNamed _ _) = 1
+vSize (VBiSeal bi) = bSize bi
+vSize (VDeref vva) = error "vSize VDeref"
+
+bSize :: Bi w f r -> Int
+bSize (Bi _ _) = 1
+bSize (BiApp bi' va) = bSize bi' + vSize va

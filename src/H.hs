@@ -1,4 +1,4 @@
-{-# Language StandaloneDeriving, NamedFieldPuns #-}
+{-# Language NamedFieldPuns, RecordWildCards, StandaloneDeriving #-}
 
 module H where
 
@@ -9,6 +9,7 @@ import Recon
 import TMI
 import Ty
 import Util
+import V
 import VReadShow
 
 initHistory :: V w (TMI w ()) -> w -> H w
@@ -22,3 +23,15 @@ fcalls app = field app "calls" calls $ \r calls -> r { calls }
 fevents app = field app "events" events $ \r events -> r { events }
 fgenerations app = field app "generations" generations $ \r generations -> r { generations }
 ftodo app = field app "todo" todo $ \r todo -> r { todo }
+
+stats :: H w -> String
+stats (H {..}) = unlines lines
+  where lines =
+          [ "calls " ++ show (CC.size calls)
+          , "events " ++ show (length events)
+          , "generations " ++ show (length generations)
+          , "todo " ++ show (length todo)
+          , "store " ++ show (NM.size store)
+          , "todo lengths " ++ show todoLengths
+          ]
+        todoLengths = map vSize todo
