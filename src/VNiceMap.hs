@@ -56,8 +56,7 @@ mkSlot vnm initialValue = do
                   -- msp tagn
                   -- msp vtag'
                   return a
-  let wrt = (VWrite vnm vnm')
-  () <- Step $ WriteStep (debug wrt)
+  () <- debug $ vnm <-- vnm'
   let vs = vslot vnm vtag'
   let debug2 a = unsafePerformIO $ do
                   -- msp "mkSlot2"
