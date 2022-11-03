@@ -12,6 +12,7 @@ import Control.Monad (liftM, ap)
 import System.IO.Unsafe
 
 import Lift
+import Tracer
 import Ty
 import Util
 import VReadShow
@@ -56,20 +57,18 @@ cps' Done k = expectDone $ k ()
 -- Am I a terribly bad person?
 -- This is just a poc, it should count and report
 traceCps :: TMI w a -> TMI w a
--- traceCps (Bind (Step step) k) = Bind (Step step) k'
---   where k' a = eesp ("traceCps " ++ show step) (k a)
--- traceCps Done = eesp ("traceCps Done") Done
-traceCps = traceIt cpsTracer
+traceCps tmi = unsafePerformIO $ do
+  lt <- mkListTracer "traceCps"
+  return $ traceCps' lt tmi
 
-cpsTracer :: TMI w a -> IO ()
-cpsTracer (Bind (Step step) k) = do
-  msp $ "traceCps " ++ show step
-cpsTracer Done = msp "traceCps Done"
-
-traceIt :: (a -> IO ()) -> a -> a
-traceIt tracer x = unsafePerformIO $ do
-  tracer x
-  return x
+traceCps' :: (Maybe String -> IO ()) -> TMI w a -> TMI w a
+traceCps' lt (Bind (Step step) k) = unsafePerformIO $ do
+  lt (Just $ show step)
+  return $ Bind (Step step) k'
+  where k' a = traceCps' lt (k a)
+traceCps' lt Done = unsafePerformIO $ do
+  lt Nothing
+  return Done
 
 expectDone :: TMI w a -> TMI w a
 expectDone Done = Done
@@ -97,7 +96,8 @@ instance Show (Step w a) where
   show (WriteStep write) = "(WriteStep " ++ show write ++ ")"
   show (CallCC _) = "(CallCC _)"
   show (Fork _) = "(Fork _)"
-  show (Read _) = "(Read _)"
+  show (Read v) = "(Read " ++ show v ++ ")"
+  show (Log s) = "(Log " ++ s ++ ")"
 
 infixl 1 <--*
 (<--*) :: V w a -> a -> TMI w ()

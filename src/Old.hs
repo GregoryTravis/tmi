@@ -130,7 +130,7 @@ vslep n = do
 
 sleepAndRet :: Int -> TMI Int
 sleepAndRet n = do
-  slep n
+  -- slep n
   Step $ Ret n
 
 -- theMain :: MonadFail w => Ty.TMI w ()
