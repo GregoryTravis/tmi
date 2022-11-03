@@ -168,7 +168,7 @@ runATodo er = do
                           --     a = case cps of (Bind (Step (Read va)) k) -> rd latestW va
                           --     vtmi = doReadV (k a) vcps
                           let -- cps = rd latestW vcps
-                              vtmi = doReadV (VNice latestW) vcps
+                              vtmi = doReadV latestW vcps
                           put $ h { todo = vtmi : vcpss }
                         Logged vcps -> do let s = case (rd latestW vcps) of (Bind (Step (Log s)) _) -> s
                                           let vtmi = doLogKV vcps
@@ -191,9 +191,9 @@ doLogKV = ulift1 "doLogK" doLogK
 doRead :: w -> TMI w () -> TMI w ()
 doRead w (Bind (Step (Read va)) k) = k (rd w va)
 
-doReadV :: V w w -> V w (TMI w ()) -> V w (TMI w ())
+doReadV :: w -> V w (TMI w ()) -> V w (TMI w ())
 -- doReadV :: V w (forall a. V w a -> a) -> V w (TMI w ()) -> V w (TMI w ())
-doReadV = ulift2 "doRead" doRead
+doReadV w = ulift1 "doRead" (doRead w)
 
 -- doRead :: w -> V w (V w a) -> V w (a -> TMI w ()) -> TMI w ()
 -- doRead w vva vk =
