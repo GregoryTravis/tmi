@@ -51,6 +51,14 @@ cps' (Bind b k') k = cps' b (kcps k' k)
 -- TODO very questionable, why does Done have a continuation?
 cps' Done k = expectDone $ k ()
 
+-- Count steps and emit report at the end -- lazy wrapper
+-- Am I a terribly bad person?
+-- This is just a poc, it should count and report
+-- traceCps :: TMI w a -> TMI w a
+-- traceCps (Bind (Step step) k) = Bind (Step step) k'
+--   where k' a = eesp ("traceCps " ++ show step) (k a)
+-- traceCps Done = eesp ("traceCps Done") Done
+
 expectDone :: TMI w a -> TMI w a
 expectDone Done = Done
 expectDone x = error $ "expectDone: not done, but " ++ show x
