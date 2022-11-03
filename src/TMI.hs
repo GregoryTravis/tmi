@@ -9,6 +9,7 @@ module TMI
 
 import Control.Applicative -- Otherwise you can't do the Applicative instance.
 import Control.Monad (liftM, ap)
+import System.IO.Unsafe
 
 import Lift
 import Ty
@@ -35,7 +36,7 @@ call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
 cps :: (Read a, Show a) => TMI w a -> TMI w ()
-cps tmi = ensureCPS $ cps' tmi (\_ -> Done)
+cps tmi = ensureCPS $ traceCps $ cps' tmi (\_ -> Done)
 
 vcps :: (Read a, Show a) => V w (TMI w a) -> V w (TMI w ())
 vcps = ulift1 "cps" cps
@@ -54,10 +55,21 @@ cps' Done k = expectDone $ k ()
 -- Count steps and emit report at the end -- lazy wrapper
 -- Am I a terribly bad person?
 -- This is just a poc, it should count and report
--- traceCps :: TMI w a -> TMI w a
+traceCps :: TMI w a -> TMI w a
 -- traceCps (Bind (Step step) k) = Bind (Step step) k'
 --   where k' a = eesp ("traceCps " ++ show step) (k a)
 -- traceCps Done = eesp ("traceCps Done") Done
+traceCps = traceIt cpsTracer
+
+cpsTracer :: TMI w a -> IO ()
+cpsTracer (Bind (Step step) k) = do
+  msp $ "traceCps " ++ show step
+cpsTracer Done = msp "traceCps Done"
+
+traceIt :: (a -> IO ()) -> a -> a
+traceIt tracer x = unsafePerformIO $ do
+  tracer x
+  return x
 
 expectDone :: TMI w a -> TMI w a
 expectDone Done = Done
