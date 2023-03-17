@@ -14,6 +14,7 @@ module Runtime
 , doRead
 , doLogK ) where
 
+import Control.Monad (when)
 import Control.Monad.State.Lazy
 import Data.Typeable
 import System.IO
@@ -172,7 +173,7 @@ runATodo er = do
                           put $ h { todo = vtmi : vcpss }
                         Logged vcps -> do let s = case (rd latestW vcps) of (Bind (Step (Log s)) _) -> s
                                           let vtmi = doLogKV vcps
-                                          liftIO $ msp $ "Runtime log: " ++ s
+                                          when verbose $ liftIO $ msp $ "Runtime log: " ++ s
                                           put $ h { todo = vtmi : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
@@ -240,7 +241,7 @@ testBounce = do
 loop :: (Eq w, Ord w, Typeable w, HasRecon w, Read w, Show w) => ExtRunner (Tag, String) -> St w ()
 loop er = do
   doLog
-  doStats
+  when verbose doStats
   -- testBounce
   atd <- anythingToDo
   if not atd

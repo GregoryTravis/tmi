@@ -4,6 +4,7 @@ module Parr
 ( parr
 , parrList ) where
 
+import Control.Monad (when)
 import System.IO.Unsafe
 
 import Lib
@@ -14,6 +15,8 @@ import Ty hiding (store)
 import V
 import VNiceMap
 import Util
+
+verbose = False
 
 parr :: (Show w, Show a, Show b, Read a, Read b) => V w NiceMap -> TMI w a -> TMI w b -> TMI w (a, b)
 parr vnm tmia tmib = do
@@ -40,7 +43,7 @@ startHalf :: Show w => V w (Maybe a, Maybe b)
           -> ((a, b) -> TMI w ())
           -> TMI w ()
 startHalf vpair tmi picker pairK = do
-  call $ msp "startHalf"
+  when verbose $ call $ msp "startHalf"
   c <- tmi
   let intoSlot = picker vpair
   -- TODO should confirm there isn't a value there already, but how?
@@ -66,10 +69,10 @@ runIfDone :: (Maybe a, Maybe b)
           -> ((a, b) -> TMI w ())
           -> TMI w ()
 runIfDone (Just a, Just b) pairK = do
-  call $ msp $ "runIfDone: have both"
+  when verbose $ call $ msp $ "runIfDone: have both"
   pairK (a, b)
 runIfDone (Just _, _) _ = do
-  call $ msp $ "runIfDone: have left"
+  when verbose $ call $ msp $ "runIfDone: have left"
   return ()
 runIfDone (_, Just _) _ = do
   call $ msp $ "runIfDone: have right"
