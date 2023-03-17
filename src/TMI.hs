@@ -17,6 +17,9 @@ import Ty
 import Util
 import VReadShow
 
+doTraceCps :: Bool
+doTraceCps = False
+
 instance Functor (TMI w) where
   fmap = liftM
 
@@ -37,7 +40,7 @@ call :: (Read a, Show a) => IO a -> TMI w a
 call = Step . Ext
 
 cps :: (Read a, Show a) => TMI w a -> TMI w ()
-cps tmi = ensureCPS $ traceCps $ cps' tmi (\_ -> Done)
+cps tmi = ensureCPS $ traceCpsMaybe $ cps' tmi (\_ -> Done)
 
 vcps :: (Read a, Show a) => V w (TMI w a) -> V w (TMI w ())
 vcps = ulift1 "cps" cps
@@ -69,6 +72,9 @@ traceCps' lt (Bind (Step step) k) = unsafePerformIO $ do
 traceCps' lt Done = unsafePerformIO $ do
   lt Nothing
   return Done
+
+traceCpsMaybe :: TMI w a -> TMI w a
+traceCpsMaybe = if doTraceCps then traceCps else id
 
 expectDone :: TMI w a -> TMI w a
 expectDone Done = Done
