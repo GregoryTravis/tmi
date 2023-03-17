@@ -49,7 +49,7 @@ dumToShow s typeS = error $ "dumToShow?? " ++ s ++ " " ++ typeS
 -- dumToShowVNice :: (Eq a, Show a, Read a, Typeable a) => String -> String -> V w a
 -- dumToShowVNice s "<<Int>>" = unsafeCoerce $ VNice (read s :: Int)
 
-data S = SRoot | SNice String String | SNamed String | SVBiSeal BS
+data S = SRoot | SNice String String | SNamed String | SVBiSeal BS | SVFreeze Int S
   deriving (Eq, Read, Show)
 data BS = BSBi S S | BSBiApp BS S
   deriving (Eq, Read, Show)
@@ -59,6 +59,7 @@ qs VRoot = SRoot
 qs (VNice x) = SNice (show x) (show (toDyn x))
 qs (VNamed name _) = SNamed name
 qs (VBiSeal bi) = SVBiSeal (bs bi)
+qs (VFreeze n v) = SVFreeze n (qs v)
 
 bs :: Bi w f r -> BS
 bs (Bi f r) = BSBi (qs f) (qs r)

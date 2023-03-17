@@ -20,6 +20,7 @@ instance Eq (V w a) where
   VNice x == VNice y = x == y
   VNamed name _ == VNamed name' _ = name == name'
   VBiSeal bi == VBiSeal bi' = bi == bi'
+  VFreeze n v == VFreeze n' v' = n == n && v == v'
   _ == _ = False
 
 -- biAppEq :: (Typeable a1, Typeable a2) => a1 -> a2 -> Bool

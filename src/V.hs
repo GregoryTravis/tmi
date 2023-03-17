@@ -52,6 +52,7 @@ vSize (VNice _) = 1
 vSize (VNamed _ _) = 1
 vSize (VBiSeal bi) = bSize bi
 vSize (VDeref vva) = error "vSize VDeref"
+vSize (VFreeze _ v) = vSize v
 
 bSize :: Bi w f r -> Int
 bSize (Bi _ _) = 1

@@ -42,6 +42,7 @@ rd w (VNice x) = x
 rd w (VNamed _ x) = x
 rd w (VBiSeal bi) = rdb w bi
 rd w (VDeref vva) = rd w (rd w vva)
+rd w (VFreeze _ v) = rd w v
 
 rdb :: w -> Bi w f r -> f
 rdb w (Bi qf qr) = rd w qf

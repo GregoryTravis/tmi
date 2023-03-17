@@ -23,6 +23,7 @@ data V w a where
   VNamed :: String -> a -> V w a
   VBiSeal :: Bi w a (R w a) -> V w a
   VDeref :: V w (V w a) -> V w a
+  VFreeze :: Int -> V w a -> V w a
 
 data H w = H
   { calls :: CoatCheck (V w (TMI w ()))
