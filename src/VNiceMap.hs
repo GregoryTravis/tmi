@@ -50,7 +50,7 @@ mkSlot vnm initialValue = do
       -- vnm' = vsnd alloced
       (vtag, vnm') = vPairSplit alloced
   tagn <- Step $ Read (unTagV vtag)
-  let vtag' = k (Tag tagn)
+  let vtag' = VFreeze 23 (k (Tag tagn))
   let debug a = unsafePerformIO $ do
                   -- msp "mkSlot"
                   -- msp tagn
