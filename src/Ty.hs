@@ -25,6 +25,8 @@ data V w a where
   VDeref :: V w (V w a) -> V w a
   VFreeze :: Int -> V w a -> V w a
 
+data Generation = Latest | Frozen Int
+
 data H w = H
   { calls :: CoatCheck (V w (TMI w ()))
   , events :: [Event]

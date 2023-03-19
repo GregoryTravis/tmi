@@ -48,7 +48,7 @@ showNextTodo = do
   h@H { todo } <- get
   case todo of
     [] -> liftIO $ msp "no todos"
-    (todo:todos) -> liftIO $ msp $ rd (last (generations h)) todo
+    (todo:todos) -> liftIO $ msp $ rd (generations h) Latest todo
 
 doLog :: Show w => St w ()
 doLog = do
@@ -76,9 +76,9 @@ data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (
                   | Logged (V w (TMI w ()))
                   -- | forall a. Readed (V w (V w a)) (V w (a -> TMI w ()))
 
-stepTMI :: w -> V w (TMI w ()) -> StepResult w
-stepTMI w vcps =
-  let cps = rd w vcps
+stepTMI :: [w] -> Generation -> V w (TMI w ()) -> StepResult w
+stepTMI ws gen vcps =
+  let cps = rd ws gen vcps
    in case cps of
         (Bind (Step (Ret _)) _) -> Stepped (advanceRetBindV vcps)
         (Bind (Step e@(Ext _)) k) -> Called vcps
@@ -150,17 +150,17 @@ runATodo er = do
                                     [] -> error "runATodo: no generations"
   case todo of
     [] -> return ()
-    (vcps:vcpss) -> do case stepTMI latestW vcps of
+    (vcps:vcpss) -> do case stepTMI generations Latest vcps of
                         Stepped vcps' -> put $ h { todo = vcps' : vcpss }
                         Called vcps -> do
                           let (tag, cc') = check calls vcps
-                          liftIO $ startCall er latestW tag vcps
+                          liftIO $ startCall er generations Latest tag vcps
                           put $ h { calls = cc', todo = vcpss }
                         CalledCC vcps' -> put $ h { todo = vcps' : vcpss }
                         Wrote write vcps' -> do
                           -- liftIO $ msp "propWrite"
-                          let w' = propWrite latestW write
-                          put $ h { generations = w' : generations, todo = vcps' : vcpss }
+                          let ws' = propWrite generations Latest write
+                          put $ h { generations = ws', todo = vcps' : vcpss }
                         Forked vtmi vnext -> put $ h { todo = (vnext : vcpss) ++ [vtmi] }
                         Readed vcps -> do
                           -- let reader = (ulift1 "rd" rd) (VNice latestW)
@@ -169,9 +169,9 @@ runATodo er = do
                           --     a = case cps of (Bind (Step (Read va)) k) -> rd latestW va
                           --     vtmi = doReadV (k a) vcps
                           let -- cps = rd latestW vcps
-                              vtmi = doReadV latestW vcps
+                              vtmi = doReadV generations Latest vcps
                           put $ h { todo = vtmi : vcpss }
-                        Logged vcps -> do let s = case (rd latestW vcps) of (Bind (Step (Log s)) _) -> s
+                        Logged vcps -> do let s = case (rd generations Latest vcps) of (Bind (Step (Log s)) _) -> s
                                           let vtmi = doLogKV vcps
                                           when verbose $ liftIO $ msp $ "Runtime log: " ++ s
                                           put $ h { todo = vtmi : vcpss }
@@ -189,12 +189,12 @@ doLogKV = ulift1 "doLogK" doLogK
 -- doRead :: a -> TMI w () -> TMI w ()
 -- doRead a (Bind (Step (Read va)) k) = k a
 
-doRead :: w -> TMI w () -> TMI w ()
-doRead w (Bind (Step (Read va)) k) = k (rd w va)
+doRead :: [w] -> Generation -> TMI w () -> TMI w ()
+doRead ws gen (Bind (Step (Read va)) k) = k (rd ws gen va)
 
-doReadV :: w -> V w (TMI w ()) -> V w (TMI w ())
+doReadV :: [w] -> Generation -> V w (TMI w ()) -> V w (TMI w ())
 -- doReadV :: V w (forall a. V w a -> a) -> V w (TMI w ()) -> V w (TMI w ())
-doReadV w = ulift1 "doRead" (doRead w)
+doReadV ws gen = ulift1 "doRead" (doRead ws gen)
 
 -- doRead :: w -> V w (V w a) -> V w (a -> TMI w ()) -> TMI w ()
 -- doRead w vva vk =
@@ -208,9 +208,9 @@ externalize (Bind (Step (Ext ioa)) _) tag = do
   let s = show a
   return (tag, s)
 
-startCall :: ExtRunner (Tag, String) -> w -> Tag -> V w (TMI w ()) -> IO ()
-startCall er w tag vcps = do
-  let cps = rd w vcps
+startCall :: ExtRunner (Tag, String) -> [w] -> Generation -> Tag -> V w (TMI w ()) -> IO ()
+startCall er ws gen tag vcps = do
+  let cps = rd ws gen vcps
       iots = externalize cps tag
   run er iots
 

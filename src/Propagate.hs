@@ -11,8 +11,6 @@ import Ty
 import Util
 import V
 
-data Generation = Latest | Frozen Int
-
 -- Pushes a write back one step through a rev?
 wr :: [w] -> Generation -> V w b -> b -> Write w
 wr ws gen (VBiSeal (Bi qfor qrev)) na =
@@ -39,41 +37,37 @@ getrev ws gen (BiApp bi qa) =
    in rb
 
 rd :: [w] -> Generation -> V w a -> a
-rd ws gen VRoot = w
+rd ws gen VRoot = latest ws
 rd ws gen (VNice x) = x
 rd ws gen (VNamed _ x) = x
-rd ws gen (VBiSeal bi) = rdb [w] gen bi
-rd ws gen (VDeref vva) = rd [w] gen (rd [w] gen vva)
-rd ws gen (VFreeze _ v) = rd w v
+rd ws gen (VBiSeal bi) = rdb ws gen bi
+rd ws gen (VDeref vva) = rd ws gen (rd ws gen vva)
+rd ws gen (VFreeze _ v) = rd ws gen v
 
 rdb :: [w] -> Generation -> Bi w f r -> f
-rdb ws gen (Bi qf qr) = rd w qf
+rdb ws gen (Bi qf qr) = rd ws gen qf
 rdb ws gen (BiApp bi qa) =
-  let for = rdb [w] gen bi
-      a = rd [w] gen qa
+  let for = rdb ws gen bi
+      a = rd ws gen qa
    in for a
 
-propWrite :: Show w => [w] -> Generation -> Write w -> w
+latest :: [w] -> w
+latest [] = error "Error: latest: empty"
+latest (w:_) = w
+
+propWrite :: Show w => [w] -> Generation -> Write w -> [w]
 propWrite ws gen write = propWrites ws gen [write]
 
 -- Apply a list of writes to a w. Writes are sequential.
 -- For a non-root write, the write is pushed back one step towards the root.
 -- For a root write, the new w replaces the old one.
-
-propWrites :: Show w => [w] -> Generation -> w -> [Write w] -> w
-propWrites ws gen w [] = w
-propWrites ws gen w (VWrite va va' : rest) = propWrites ws gen w (Write va (rd ws gen va') : rest)
-propWrites ws gen w (Write VRoot w' : rest) = propWrites ws gen w' rest
-propWrites ws gen w (Write va a : rest) = propWrites ws gen w (wr w va a : rest)
-
--- Faulty attempt I think
--- propWrites :: Show w => [w] -> Generation -> [Write w] -> w
--- propWrites ws gen [] = w
--- propWrites ws gen (VWrite va va' : rest) = propWrites ws gen (Write va (rd ws gen va') : rest)
--- propWrites ws gen (Write VRoot w' : rest) = propWrites w' rest
--- propWrites ws gen (Write va a : rest) = propWrites w (wr w va a : rest)
--- -- TODO append is slow?
--- propWrites w (Writes writes : rest) = propWrites w (writes ++ rest)
+propWrites :: Show w => [w] -> Generation -> [Write w] -> [w]
+propWrites ws gen [] = ws
+propWrites ws gen (VWrite va va' : rest) = propWrites ws gen (Write va (rd ws gen va') : rest)
+propWrites ws gen (Write VRoot w' : rest) = propWrites (w':ws) gen rest
+propWrites ws gen (Write va a : rest) = propWrites ws gen (wr ws gen va a : rest)
+-- TODO append is slow?
+propWrites ws gen (Writes writes : rest) = propWrites ws gen (writes ++ rest)
 
 -- Depth-first traversal, but updating the w we carry along each time we get a root write.
 -- This might actually be correct for cases where writes don't overlap? I don't know.
