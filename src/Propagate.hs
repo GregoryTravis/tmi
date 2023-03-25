@@ -37,7 +37,8 @@ getrev ws gen (BiApp bi qa) =
    in rb
 
 rd :: [w] -> Generation -> V w a -> a
-rd ws gen VRoot = latest ws
+rd ws Latest VRoot = latest ws
+rd ws (Frozen g) VRoot = vindex "rd" ws g
 rd ws gen (VNice x) = x
 rd ws gen (VNamed _ x) = x
 rd ws gen (VBiSeal bi) = rdb ws gen bi
