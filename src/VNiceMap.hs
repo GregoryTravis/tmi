@@ -40,6 +40,7 @@ slot_ nm rnm tag _ = mkR r
   where r a = write rnm nm'
               where nm' = store tag a nm
 
+vallocAndSave :: V w NiceMap -> TMI w (V w NiceMap.Tag)
 vallocAndSave vnm = do
   let (vtag, vnm') = vPairSplit $ valloc vnm
   vnm <-- vnm'
