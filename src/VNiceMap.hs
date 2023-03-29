@@ -52,7 +52,7 @@ mkSlot vnm initialValue = do
   vtag <- vallocAndSave vnm
   let vs = vslot vnm vtag
   vs <--* initialValue
-  return $ vs
+  return vs
 
 valloc :: V w NiceMap -> V w (Tag, NiceMap)
 valloc = lift1 $ nuni "alloc" alloc
