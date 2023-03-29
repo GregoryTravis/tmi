@@ -12,7 +12,8 @@ module Runtime
 -- , getReadV
 -- , getReadK
 , doRead
-, doLogK ) where
+, doLogK
+, doFreeze ) where
 
 import Control.Monad (when)
 import Control.Monad.State.Lazy
