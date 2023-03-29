@@ -74,6 +74,7 @@ data StepResult w = Stepped (V w (TMI w ())) | Called (V w (TMI w ())) | Wrote (
                   | Forked (V w (TMI w ())) (V w (TMI w ()))
                   | Readed (V w (TMI w ()))
                   | Logged (V w (TMI w ()))
+                  | Froze (V w (TMI w ()))
                   -- | forall a. Readed (V w (V w a)) (V w (a -> TMI w ()))
 
 stepTMI :: [w] -> Generation -> V w (TMI w ()) -> StepResult w
@@ -87,6 +88,7 @@ stepTMI ws gen vcps =
         (Bind (Step (Fork _)) _) -> Forked (getForkTMIV vcps) (getForkNextV vcps)
         (Bind (Step (Read _)) _) -> Readed vcps -- (getReadVV vcps) (getReadKV vcps)
         (Bind (Step (Log _)) _) -> Logged vcps
+        (Bind (Step (Freeze _)) _) -> Froze vcps
         (Step (Ext io)) -> error $ "???? " ++ show (unsafePerformIO io)
         Done -> Nada
         x -> error $ "?? " ++ show cps
@@ -175,6 +177,9 @@ runATodo er = do
                                           let vtmi = doLogKV vcps
                                           when verbose $ liftIO $ msp $ "Runtime log: " ++ s
                                           put $ h { todo = vtmi : vcpss }
+                        Froze vcps -> do
+                          let vtmi = doFreezeV generations vcps
+                          put $ h { todo = vtmi : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
 doLogK :: TMI w () -> TMI w ()
@@ -195,6 +200,13 @@ doRead ws gen (Bind (Step (Read va)) k) = k (rd ws gen va)
 doReadV :: [w] -> Generation -> V w (TMI w ()) -> V w (TMI w ())
 -- doReadV :: V w (forall a. V w a -> a) -> V w (TMI w ()) -> V w (TMI w ())
 doReadV ws gen = ulift1 "doRead" (doRead ws gen)
+
+doFreeze :: [w] -> TMI w () -> TMI w ()
+doFreeze ws (Bind (Step (Freeze va)) k) = k (VFreeze gen va)
+  where gen = length ws - 1
+
+doFreezeV :: [w] -> V w (TMI w ()) -> V w (TMI w ())
+doFreezeV ws = ulift1 "doFreeze" (doFreeze ws)
 
 -- doRead :: w -> V w (V w a) -> V w (a -> TMI w ()) -> TMI w ()
 -- doRead w vva vk =

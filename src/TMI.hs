@@ -104,6 +104,7 @@ instance Show (Step w a) where
   show (Fork _) = "(Fork _)"
   show (Read v) = "(Read " ++ show v ++ ")"
   show (Log s) = "(Log " ++ s ++ ")"
+  show (Freeze v) = "(Freeze " ++ show v ++ ")"
 
 infixl 1 <--*
 (<--*) :: V w a -> a -> TMI w ()

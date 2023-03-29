@@ -49,14 +49,16 @@ mkSlot vnm initialValue = do
       -- vtag = vfst alloced
       -- vnm' = vsnd alloced
       (vtag, vnm') = vPairSplit alloced
-  tagn <- Step $ Read (unTagV vtag)
-  let vtag' = VFreeze 23 (k (Tag tagn))
+  -- tagn <- Step $ Read (unTagV vtag)
+  -- let vtag' = VFreeze 23 (k (Tag tagn))
+
   let debug a = unsafePerformIO $ do
                   -- msp "mkSlot"
                   -- msp tagn
                   -- msp vtag'
                   return a
   () <- debug $ vnm <-- vnm'
+  vtag' <- Step $ Freeze vtag
   let vs = vslot vnm vtag'
   let debug2 a = unsafePerformIO $ do
                   -- msp "mkSlot2"

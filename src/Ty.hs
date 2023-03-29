@@ -46,6 +46,7 @@ data Step w a where
   Read :: V w a -> Step w a
   Fork :: (TMI w ()) -> Step w ()
   Log :: String -> Step w ()
+  Freeze :: V w a -> Step w (V w a)
 
 data TMI w a where
   Step :: Step w a -> TMI w a
