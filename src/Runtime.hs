@@ -148,8 +148,6 @@ getForkNextV = ulift1 "getForkNext" getForkNext
 runATodo :: (Eq w, Read w, Typeable w, Show w) => ExtRunner (Tag, String) -> St w ()
 runATodo er = do
   h@H { calls, todo, generations } <- get
-  let latestW = case generations of (w:ws) -> w
-                                    [] -> error "runATodo: no generations"
   case todo of
     [] -> return ()
     (vcps:vcpss) -> do case stepTMI generations Latest vcps of
