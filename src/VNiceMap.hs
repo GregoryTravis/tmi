@@ -40,12 +40,16 @@ slot_ nm rnm tag _ = mkR r
   where r a = write rnm nm'
               where nm' = store tag a nm
 
-mkSlot :: forall a w. (Show w, Read a, Show a) => V w NiceMap -> a -> TMI w (V w a)
-mkSlot vnm initialValue = do
+vallocAndSave vnm = do
   let (vtag, vnm') = vPairSplit $ valloc vnm
   vnm <-- vnm'
   vtag' <- Step $ Freeze vtag
-  let vs = vslot vnm vtag'
+  return vtag'
+
+mkSlot :: forall a w. (Show w, Read a, Show a) => V w NiceMap -> a -> TMI w (V w a)
+mkSlot vnm initialValue = do
+  vtag <- vallocAndSave vnm
+  let vs = vslot vnm vtag
   vs <--* initialValue
   return $ vs
 
