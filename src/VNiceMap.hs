@@ -42,30 +42,11 @@ slot_ nm rnm tag _ = mkR r
 
 mkSlot :: forall a w. (Show w, Read a, Show a) => V w NiceMap -> a -> TMI w (V w a)
 mkSlot vnm initialValue = do
-  w <- Step $ Read VRoot
-  Step $ Log $ show ("W", show w)
-  let vtag :: V w Tag
-      alloced = valloc vnm
-      -- vtag = vfst alloced
-      -- vnm' = vsnd alloced
-      (vtag, vnm') = vPairSplit alloced
-  -- tagn <- Step $ Read (unTagV vtag)
-  -- let vtag' = VFreeze 23 (k (Tag tagn))
-
-  let debug a = unsafePerformIO $ do
-                  -- msp "mkSlot"
-                  -- msp tagn
-                  -- msp vtag'
-                  return a
-  () <- debug $ vnm <-- vnm'
+  let (vtag, vnm') = vPairSplit $ valloc vnm
+  vnm <-- vnm'
   vtag' <- Step $ Freeze vtag
   let vs = vslot vnm vtag'
-  let debug2 a = unsafePerformIO $ do
-                  -- msp "mkSlot2"
-                  -- msp tagn
-                  -- msp vtag'
-                  return a
-  vs <--* debug2 initialValue
+  vs <--* initialValue
   return $ vs
 
 valloc :: V w NiceMap -> V w (Tag, NiceMap)
