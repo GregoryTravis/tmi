@@ -265,6 +265,7 @@ testBounce :: (HasRecon w, Read w, Show w) => St w ()
 testBounce = do
   h <- get
   let s = show h
+  -- liftIO $ msp $ "bounce len " ++ show (length s)
   s' <- liftIO $ bounce s
   let h' = read s'
   put h'
