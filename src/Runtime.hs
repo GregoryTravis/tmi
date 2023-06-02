@@ -17,10 +17,12 @@ module Runtime
 
 import Control.Monad (when)
 import Control.Monad.State.Lazy
+import Data.Function ((&))
 import Data.Typeable
 import System.IO
 import System.Directory
 import System.IO.Unsafe
+import Unsafe.Coerce
 
 import CoatCheck hiding (null)
 import qualified CoatCheck
@@ -169,8 +171,11 @@ runATodo er = do
                           -- let cps = rd w vcps
                           --     a = case cps of (Bind (Step (Read va)) k) -> rd latestW va
                           --     vtmi = doReadV (k a) vcps
-                          let -- cps = rd latestW vcps
-                              vtmi = doReadV generations Latest vcps
+                          let -- (Bind (Step (Read v)) _) = rd generations Latest vcps
+                              -- vk = getKV vcps
+                              -- vtmi = doReadV (unsafeCoerce v) vk
+                              (v, vk) = hur (yebV vcps)
+                              vtmi = doReadV v vk -- error "...."
                           put $ h { todo = vtmi : vcpss }
                         Logged vcps -> do let s = case (rd generations Latest vcps) of (Bind (Step (Log s)) _) -> s
                                           let vtmi = doLogKV vcps
@@ -180,6 +185,27 @@ runATodo er = do
                           let vtmi = doFreezeV generations vcps
                           put $ h { todo = vtmi : vcpss }
                         Nada -> put $ h { todo = vcpss }
+
+yeb :: TMI w b -> (V w a, a -> TMI w b)
+yeb (Bind (Step (Read v)) k) = (unsafeCoerce v, unsafeCoerce k)
+
+yebV :: V w (TMI w b) -> V w (V w a, a -> TMI w b)
+yebV = ulift1 "yeb" yeb
+
+hur :: V w (V w a, a -> TMI w b) -> (V w a, V w (a -> TMI w b))
+hur vp =
+  let (vf, vs) = vPairSplit vp
+   in (VDeref vf, vs)
+
+-- gla :: V w (V w a, a -> TMI w b) -> (V w (V w a), V w (a -> TMI w b))
+-- gla vp =
+--   (vfst vp, fsnd vp)
+
+-- getK :: TMI w b -> (a -> TMI w b)
+-- getK (Bind (Step _) k) = k
+
+-- getKV :: V w (TMI w b) -> V w (a -> TMI w b)
+-- getKV = ulift1 "getK" getK
 
 doLogK :: TMI w () -> TMI w ()
 doLogK (Bind (Step (Log s)) k) = k ()
@@ -193,12 +219,11 @@ doLogKV = ulift1 "doLogK" doLogK
 -- doRead :: a -> TMI w () -> TMI w ()
 -- doRead a (Bind (Step (Read va)) k) = k a
 
-doRead :: [w] -> Generation -> TMI w () -> TMI w ()
-doRead ws gen (Bind (Step (Read va)) k) = k (rd ws gen va)
+doRead :: a -> (a -> TMI w ()) -> TMI w ()
+doRead = (&)
 
-doReadV :: [w] -> Generation -> V w (TMI w ()) -> V w (TMI w ())
--- doReadV :: V w (forall a. V w a -> a) -> V w (TMI w ()) -> V w (TMI w ())
-doReadV ws gen = ulift1 "doRead" (doRead ws gen)
+doReadV :: V w a -> V w (a -> TMI w ()) -> V w (TMI w ())
+doReadV = ulift2 "doRead" doRead
 
 doFreeze :: [w] -> TMI w () -> TMI w ()
 doFreeze ws (Bind (Step (Freeze va)) k) = k (VFreeze gen va)
