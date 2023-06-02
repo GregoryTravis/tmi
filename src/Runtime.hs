@@ -13,7 +13,8 @@ module Runtime
 -- , getReadK
 , doRead
 , doLogK
-, doFreeze ) where
+, doFreeze
+, yeb ) where
 
 import Control.Monad (when)
 import Control.Monad.State.Lazy
@@ -195,7 +196,7 @@ yebV = ulift1 "yeb" yeb
 
 hur :: V w (V w a, a -> TMI w b) -> (V w a, V w (a -> TMI w b))
 hur vp =
-  let (vf, vs) = vPairSplit vp
+  let (vf, vs) = uvPairSplit vp
    in (VDeref vf, vs)
 
 -- gla :: V w (V w a, a -> TMI w b) -> (V w (V w a), V w (a -> TMI w b))

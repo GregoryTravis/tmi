@@ -25,6 +25,15 @@ snd_ (a, _) rpr = mkR r
 vPairSplit :: V w (a, b) -> (V w a, V w b)
 vPairSplit vpr = (vfst vpr, vsnd vpr)
 
+uvfst :: V w (a, b) -> V w a
+uvfst = ulift1 "fst" fst
+
+uvsnd :: V w (a, b) -> V w b
+uvsnd = ulift1 "snd" snd
+
+uvPairSplit :: V w (a, b) -> (V w a, V w b)
+uvPairSplit vpr = (uvfst vpr, uvsnd vpr)
+
 -- untested
 -- vcons :: V w a -> V w [a] -> V w [a]
 -- vcons = lift2 $ nuni "vcons" (:)

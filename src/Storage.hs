@@ -49,7 +49,7 @@ dumToShow s typeS = error $ "dumToShow?? " ++ s ++ " " ++ typeS
 -- dumToShowVNice :: (Eq a, Show a, Read a, Typeable a) => String -> String -> V w a
 -- dumToShowVNice s "<<Int>>" = unsafeCoerce $ VNice (read s :: Int)
 
-data S = SRoot | SNice String String | SNamed String | SVBiSeal BS | SVFreeze Int S
+data S = SRoot | SNice String String | SNamed String | SVBiSeal BS | SVDeref S | SVFreeze Int S
   deriving (Eq, Read, Show)
 data BS = BSBi S S | BSBiApp BS S
   deriving (Eq, Read, Show)
@@ -59,6 +59,7 @@ qs VRoot = SRoot
 qs (VNice x) = SNice (show x) (show (toDyn x))
 qs (VNamed name _) = SNamed name
 qs (VBiSeal bi) = SVBiSeal (bs bi)
+qs (VDeref v) = SVDeref (qs v)
 qs (VFreeze n v) = SVFreeze n (qs v)
 
 bs :: Bi w f r -> BS
@@ -82,6 +83,8 @@ unqs recon (SNice shown typeS) = error $ "unqs type?? " ++ shown ++ " " ++ typeS
 
 unqs recon (SNamed name) = recon name
 unqs recon (SVBiSeal bis) = VBiSeal (unbs recon bis)
+unqs recon (SVDeref vs) = VDeref (unqs recon vs)
+unqs recon (SVFreeze n vs) = VFreeze n (unqs recon vs)
 
 unbs :: Reconstitutor -> BS -> Bi w f r
 unbs recon (BSBi sf sv) = Bi (unqs recon sf) (unqs recon sv)
