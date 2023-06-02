@@ -36,6 +36,7 @@ import Recon
 import TMI
 import Ty
 import Util
+import V
 import VReadShow
 
 verbose = False
@@ -182,7 +183,7 @@ runATodo er = do
                                           when verbose $ liftIO $ msp $ "Runtime log: " ++ s
                                           put $ h { todo = vtmi : vcpss }
                         Froze vcps -> do
-                          let vtmi = doFreezeV generations vcps
+                          let vtmi = doFreezeV (k (length generations - 1)) vcps
                           put $ h { todo = vtmi : vcpss }
                         Nada -> put $ h { todo = vcpss }
 
@@ -225,12 +226,11 @@ doRead = (&)
 doReadV :: V w a -> V w (a -> TMI w ()) -> V w (TMI w ())
 doReadV = ulift2 "doRead" doRead
 
-doFreeze :: [w] -> TMI w () -> TMI w ()
-doFreeze ws (Bind (Step (Freeze va)) k) = k (VFreeze gen va)
-  where gen = length ws - 1
+doFreeze :: Int -> TMI w () -> TMI w ()
+doFreeze gen (Bind (Step (Freeze va)) k) = k (VFreeze gen va)
 
-doFreezeV :: [w] -> V w (TMI w ()) -> V w (TMI w ())
-doFreezeV ws = ulift1 "doFreeze" (doFreeze ws)
+doFreezeV :: V w Int -> V w (TMI w ()) -> V w (TMI w ())
+doFreezeV = ulift2 "doFreeze" doFreeze
 
 -- doRead :: w -> V w (V w a) -> V w (a -> TMI w ()) -> TMI w ()
 -- doRead w vva vk =
