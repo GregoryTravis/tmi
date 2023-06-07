@@ -1,6 +1,7 @@
 {-# language OverloadedStrings #-}
 
-module Web
+-- TODO rename this to Web and figure out why it has a warning when you do.
+module Veb
 ( runServer ) where
 
 import Control.Monad.IO.Class (liftIO)
