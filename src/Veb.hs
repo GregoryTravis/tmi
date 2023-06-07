@@ -21,7 +21,7 @@ runServer = run 8000 app
 
 app :: App ()
 app = do
-  route "/" handler
+  route ".*" handler
 
 handler :: Handler W.Response
 handler = do

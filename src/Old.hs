@@ -22,6 +22,7 @@ import Ty hiding (V, H, TMI)
 import qualified Ty (V, H(..), TMI(..))
 import Util
 import V
+import Veb
 import VNiceMap
 import VReadShow
 
@@ -206,4 +207,5 @@ vTheMain = VNamed "theMain" theMain
 oldMain :: IO ()
 oldMain = do
   mainLoop theHistory
+  runServer
   msp "hi oldMain"
