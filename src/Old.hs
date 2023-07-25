@@ -16,6 +16,7 @@ import Parr
 import Propagate
 import Recon
 import Runtime
+import Srv
 import Storage
 import TMI
 import Ty hiding (V, H, TMI)
@@ -141,8 +142,9 @@ sleepAndRet n = do
 -- theMain :: MonadFail w => Ty.TMI w ()
 theMain :: TMI ()
 theMain = do
-  results <- parrList vanm (map sleepAndRet [1, 2, 3, 4, 5, 6])
-  call $ msp $ "welp " ++ show results
+  -- results <- parrList vanm (map sleepAndRet [1, 2, 3, 4, 5, 6])
+  -- call $ msp $ "welp " ++ show results
+  srv
 
   -- works
   -- (a, (b, c)) <- parr vanm (sleepAndRet 2) (parr "inner" vanm (sleepAndRet 3) (sleepAndRet 4))
@@ -207,5 +209,4 @@ vTheMain = VNamed "theMain" theMain
 oldMain :: IO ()
 oldMain = do
   mainLoop theHistory
-  runServer
   msp "hi oldMain"

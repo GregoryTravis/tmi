@@ -2,8 +2,9 @@
 
 -- TODO rename this to Web and figure out why it has a warning when you do.
 module Veb
-( runServer ) where
+( startWebServer ) where
 
+import Control.Concurrent
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as M
@@ -16,16 +17,17 @@ import Web.Firefly
 
 import Util
 
-runServer :: IO ()
-runServer = run 8000 app
+startWebServer :: (String -> IO String) -> Int -> IO ()
+startWebServer handler' port = do
+  let app :: App ()
+      app = do
+        route ".*" (handler handler')
+  run port app
 
-app :: App ()
-app = do
-  route ".*" handler
-
-handler :: Handler W.Response
-handler = do
-  p <- getPath
+handler :: (String -> IO String) -> Handler W.Response
+handler handler' = do
+  tp <- getPath
+  let p = T.unpack tp
   liftIO $ msp p
-  let s = "heyo"
+  s <- liftIO $ handler' p
   return $ toResponse (T.pack s, ok200, M.fromList [("Content-type", ["text/html"])] :: HeaderMap)

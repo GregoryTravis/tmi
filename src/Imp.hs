@@ -2,16 +2,19 @@
 
 module Imp where
 
+import Control.Concurrent (forkIO)
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Data.IORef
+import Data.Maybe (fromJust)
 import qualified Data.Map.Strict as M
 import System.IO.Unsafe
 
-import CoatCheck
+import qualified CoatCheck as CC
 import Util
+import Veb
 
-data Request = Request
+type Request = String
 data Response = Response
 
 -- TODO
@@ -21,12 +24,23 @@ data Response = Response
 
 data Responder r = Responder (MVar r)
 
-data Server = Server req res
-  { requestStream :: Chan (req, Responder res)
+newResponder :: IO (Responder r)
+newResponder = do
+  mvar <- newEmptyMVar
+  return $ Responder mvar
+
+waitResponder :: Responder r -> IO r
+waitResponder (Responder mvar) = takeMVar mvar
+
+data Server req = Server
+  { requestStream :: Chan (req, CC.Tag)
   }
 
-servers :: IORef (Map Int (Server Request Response))
-servers = unsafePerformIO newIORef
+servers :: IORef (M.Map Int (Server Request))
+servers = unsafePerformIO $ newIORef M.empty
+
+responders :: IORef (CC.CoatCheck (Responder res))
+responders = unsafePerformIO $ newIORef CC.empty
 
 -- Usage from TMI:
 -- serve :: Int -> TMI ()
@@ -43,29 +57,49 @@ servers = unsafePerformIO newIORef
 --   takeMVar mvar
 -- registerHandler "/" (handler theServer)
 
-createServer :: Int -> IO Server
-createServer port = do
+getServer :: Int -> IO (Server Request)
+getServer port = do
   svs <- readIORef servers
   case M.lookup port svs of
     Just server -> return server
     Nothing -> do
       requestStream <- newChan
       let server = Server {..}
-      newSvs = M.insert port server svs
-      writeIORef servers newSvs
+          newServers = M.insert port server svs
+      writeIORef servers newServers
+      threadId <- forkIO $ startWebServer (handler' port) port
+      msp $ "Started server on " ++ show port ++ " thread " ++ show threadId
       return server
+
+handler' :: Int -> String -> IO String
+handler' port req = do
+  responder <- newResponder
+  reses <- readIORef responders
+  let (tag, newReses) = CC.check reses responder
+  writeIORef responders newReses
+  msp $ "Checked responder at " ++ show tag
+  Server {..} <- getServer port
+  let package = (req, tag)
+  writeChan requestStream package
+  res <- waitResponder responder
+  return res
 
 ensureServer :: Int -> IO ()
 ensureServer port = do
-  createServer port
+  getServer port
   return ()
 
-getRequest :: Int -> IO (Request, Responder)
+getRequest :: Int -> IO (Request, CC.Tag)
 getRequest port = do
   ensureServer port
   servers <- readIORef servers
-  Server {..} = servers M.! port
+  let Server {..} = servers M.! port
   readChan requestStream
 
-respondWith :: Responder r -> r -> IO ()
-respondWith Responder mvar) response = putMVar mvar response
+respondWith :: CC.Tag -> r -> IO ()
+respondWith tag res = do
+  cc <- readIORef responders
+  msp $ "Retreiving responder from " ++ show tag
+  let (Responder mvar, newCC) = fromJust $ CC.retrieve cc tag
+  writeIORef responders newCC
+  putMVar mvar res
