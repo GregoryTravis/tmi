@@ -139,12 +139,15 @@ sleepAndRet n = do
   -- slep n
   Step $ Ret n
 
+handle :: String -> TMI String
+handle s = return $ s ++ " respy"
+
 -- theMain :: MonadFail w => Ty.TMI w ()
 theMain :: TMI ()
 theMain = do
   -- results <- parrList vanm (map sleepAndRet [1, 2, 3, 4, 5, 6])
   -- call $ msp $ "welp " ++ show results
-  srv
+  srv handle
 
   -- works
   -- (a, (b, c)) <- parr vanm (sleepAndRet 2) (parr "inner" vanm (sleepAndRet 3) (sleepAndRet 4))
