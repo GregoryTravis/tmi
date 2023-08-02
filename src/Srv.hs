@@ -37,11 +37,8 @@ getOrMakeImp = do
       return imp
 
 getReq :: IO (String, CC.Tag)
-getReq = do
-  imp <- getOrMakeImp
-  getRequest imp
+getReq = getOrMakeImp >>= getRequest
 
 respWith :: CC.Tag -> String -> IO ()
 respWith tag resp = do
-  imp <- getOrMakeImp
-  respondWith imp tag resp
+  getOrMakeImp >>= (\imp -> respondWith imp tag resp)
