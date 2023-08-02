@@ -145,9 +145,6 @@ handle s = do
     then do
       i <- Step $ Read vanInt
       vanInt <-- incer vanInt
-      i2 <- Step $ Read vanInt
-      call $ msp $ "i " ++ show i
-      call $ msp $ "i2 " ++ show i2
       return $ s ++ " " ++ show i ++ " respy"
     else return ""
 
