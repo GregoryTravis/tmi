@@ -45,15 +45,3 @@ respWith :: CC.Tag -> String -> IO ()
 respWith tag resp = do
   imp <- getOrMakeImp
   respondWith imp tag resp
-
--- loopImp :: (Read a, Show a, Show b) => Imp a b -> (a -> TMI w b) -> TMI w ()
--- loopImp imp handler = do
---   let go = do
---         (path, tag) <- call $ getRequest imp
---         resp <- handler path
---         call $ msp $ "path " ++ show path
---         call $ msp $ "resp " ++ show resp
---         call $ respondWith imp tag resp
---         go
---   go
-
