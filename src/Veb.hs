@@ -17,8 +17,8 @@ import Web.Firefly
 
 import Util
 
-startWebServer :: (String -> IO String) -> Int -> IO ()
-startWebServer handler' port = do
+startWebServer :: Int -> (String -> IO String) -> IO ()
+startWebServer port handler' = do
   let app :: App ()
       app = do
         route ".*" (handler handler')

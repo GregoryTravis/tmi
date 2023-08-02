@@ -11,8 +11,9 @@ import qualified Data.Map.Strict as M
 import System.IO.Unsafe
 
 import qualified CoatCheck as CC
+import TMI
 import Util
-import Veb
+import Ty
 
 type Request = String
 data Response = Response
@@ -21,6 +22,34 @@ data Response = Response
 -- finish this
 -- generic substitute/registry thing: given a recipe, create or fetch; also delete. Generic lib for it, all methods taking ioref, then a module has to just partially apply the funs to a single ioref
 -- wait, we can't send an mvar, we need a substitute for that too
+
+data Imp a b = Imp
+  { requestStream :: Chan (a, CC.Tag)
+  , responders :: IORef (CC.CoatCheck (Responder b))
+  }
+
+newImp :: ((a -> IO b) -> IO ()) -> IO (Imp a b)
+newImp serverStarter = do
+  aRequestStream <- newChan
+  aResponders <- newIORef CC.empty
+  let imp = Imp { requestStream = aRequestStream, responders = aResponders }
+  forkIO (serverStarter (mkHandler imp))
+  return imp
+
+mkHandler :: Imp a b -> (a -> IO b)
+mkHandler imp = do
+  let handler req = do
+        responder <- newResponder
+        reses <- readIORef (responders imp)
+        let (tag, newReses) = CC.check reses responder
+        writeIORef (responders imp) newReses
+        msp $ "Checked responder at " ++ show tag
+        -- Server {..} <- getServer port
+        let package = (req, tag)
+        writeChan (requestStream imp) package
+        res <- waitResponder responder
+        return res
+   in handler
 
 data Responder r = Responder (MVar r)
 
@@ -32,15 +61,11 @@ newResponder = do
 waitResponder :: Responder r -> IO r
 waitResponder (Responder mvar) = takeMVar mvar
 
-data Server req = Server
-  { requestStream :: Chan (req, CC.Tag)
-  }
+-- servers :: IORef (M.Map Int (Server Request))
+-- servers = unsafePerformIO $ newIORef M.empty
 
-servers :: IORef (M.Map Int (Server Request))
-servers = unsafePerformIO $ newIORef M.empty
-
-responders :: IORef (CC.CoatCheck (Responder res))
-responders = unsafePerformIO $ newIORef CC.empty
+-- responders :: IORef (CC.CoatCheck (Responder res))
+-- responders = unsafePerformIO $ newIORef CC.empty
 
 -- Usage from TMI:
 -- serve :: Int -> TMI ()
@@ -57,49 +82,45 @@ responders = unsafePerformIO $ newIORef CC.empty
 --   takeMVar mvar
 -- registerHandler "/" (handler theServer)
 
-getServer :: Int -> IO (Server Request)
-getServer port = do
-  svs <- readIORef servers
-  case M.lookup port svs of
-    Just server -> return server
-    Nothing -> do
-      requestStream <- newChan
-      let server = Server {..}
-          newServers = M.insert port server svs
-      writeIORef servers newServers
-      threadId <- forkIO $ startWebServer (handler' port) port
-      msp $ "Started server on " ++ show port ++ " thread " ++ show threadId
-      return server
+-- getServer :: Int -> IO (Server Request)
+-- getServer port = do
+--   svs <- readIORef servers
+--   case M.lookup port svs of
+--     Just server -> return server
+--     Nothing -> do
+--       requestStream <- newChan
+--       let server = Server {..}
+--           newServers = M.insert port server svs
+--       writeIORef servers newServers
+--       threadId <- forkIO $ startWebServer (handler' port) port
+--       msp $ "Started server on " ++ show port ++ " thread " ++ show threadId
+--       return server
 
-handler' :: Int -> String -> IO String
-handler' port req = do
-  responder <- newResponder
-  reses <- readIORef responders
-  let (tag, newReses) = CC.check reses responder
-  writeIORef responders newReses
-  msp $ "Checked responder at " ++ show tag
-  Server {..} <- getServer port
-  let package = (req, tag)
-  writeChan requestStream package
-  res <- waitResponder responder
-  return res
+-- handler' :: Int -> String -> IO String
+-- handler' port req = do
+--   responder <- newResponder
+--   reses <- readIORef responders
+--   let (tag, newReses) = CC.check reses responder
+--   writeIORef responders newReses
+--   msp $ "Checked responder at " ++ show tag
+--   Server {..} <- getServer port
+--   let package = (req, tag)
+--   writeChan requestStream package
+--   res <- waitResponder responder
+--   return res
 
-ensureServer :: Int -> IO ()
-ensureServer port = do
-  getServer port
-  return ()
+-- ensureServer :: Int -> IO ()
+-- ensureServer port = do
+--   getServer port
+--   return ()
 
-getRequest :: Int -> IO (Request, CC.Tag)
-getRequest port = do
-  ensureServer port
-  servers <- readIORef servers
-  let Server {..} = servers M.! port
-  readChan requestStream
+getRequest :: Imp a b -> IO (a, CC.Tag)
+getRequest imp = readChan (requestStream imp)
 
-respondWith :: CC.Tag -> r -> IO ()
-respondWith tag res = do
-  cc <- readIORef responders
+respondWith :: Read a => Imp a b -> CC.Tag -> b -> IO ()
+respondWith imp tag res = do
+  cc <- readIORef (responders imp)
   msp $ "Retreiving responder from " ++ show tag
   let (Responder mvar, newCC) = fromJust $ CC.retrieve cc tag
-  writeIORef responders newCC
+  writeIORef (responders imp) newCC
   putMVar mvar res
