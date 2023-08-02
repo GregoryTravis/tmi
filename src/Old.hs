@@ -140,7 +140,16 @@ sleepAndRet n = do
   Step $ Ret n
 
 handle :: String -> TMI String
-handle s = return $ s ++ " respy"
+handle s = do
+  if s == "/"
+    then do
+      i <- Step $ Read vanInt
+      vanInt <-- incer vanInt
+      i2 <- Step $ Read vanInt
+      call $ msp $ "i " ++ show i
+      call $ msp $ "i2 " ++ show i2
+      return $ s ++ " " ++ show i ++ " respy"
+    else return ""
 
 -- theMain :: MonadFail w => Ty.TMI w ()
 theMain :: TMI ()
