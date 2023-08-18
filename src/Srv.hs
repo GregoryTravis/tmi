@@ -5,6 +5,7 @@ import Data.IORef
 import System.IO.Unsafe
 
 import qualified CoatCheck as CC
+import GHCICleanup
 import Imp
 import TMI
 import Ty
@@ -32,6 +33,7 @@ getOrMakeImp = do
     Nothing -> do
       imp <- newImp (startWebServer 3000)
       writeIORef theImp (Just imp)
+      registerCleanup cleanup
       return imp
     Just imp ->
       return imp
@@ -42,3 +44,6 @@ getReq = getOrMakeImp >>= getRequest
 respWith :: CC.Tag -> String -> IO ()
 respWith tag resp = do
   getOrMakeImp >>= (\imp -> respondWith imp tag resp)
+
+cleanup :: IO ()
+cleanup = writeIORef theImp Nothing

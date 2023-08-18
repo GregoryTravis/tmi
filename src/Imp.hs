@@ -2,7 +2,7 @@
 
 module Imp where
 
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO, ThreadId, killThread)
 import Control.Concurrent.Chan
 import Control.Concurrent.MVar
 import Data.IORef
@@ -11,6 +11,7 @@ import qualified Data.Map.Strict as M
 import System.IO.Unsafe
 
 import qualified CoatCheck as CC
+import GHCICleanup
 import TMI
 import Util
 import Ty
@@ -33,8 +34,13 @@ newImp serverStarter = do
   aRequestStream <- newChan
   aResponders <- newIORef CC.empty
   let imp = Imp { requestStream = aRequestStream, responders = aResponders }
-  forkIO (serverStarter (mkHandler imp))
+  threadId <- forkIO (serverStarter (mkHandler imp))
+  msp $ "tid " ++ show threadId
+  registerCleanup (cleanup threadId)
   return imp
+  where cleanup threadId = do
+          msp $ "killing " ++ show threadId
+          killThread threadId
 
 mkHandler :: Imp a b -> (a -> IO b)
 mkHandler imp = do
