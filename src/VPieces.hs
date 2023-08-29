@@ -7,7 +7,7 @@ import TS
 import Util
 
 vPiecesMain = do
-  let foo :: Int
-      foo = readPers $ PApp (TLB "plus1") (Direct (12::Int))
-  msp foo
+  msp $ ((readPers $ PApp (TLB "plus1") (Direct 12)) :: Int)
+  let narr = NBind (return 22) (\x -> (NBind (msp x) (\_ -> Done)))
+  () <- simulate narr
   msp "hey vpieces"
