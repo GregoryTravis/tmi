@@ -1,4 +1,4 @@
-{-# Language GADTs #-}
+{-# Language GADTs, StandaloneDeriving #-}
 
 module Pers
 ( Pers(..)
@@ -18,6 +18,15 @@ data Pers a where
   TLB :: String -> Pers a
   Direct :: (Show a, Read a) => a -> Pers a
   PApp :: Pers (a -> b) -> Pers a -> Pers b
+
+-- works
+farg :: Pers a -> String
+farg (TLB s) = s
+farg (Direct a) = show a
+farg (PApp pf pa) = show pf ++ show pa
+
+deriving instance Read (Pers a)
+deriving instance Show (Pers a)
 
 readPers :: Pers a -> a
 readPers (TLB name) = lookupPers name

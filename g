@@ -6,6 +6,9 @@
 profargs="--library-profiling --executable-profiling --profile"
 #profargs=
 
+dumpderiving="--ghc-options=\"-ddump-deriv\""
+#dumpderiving=
+
 rm -f out
 
 # profargs='--library-profiling --executable-profiling --profile'
@@ -15,7 +18,7 @@ rm -f out
 # (stack build --force-dirty --ghc-options="-fprof-auto -O0" --library-profiling --executable-profiling --profile tmi && stack exec tmi --library-profiling --executable-profiling --profile -- +RTS -pa -xc -RTS) 2>&1 | tee out
 
 # without profiling:
-(stack build $moreprofargs $profargs tmi && stack exec tmi $profargs -- "$@") 2>&1 | tee out
+(stack build $moreprofargs $profargs $dumpderiving  tmi && stack exec tmi $profargs -- "$@") 2>&1 | tee out
 
 echo ====
 # diff golden out
