@@ -36,5 +36,4 @@ displayTest =
 displayTests :: TestTree
 displayTests = testGroup "Test Suite" [
     displayTest
-  , 10 + 20 ~?= 30
   ]
