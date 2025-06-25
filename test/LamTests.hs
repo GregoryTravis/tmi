@@ -26,8 +26,12 @@ factTest =
                                   (App (App (Prim "-") (Var "x")) (Const (I 1))))))
       factEvaled = eval M.empty M.empty fact
       genv = M.fromList [("fact", factEvaled)]
-      result = eval genv M.empty (App (Var "fact") (Const (I 10)))
-   in result ~?= I 3628800
+      result10 = eval genv M.empty (App (Var "fact") (Const (I 10)))
+      result20 = eval genv M.empty (App (Var "fact") (Const (I 20)))
+   in testGroup "fact" [
+        result10 ~?= I 3628800
+      , result20 ~?= I 2432902008176640000
+      ]
 
 lamTests :: TestTree
 lamTests = testGroup "Test Suite" [
