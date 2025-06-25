@@ -15,8 +15,7 @@ import Tuple
 import Util
 import Value
 
-infix 1 ~?=
-a ~?= e = testCase "" $ a @?= e
+import TestUtil
 
 factTest =
   let fact = Lam "x" (If (App (App (Prim "==") (Var "x")) (Const (I 0)))

@@ -54,13 +54,3 @@ oldMain = do
   let repsonseResponseType = TCtor "Response" [maybeType, maybeType]
   let w = recFromList [("code", code), ("data", dat)]
   p w
-
-  let fact = Lam "x" (If (App (App (Prim "==") (Var "x")) (Const (I 0)))
-                        (Const (I 1))
-                        (App (App (Prim "*") (Var "x"))
-                             (App (Var "fact")
-                                  (App (App (Prim "-") (Var "x")) (Const (I 1))))))
-      factEvaled = eval M.empty M.empty fact
-      genv = M.fromList [("fact", factEvaled)]
-      r = eval genv M.empty (App (Var "fact") (Const (I 10)))
-  msp r
