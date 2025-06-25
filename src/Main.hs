@@ -9,7 +9,6 @@ import Display
 import Fd
 import Name
 import Old
-import OptLam
 import Rec
 import Rel
 import Tuple
