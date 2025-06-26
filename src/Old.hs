@@ -29,6 +29,7 @@ oldMain = do
   -- p hands
   let dat = recFromList [("cards", cards)]
   let dat2 = recFromList [("cards", cards), ("ha", I 13)]
+  -- this is fact, not fib
   let code = recFromList [("fib", fibEvaled)]
         where fib = Lam "x" (If (App (App (Prim "==") (Var "x")) (Const (I 0)))
                             (Const (I 1))

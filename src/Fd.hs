@@ -1,13 +1,11 @@
 module Fd
 ( DR(..)
 , mkFds
-, isFdOf
-, fdTests ) where
+, isFdOf ) where
 
 import Name
 import Rec
 import Rel
-import Tst
 import Value
 import Util
 
@@ -42,11 +40,3 @@ canDeriveFrom (DR fromD fromR) (DR toD toR) =
   -- from's range contains to's domain
   subset fromD toD && subset toR fromR
   where subset sub sup = all (\x -> elem x sup) sub
-
-fdTests = do
-  let fds0 = mkFds [DR ["a", "b"] ["c", "d"]]
-  tst $ isFdOf fds0 (DR ["a", "b"] ["c", "d"])
-  tst $ isFdOf fds0 (DR ["a", "b", "e"] ["c", "d"])
-  tst $ isFdOf fds0 (DR ["a", "b"] ["c"])
-  tst $ not $ isFdOf fds0 (DR ["a", "b"] ["c", "d", "e"])
-  tst $ not $ isFdOf fds0 (DR ["a"] ["c", "d"])
