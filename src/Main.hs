@@ -4,18 +4,24 @@ import Data.Dynamic
 import Data.Maybe (fromJust)
 import qualified Data.Map.Strict as M
 
-import Code
-import Display
-import Fd
-import Name
-import Old
-import Rec
-import Rel
-import Tuple
+import Builtin
+import Lambda
 import Util
-import Value
+
+builtinDefs :: Builtins
+builtinDefs = Builtins
+  [ ("+", 2, lyft2 unVI unVI VI +)
+  , ("-", 2, lyft2 unVI unVI VI -)
+  ]
+
+nonBuiltins = Env $ fromList $
+  [ ("add1", Lam "x" (Builtin 2 "+"))
+  , ("sub1", Lam "x" (Builtin 2 "-"))
+  ]
 
 main = do
-  --stuffMain
-  oldMain
-  --optLamMain
+  let builtinEnv = map toBuiltinLam builtinDefs
+      globalEnv = combineNoClash nonBuiltins builtinDefs
+      interp = mkInterp globalEnv builtinDefs
+      main = App (App (VId "add1") (VI 10)) (VI 20)
+   in eval interp main
