@@ -5,7 +5,8 @@ module Lambda
 , Env(..)
 , Interp(..)
 , BuiltinDef(..)
-, BuiltinDefs(..) ) where
+, BuiltinDefs(..)
+, app2 ) where
 
 import qualified Data.Map.Strict as M
 
@@ -38,3 +39,6 @@ data Interp = Interp Env BuiltinDefs
 data BuiltinDef = BuiltinDef Ident Int ([Lam] -> Lam)
 
 data BuiltinDefs = BuiltinDefs (M.Map Ident BuiltinDef)
+
+app2 :: Lam -> Lam -> Lam -> Lam
+app2 f a b = App (App f a) b
