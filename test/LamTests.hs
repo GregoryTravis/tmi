@@ -22,7 +22,7 @@ factTest =
 
 lamTests :: TestTree
 lamTests =
-   in testGroup "Test Suite"
+    testGroup "Test Suite"
     [ addTest
     , factTest
     ]
