@@ -42,12 +42,10 @@ eval interp@(Interp initialEnv _) lam =
          else ba
 
     -- Eval to self
-    e _ x@(VI _) = x
-    e _ x@(VS _) = x
-    e _ x@(Closure _ _) = x
-
-    -- TODO remove
-    e _ x = error $ "eval? " ++ show x
+    e _ x
+      | isSelfEval x = x
+        -- TODO remove?
+      | otherwise = error $ "eval? " ++ show x
 
 isSelfEval :: Lam -> Bool
 isSelfEval x@(VI _) = True
