@@ -58,7 +58,8 @@ test-suite test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test, src
   main-is:             Tests.hs
-  other-modules:       TestUtil, LamTests, Util, Lambda, Eval, Env, Interp, Builtin, StdLib
+  other-modules:       TestUtil, LamTests,
+                       Util, Lambda, Eval, Env, Interp, Builtin, StdLib
   build-depends:       base,
                        containers,
                        deepseq,
