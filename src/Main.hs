@@ -13,11 +13,19 @@ builtinDefs :: [BuiltinDef]
 builtinDefs =
   [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI VI))
   , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI VI))
+  , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI VI))
+  , (BuiltinDef "==" 2 (lyft2 (==) id id VB))
   ]
 
 nonBuiltins = Env $ M.fromList $
   [ ("add1", Lam "x" (App (App (Builtin "+" 2) (VId "x")) (VI 1)))
   , ("sub1", Lam "x" (App (App (Builtin "-" 2) (VId "x")) (VI 1)))
+  , ("fact", Lam "x" (If (App (App (Builtin "==" 2) (VId "x")) (VI 0))
+                         (VI 1)
+                         (App (App (Builtin "*" 2) (VId "x"))
+                              (App (VId "fact")
+                                   (App (App (VId "-") (VId "x"))
+                                        (VI 1))))))
   ]
 
 main = do
@@ -27,6 +35,6 @@ main = do
         where f bd@(BuiltinDef name _ _) = (name, toBuiltinLam bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
       interp = mkInterp globalEnv builtinDefMap
-      main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
+      main = App (VId "fact") (VI 10)
       result = eval interp main
   msp result

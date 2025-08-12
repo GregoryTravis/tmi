@@ -40,6 +40,12 @@ eval interp@(Interp initialEnv _) lam =
       if length args == arity
          then evalBuiltin interp name args
          else ba
+    e env (If be th el) =
+        let b = e env be
+         in case b of
+              VB True -> e env th
+              VB False -> e env el
+              _ -> error $ "If: not a bool" ++ show b
 
     -- Eval to self
     e _ x
@@ -50,6 +56,7 @@ eval interp@(Interp initialEnv _) lam =
 isSelfEval :: Lam -> Bool
 isSelfEval x@(VI _) = True
 isSelfEval x@(VS _) = True
+isSelfEval x@(VB _) = True
 isSelfEval x@(Closure _ _) = True
 isSelfEval _ = False
 

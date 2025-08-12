@@ -18,16 +18,28 @@ builtinDefs :: [BuiltinDef]
 builtinDefs =
   [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI VI))
   , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI VI))
+  , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI VI))
+  , (BuiltinDef "==" 2 (lyft2 (==) id id VB))
   ]
 
 nonBuiltins = Env $ M.fromList $
   [ ("add1", Lam "x" (App (App (Builtin "+" 2) (VId "x")) (VI 1)))
   , ("sub1", Lam "x" (App (App (Builtin "-" 2) (VId "x")) (VI 1)))
+  , ("fact", Lam "x" (If (App (App (Builtin "==" 2) (VId "x")) (VI 0))
+                         (VI 1)
+                         (App (App (Builtin "*" 2) (VId "x"))
+                              (App (VId "fact")
+                                   (App (App (VId "-") (VId "x"))
+                                        (VI 1))))))
   ]
 
 addTest interp = 
   let main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
    in eval interp main ~?= VI 30
+
+factTest interp =
+  let main = App (VId "fact") (VI 10)
+   in eval interp main ~?= VI 3628800
 
 lamTests :: TestTree
 lamTests =
@@ -39,4 +51,5 @@ lamTests =
       interp = mkInterp globalEnv builtinDefMap
    in testGroup "Test Suite"
     [ addTest interp
+    , factTest interp
     ]

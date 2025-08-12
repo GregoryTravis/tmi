@@ -16,9 +16,11 @@ type Ident = String
 data Lam =
     VI Int
   | VS String
+  | VB Bool
   | VId Ident
   | Lam Ident Lam
   | Closure Env Lam
+  | If Lam Lam Lam
   | App Lam Lam
   | Builtin Ident Int
   | BuiltinApp Lam [Lam]
