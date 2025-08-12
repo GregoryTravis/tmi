@@ -23,11 +23,11 @@ builtinDefs =
   ]
 
 nonBuiltins = Env $ M.fromList $
-  [ ("add1", Lam "x" (App (App (Builtin "+" 2) (VId "x")) (VI 1)))
-  , ("sub1", Lam "x" (App (App (Builtin "-" 2) (VId "x")) (VI 1)))
-  , ("fact", Lam "x" (If (App (App (Builtin "==" 2) (VId "x")) (VI 0))
+  [ ("add1", Lam "x" (App (App (VId "+") (VId "x")) (VI 1)))
+  , ("sub1", Lam "x" (App (App (VId "-") (VId "x")) (VI 1)))
+  , ("fact", Lam "x" (If (App (App (VId "==") (VId "x")) (VI 0))
                          (VI 1)
-                         (App (App (Builtin "*" 2) (VId "x"))
+                         (App (App (VId "*") (VId "x"))
                               (App (VId "fact")
                                    (App (App (VId "-") (VId "x"))
                                         (VI 1))))))
