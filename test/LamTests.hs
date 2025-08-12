@@ -1,12 +1,17 @@
-module Main where
+module LamTests (lamTests) where
 
 import qualified Data.Map.Strict as M
+
+import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
+import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit
 
 import Builtin
 import Env
 import Eval
 import Interp
 import Lambda
+import TestUtil
 import Util
 
 builtinDefs :: [BuiltinDef]
@@ -20,13 +25,18 @@ nonBuiltins = Env $ M.fromList $
   , ("sub1", Lam "x" (App (App (Builtin "-" 2) (VId "x")) (VI 1)))
   ]
 
-main = do
+addTest interp = 
+  let main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
+   in eval interp main ~?= VI 30
+
+lamTests :: TestTree
+lamTests =
   let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, bd)
       builtinEnv = Env $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, toBuiltinLam bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
       interp = mkInterp globalEnv builtinDefMap
-      main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
-      result = eval interp main
-  msp result
+   in testGroup "Test Suite"
+    [ addTest interp
+    ]

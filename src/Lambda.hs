@@ -22,14 +22,14 @@ data Lam =
   | App Lam Lam
   | Builtin Ident Int
   | BuiltinApp Lam [Lam]
-  deriving Show
+  deriving (Eq, Show)
 
 unVI :: Lam -> Int
 unVI (VI i) = i
 unVI x = error $ "Not VI: " ++ show x
 
 data Env = Env (M.Map Ident Lam)
-  deriving Show
+  deriving (Eq, Show)
 
 data Interp = Interp Env BuiltinDefs
 

@@ -4,5 +4,7 @@ import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
+import LamTests
+
 main :: IO ()
-main = defaultMain (testGroup "both" [])
+main = defaultMain (testGroup "all" [lamTests])

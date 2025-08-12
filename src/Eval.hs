@@ -11,10 +11,10 @@ eval :: Interp -> Lam -> Lam
 eval interp@(Interp initialEnv _) lam =
   ep initialEnv lam
   where
-    -- ep = e
-    ep env x =
-      let r = e env x
-       in eesp ("eval", x, r) r
+    ep = e
+    -- ep env x =
+    --   let r = e env x
+    --    in eesp ("eval", x, r) r
     e env l@(Lam arg body) = Closure env l
     e env (VId id) =
       case elookup env id of
