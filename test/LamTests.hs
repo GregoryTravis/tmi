@@ -13,7 +13,7 @@ import TestUtil
 import Util
 
 addTest = 
-  let main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
+  let main = app2 (VId "+") (App (VId "add1") (VI 10)) (App (VId "sub1") (VI 20))
    in eval stdLib main ~?= VI 30
 
 factTest =
