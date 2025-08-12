@@ -1,8 +1,11 @@
 module Lambda
 ( Ident
 , Lam(..)
+, unVI
 , Env(..)
-, Interp(..) ) where
+, Interp(..)
+, BuiltinDef(..)
+, BuiltinDefs(..) ) where
 
 import qualified Data.Map.Strict as M
 
@@ -11,24 +14,25 @@ import Util
 type Ident = String
 
 data Lam =
-  VI Int
-  VS String
-  VId Ident
-  Lam Ident Lam
-  Closure Env Lam
-  App Lam Lam
-  Builtin Ident Int
-  BuiltinApp Lam [Lam]
-deriving Show
+    VI Int
+  | VS String
+  | VId Ident
+  | Lam Ident Lam
+  | Closure Env Lam
+  | App Lam Lam
+  | Builtin Ident Int
+  | BuiltinApp Lam [Lam]
+  deriving Show
 
 unVI :: Lam -> Int
 unVI (VI i) = i
-unVI x = error $ "Not VI: " ++ x
+unVI x = error $ "Not VI: " ++ show x
 
-type Env = M.Map Ident Lam
+data Env = Env (M.Map Ident Lam)
+  deriving Show
 
-data Interp = Interp Env Builtins
+data Interp = Interp Env BuiltinDefs
 
-data BuiltinDef = Builtin Ident Int ([Lam] -> Lam)
+data BuiltinDef = BuiltinDef Ident Int ([Lam] -> Lam)
 
 data BuiltinDefs = BuiltinDefs (M.Map Ident BuiltinDef)

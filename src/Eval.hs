@@ -7,30 +7,36 @@ import Util
 
 import qualified Data.Map.Strict as M
 
-eval :: Interp -> Env -> Lam -> Lam
-eval (Interp env _) l@(Lam arg body) = Closure env l
-eval interp@(Interp env _) (App (Closure cenv (Lam arg body))) x =
-  let ex = eval interp x
-      eenv = extend cenv arg ex
-   in eval int eenv body
-eval interp@(Interp env _) (VId id) =
-  case lookup interp id of
-    Just x -> eval interp x
-    Nothing ->
-      error $ "Unknown identifier " ++ id
-eval interp (App b@(Builtin name arity) x) =
-  eval interp (BuiltinApp b [eval interp x])
-eval interp ba@(BuiltinApp (Builtin name arity) args) =
-  if length args == arity
-     then evalBuiltin interp name args
-     else ba
+eval :: Interp -> Lam -> Lam
+eval interp@(Interp initialEnv _) lam =
+  e initialEnv lam
+  where
+    e env l@(Lam arg body) = Closure env l
+    e env (App (Closure cenv (Lam arg body)) x) =
+      let ex = e env x
+          eenv = extend cenv arg ex
+       in e eenv body
+    e env (VId id) =
+      case elookup env id of
+        Just x -> e env x
+        Nothing ->
+          error $ "Unknown identifier " ++ id
+    e env (App b@(Builtin name arity) x) =
+      (BuiltinApp b [e env x])
+    e _ ba@(BuiltinApp (Builtin name arity) args) =
+      if length args == arity
+         then evalBuiltin interp name args
+         else ba
 
--- Eval to self
-eval x@(VI _) = x
-eval x@(VS _) = x
-eval x@(Closure _ _) = x
+    -- Eval to self
+    e _ x@(VI _) = x
+    e _ x@(VS _) = x
+    e _ x@(Closure _ _) = x
+
+    -- TODO remove
+    e _ x = error $ "eval? " ++ show x
 
 evalBuiltin (Interp _ (BuiltinDefs bs)) name args =
   case M.lookup name bs of
     Nothing -> error $ "Unknown builtin " ++ name
-    Just (BuiltinDef _ _ f) = f args
+    Just (BuiltinDef _ _ f) -> f args
