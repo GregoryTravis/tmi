@@ -29,6 +29,6 @@ main = do
         where f bd@(BuiltinDef name _ _) = (name, toBuiltinLam bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
       interp = mkInterp globalEnv builtinDefMap
-      main = App (App (VId "add1") (VI 10)) (VI 20)
+      main = App (App (VId "+") (App (VId "add1") (VI 10))) (App (VId "sub1") (VI 20))
       result = eval interp main
   msp result
