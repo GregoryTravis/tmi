@@ -8,5 +8,5 @@ import StdLib
 import Util
 
 main = do
-  let fact10 = App (VId "fact") (VI 10)
+  let fact10 = App (Id "fact") (CVal (kI 10))
   msp $ eval stdLib fact10

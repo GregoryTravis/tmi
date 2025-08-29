@@ -7,22 +7,29 @@ import Util
 
 import qualified Data.Map.Strict as M
 
-eval :: Interp -> Lam -> Lam
-eval interp@(Interp initialEnv _) lam =
-  ep initialEnv lam
+verbose = False
+
+eval :: Interp -> Code -> Code
+eval interp@(Interp initialEnv _) code =
+  ep initialEnv code
   where
-    ep = e
-    -- ep env x =
-    --   let r = e env x
-    --    in eesp ("eval", x, r) r
-    e env l@(Lam arg body) = Closure env l
-    e env (VId id) =
+    ev :: Env -> Code -> Code
+    ev env x =
+      let r = e env (eesp ("+eval", x) x)
+       in eesp ("-eval", x, r) r
+    ep :: Env -> Code -> Code
+    ep = if verbose then ev else e
+    e :: Env -> Code -> Code
+    e env l@(Lam arg body) = CVal $ dkv $ Closure env l
+    e env (Id id) =
       case elookup env id of
-        Just x -> ep env x
+        Just x -> ep env $ CVal x
         Nothing ->
           error $ "Unknown identifier " ++ id
-    e env (App (Closure cenv (Lam arg body)) x) =
-      let ex = ep env x
+    e env (CVal (Val _ (Code c))) =
+      e env c
+    e env (App (CVal (Val _ (Closure cenv (Lam arg body)))) x) =
+      let (CVal ex) = ep env x
           eenv = extend cenv arg ex
        in ep eenv body
     e env b@(Builtin name arity) =
@@ -32,34 +39,25 @@ eval interp@(Interp initialEnv _) lam =
       e env (BuiltinApp b (args ++ [e env x]))
     --e env (App a@(App _ _) y) =
       --e env (App (e env a) (e env y))
-    e env a@(App f x)
-      | isSelfEval f = a
-      | otherwise = ep env app'
+    e env a@(App f x) =
+      ep env app'
           where app' = App (ep env f) (ep env x)
     e _ ba@(BuiltinApp (Builtin name arity) args) =
       if length args == arity
-         then evalBuiltin interp name args
+         then CVal $ evalBuiltin interp name (map unCVal args)
          else ba
     e env (If be th el) =
         let b = e env be
          in case b of
-              VB True -> e env th
-              VB False -> e env el
+              CVal (Val _ (VB True)) -> e env th
+              CVal (Val _ (VB False)) -> e env el
               _ -> error $ "If: not a bool" ++ show b
 
     -- Eval to self
-    e _ x
-      | isSelfEval x = x
-        -- TODO remove?
-      | otherwise = error $ "eval? " ++ show x
+    e _ x@(CVal _) = x
+    e _ x = error $ "eval? " ++ show x
 
-isSelfEval :: Lam -> Bool
-isSelfEval x@(VI _) = True
-isSelfEval x@(VS _) = True
-isSelfEval x@(VB _) = True
-isSelfEval x@(Closure _ _) = True
-isSelfEval _ = False
-
+evalBuiltin :: Interp -> Ident -> [Val] -> Val
 evalBuiltin (Interp _ (BuiltinDefs bs)) name args =
   case M.lookup name bs of
     Nothing -> error $ "Unknown builtin " ++ name

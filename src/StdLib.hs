@@ -10,21 +10,21 @@ import Util
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =
-  [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI VI))
-  , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI VI))
-  , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI VI))
-  , (BuiltinDef "==" 2 (lyft2 (==) id id VB))
+  [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI kI))
+  , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI kI))
+  , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI kI))
+  , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
   ]
 
 nonBuiltins = Env $ M.fromList $
-  [ ("add1", Lam "x" (app2 (VId "+") (VId "x") (VI 1)))
-  , ("sub1", Lam "x" (app2 (VId "-") (VId "x") (VI 1)))
-  , ("fact", Lam "x" (If (app2 (VId "==") (VId "x") (VI 0))
-                         (VI 1)
-                         (app2 (VId "*") (VId "x")
-                               (App (VId "fact")
-                                    (app2 (VId "-") (VId "x")
-                                         (VI 1))))))
+  [ ("add1", dkv $ Code $ Lam "x" (app2 (Id "+") (Id "x") (CVal (kI 1))))
+  , ("sub1", dkv $ Code $ Lam "x" (app2 (Id "-") (Id "x") (CVal (kI 1))))
+  , ("fact", dkv $ Code $ Lam "x" (If (app2 (Id "==") (Id "x") (CVal (kI 0)))
+                                      (CVal (kI 1))
+                                      (app2 (Id "*") (Id "x")
+                                            (App (Id "fact")
+                                                 (app2 (Id "-") (Id "x")
+                                                       (CVal (kI 1)))))))
   ]
 
 stdLib :: Interp
@@ -32,6 +32,6 @@ stdLib =
   let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, bd)
       builtinEnv = Env $ M.fromList (map f builtinDefs)
-        where f bd@(BuiltinDef name _ _) = (name, toBuiltinLam bd)
+        where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ toBuiltinLam bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
    in mkInterp globalEnv builtinDefMap

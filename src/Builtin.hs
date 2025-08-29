@@ -13,11 +13,11 @@ import qualified Data.Map.Strict as M
 newBuiltins :: BuiltinDefs
 newBuiltins = BuiltinDefs M.empty
 
-toBuiltinLam :: BuiltinDef -> Lam
+toBuiltinLam :: BuiltinDef -> Code
 toBuiltinLam (BuiltinDef id arity _) = Builtin id arity
 
-lyft1 :: (a -> b) -> (Lam -> a) -> (b -> Lam) -> ([Lam] -> Lam)
+lyft1 :: (a -> b) -> (Val -> a) -> (b -> Val) -> ([Val] -> Val)
 lyft1 f ina outb [x] = outb (f (ina x))
 
-lyft2 :: (a -> b -> c) -> (Lam -> a) -> (Lam -> b) -> (c -> Lam) -> ([Lam] -> Lam)
+lyft2 :: (a -> b -> c) -> (Val -> a) -> (Val -> b) -> (c -> Val) -> ([Val] -> Val)
 lyft2 f ina inb outc [x, y] = outc (f (ina x) (inb y))
