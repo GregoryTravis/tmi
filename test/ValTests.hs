@@ -1,4 +1,4 @@
-module LamTests (lamTests) where
+module ValTests (lamTests) where
 
 import qualified Data.Map.Strict as M
 
@@ -7,10 +7,10 @@ import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
 import Eval
-import Lambda
 import StdLib
 import TestUtil
 import Util
+import Val
 
 addTest = 
   let main = app2 (Id "+") (App (Id "add1") (CVal (kI 10))) (App (Id "sub1") (CVal (kI 20)))

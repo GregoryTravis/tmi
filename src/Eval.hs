@@ -2,8 +2,8 @@ module Eval
 ( eval ) where
 
 import Env
-import Lambda
 import Util
+import Val
 
 import qualified Data.Map.Strict as M
 

@@ -5,8 +5,8 @@ import qualified Data.Map.Strict as M
 import Builtin
 import Env
 import Interp
-import Lambda
 import Util
+import Val
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =

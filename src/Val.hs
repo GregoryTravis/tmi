@@ -1,4 +1,4 @@
-module Lambda
+module Val
 ( Ident
 , Val(..)
 , UVal(..)

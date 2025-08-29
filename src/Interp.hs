@@ -1,8 +1,8 @@
 module Interp
 ( mkInterp ) where
 
-import Lambda
 import Util
+import Val
 
 mkInterp :: Env -> BuiltinDefs -> Interp
 mkInterp = Interp

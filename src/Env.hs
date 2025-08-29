@@ -6,8 +6,8 @@ module Env
 
 import qualified Data.Map.Strict as M
 
-import Lambda
 import Util
+import Val
 
 newEnv :: Env
 newEnv = Env M.empty
