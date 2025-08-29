@@ -13,12 +13,12 @@ import TestUtil
 import Util
 
 addTest = 
-  let main = app2 (VId "+") (App (VId "add1") (VI 10)) (App (VId "sub1") (VI 20))
-   in eval stdLib main ~?= VI 30
+  let main = app2 (Id "+") (App (Id "add1") (CVal (kI 10))) (App (Id "sub1") (CVal (kI 20)))
+   in eval stdLib main ~?= CVal (Val DK (VI 30))
 
 factTest =
-  let main = App (VId "fact") (VI 10)
-   in eval stdLib main ~?= VI 3628800
+  let main = App (Id "fact") (CVal (kI 10))
+   in eval stdLib main ~?= (CVal $ kI 3628800)
 
 lamTests :: TestTree
 lamTests =
