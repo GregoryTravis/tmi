@@ -17,9 +17,12 @@ builtinDefs =
   ]
 
 nonBuiltins = Env $ M.fromList $
-  [ ("add1", dkv $ Code $ Lam "x" (app2 (Id "+") (Id "x") (CVal (kI 1))))
-  , ("sub1", dkv $ Code $ Lam "x" (app2 (Id "-") (Id "x") (CVal (kI 1))))
-  , ("fact", dkv $ Code $ Lam "x" (If (app2 (Id "==") (Id "x") (CVal (kI 0)))
+  [ ("add1", Val (TFun TI (TFun TI TI))
+                 $ Code $ Lam "x" (app2 (Id "+") (Id "x") (CVal (kI 1))))
+  , ("sub1", Val (TFun TI (TFun TI TI))
+                 $ Code $ Lam "x" (app2 (Id "-") (Id "x") (CVal (kI 1))))
+  , ("fact", Val (TFun TI TI)
+                 $ Code $ Lam "x" (If (app2 (Id "==") (Id "x") (CVal (kI 0)))
                                       (CVal (kI 1))
                                       (app2 (Id "*") (Id "x")
                                             (App (Id "fact")
