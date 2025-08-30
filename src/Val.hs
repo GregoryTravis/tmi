@@ -28,8 +28,7 @@ data Code =
   | Lam Ident Code
   | App Code Code
   | If Code Code Code
-  | Builtin Ident Int
-  | BuiltinApp Code [Code]
+  | Builtin Ident [Code]
   | CVal Val
   deriving (Eq, Show)
 

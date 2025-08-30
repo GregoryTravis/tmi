@@ -32,20 +32,11 @@ eval interp@(Interp initialEnv _) code =
       let (CVal ex) = ep env x
           eenv = extend cenv arg ex
        in ep eenv body
-    e env b@(Builtin name arity) =
-      e env (BuiltinApp b [])
-    e env (App (BuiltinApp b args) x) =
-      -- TODO slow, remove append
-      e env (BuiltinApp b (args ++ [e env x]))
-    --e env (App a@(App _ _) y) =
-      --e env (App (e env a) (e env y))
     e env a@(App f x) =
       ep env app'
           where app' = App (ep env f) (ep env x)
-    e _ ba@(BuiltinApp (Builtin name arity) args) =
-      if length args == arity
-         then CVal $ evalBuiltin interp name (map unCVal args)
-         else ba
+    e env (Builtin name args) =
+        CVal $ evalBuiltin interp name (map (unCVal . (ep env)) args)
     e env (If be th el) =
         let b = e env be
          in case b of
@@ -55,7 +46,7 @@ eval interp@(Interp initialEnv _) code =
 
     -- Eval to self
     e _ x@(CVal _) = x
-    e _ x = error $ "eval? " ++ show x
+    -- e _ x = error $ "eval? " ++ show x
 
 evalBuiltin :: Interp -> Ident -> [Val] -> Val
 evalBuiltin (Interp _ (BuiltinDefs bs)) name args =
