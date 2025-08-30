@@ -35,6 +35,6 @@ stdLib =
   let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, bd)
       builtinEnv = Env $ M.fromList (map f builtinDefs)
-        where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ esp $ wrapBuiltin bd)
+        where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
    in mkInterp globalEnv builtinDefMap
