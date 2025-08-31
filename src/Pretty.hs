@@ -18,7 +18,6 @@ instance Pretty Val where
   pp :: Val -> String
   pp (Val DK x) = pp x
   pp (Val ty x) = "(" ++ pp x ++ " : " ++ pp ty ++ ")"
-  pp x = show x
 
 instance Pretty UVal where
   pp (VI i) = show i
