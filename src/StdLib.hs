@@ -22,7 +22,7 @@ builtinDefs =
   , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI kI))
   , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
   , (BuiltinDef "Cons" 2 (lyft2 (mkCtor2 "Cons") id id id))
-  , (BuiltinDef "Nil" 0 (lyft0 (mkCtor0 "Cons") id))
+  , (BuiltinDef "Nil" 0 (lyft0 (mkCtor0 "Nil") id))
   ]
 
 nonBuiltins = Env $ M.fromList $
