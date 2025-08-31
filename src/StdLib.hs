@@ -8,12 +8,21 @@ import Interp
 import Util
 import Val
 
+mkCtor0 :: String -> Val
+mkCtor0 name = dkv $ Cton name []
+mkCtor1 :: String -> Val -> Val
+mkCtor1 name a = dkv $ Cton name [a]
+mkCtor2 :: String -> Val -> Val -> Val
+mkCtor2 name a b = dkv $ Cton name [a, b]
+
 builtinDefs :: [BuiltinDef]
 builtinDefs =
   [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI kI))
   , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI kI))
   , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI kI))
   , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
+  , (BuiltinDef "Cons" 2 (lyft2 (mkCtor2 "Cons") id id id))
+  , (BuiltinDef "Nil" 0 (lyft0 (mkCtor0 "Cons") id))
   ]
 
 nonBuiltins = Env $ M.fromList $

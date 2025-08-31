@@ -38,6 +38,7 @@ data UVal =
     VI Int
   | VS String
   | VB Bool
+  | Cton Ident [Val]
   | Code Code
   | Closure Env Code
   deriving (Eq, Show)

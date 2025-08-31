@@ -1,5 +1,6 @@
 module Builtin
 ( BuiltinDefs(..)
+, lyft0
 , lyft1
 , lyft2
 , wrapBuiltin ) where
@@ -15,6 +16,9 @@ wrapBuiltin (BuiltinDef name arity _) =
       wrap [] = Builtin name (map Id vars)
       wrap (v:vs) = Lam v (wrap vs)
    in wrap vars
+
+lyft0 :: a -> (a -> Val) -> ([Val] -> Val)
+lyft0 x outa [] = outa x
 
 lyft1 :: (a -> b) -> (Val -> a) -> (b -> Val) -> ([Val] -> Val)
 lyft1 f ina outb [x] = outb (f (ina x))
