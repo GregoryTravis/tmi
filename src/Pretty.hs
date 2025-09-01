@@ -24,6 +24,7 @@ instance Pretty UVal where
   pp (VB b) = show b
   pp (VS s) = show s
   pp x@(Cton "Cons" _) = consListPP x
+  pp x@(Cton "Nil" _) = consListPP x
   pp x = show x
 
 instance Pretty Code where

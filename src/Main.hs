@@ -15,7 +15,9 @@ main = do
                       (Id "Nil"))
       lhd = App (Id "head") lyst
       ltl = App (Id "tail") lyst
+      ltltl = App (Id "tail") (App (Id "tail") lyst)
   mspp $ eval stdLib fact10
   mspp $ eval stdLib lyst
   mspp $ eval stdLib lhd
   mspp $ eval stdLib ltl
+  mspp $ eval stdLib ltltl
