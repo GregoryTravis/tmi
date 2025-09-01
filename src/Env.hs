@@ -1,5 +1,6 @@
 module Env
 ( newEnv
+, startEnv
 , extend
 , combineNoClash
 , elookup ) where
@@ -12,8 +13,17 @@ import Val
 newEnv :: Env
 newEnv = Env M.empty
 
+startEnv :: Ident -> Val -> Env
+startEnv id x = extend newEnv id x
+
 extend :: Env -> Ident -> Val -> Env
 extend (Env map) id x = Env (M.insert id x map)
+
+instance Semigroup Env where
+  Env a <> Env b = Env (b `M.union` a)
+
+instance Monoid Env where
+  mempty = newEnv
 
 -- Error if there is a name conflict.
 combineNoClash :: Env -> Env -> Env

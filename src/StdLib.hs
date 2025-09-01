@@ -37,6 +37,12 @@ nonBuiltins = Env $ M.fromList $
                                             (App (Id "fact")
                                                  (app2 (Id "-") (Id "x")
                                                        (CVal (kI 1)))))))
+  , ("head", Val DK $ Code $
+      Lam "x" (Case (Id "x") [(Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]), Id "x"),
+                              (Val DK (Cton "Nil" []), CVal (kS "error: head of empty list"))]))
+  , ("tail", Val DK $ Code $
+      Lam "x" (Case (Id "x") [(Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]), Id "xs"),
+                              (Val DK (Cton "Nil" []), CVal (kS "error: tail of empty list"))]))
   ]
 
 stdLib :: Interp

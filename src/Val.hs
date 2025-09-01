@@ -28,6 +28,7 @@ data Code =
   | Lam Ident Code
   | App Code Code
   | If Code Code Code
+  | Case Code [(Val, Code)]
   | Builtin Ident [Code]
   | CVal Val
   deriving (Eq, Show)
@@ -39,6 +40,7 @@ data UVal =
   | VS String
   | VB Bool
   | Cton Ident [Val]
+  | PatVar Ident
   | Code Code
   | Closure Env Code
   deriving (Eq, Show)

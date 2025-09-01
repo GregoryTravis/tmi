@@ -1,4 +1,4 @@
-module ValTests (lamTests) where
+module ValTests (valTests) where
 
 import qualified Data.Map.Strict as M
 
@@ -20,8 +20,8 @@ factTest =
   let main = App (Id "fact") (CVal (kI 10))
    in eval stdLib main ~?= (CVal $ kI 3628800)
 
-lamTests :: TestTree
-lamTests =
+valTests :: TestTree
+valTests =
     testGroup "Test Suite"
     [ addTest
     , factTest

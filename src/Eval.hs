@@ -1,6 +1,7 @@
 module Eval
 ( eval ) where
 
+import Case
 import Env
 import Util
 import Val
@@ -43,7 +44,13 @@ eval interp@(Interp initialEnv _) code =
               CVal (Val _ (VB True)) -> e env th
               CVal (Val _ (VB False)) -> e env el
               _ -> error $ "If: not a bool" ++ show b
-
+    e env (Case xc cases) =
+      let CVal x = e env xc
+       in case match x cases of
+            Nothing -> error $ "Pattern match failure: " ++ show x ++ " " ++ show cases
+            Just (matchEnv, body) ->
+              let env' = env <> matchEnv
+               in e env' body
     -- Eval to self
     e _ x@(CVal _) = x
     -- e _ x = error $ "eval? " ++ show x
