@@ -23,7 +23,7 @@ match _ [] = Nothing
 match x ((pat, body) : xs) =
   case match1 pat x of
     Match env -> Just (env, body)
-    Failure -> Nothing
+    Failure -> match x xs
 
 match1 :: Val -> Val -> Match
 match1 (Val _ uva) (Val _ uvb) = umatch1 uva uvb
