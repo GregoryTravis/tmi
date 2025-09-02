@@ -2,6 +2,7 @@ module Main where
 
 import qualified Data.Map.Strict as M
 
+import Awkward
 import Eval
 import Pretty
 import StdLib
@@ -10,9 +11,7 @@ import Val
 
 main = do
   let fact10 = App (Id "fact") (CVal (kI 10))
-      lyst = App (App (Id "Cons") (CVal (kI 10)))
-                 (App (App (Id "Cons") (CVal (kI 20)))
-                      (Id "Nil"))
+      lyst = mkListCode (map ckI [10, 20])
       lhd = App (Id "head") lyst
       ltl = App (Id "tail") lyst
       ltltl = App (Id "tail") (App (Id "tail") lyst)

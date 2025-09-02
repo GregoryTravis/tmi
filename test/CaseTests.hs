@@ -6,6 +6,7 @@ import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
+import Awkward
 import Env
 import Eval
 import StdLib
@@ -14,9 +15,7 @@ import Util
 import Val
 
 caseTest =
-  let lyst = App (App (Id "Cons") (CVal (kI 10)))
-                 (App (App (Id "Cons") (CVal (kI 20)))
-                      (Id "Nil"))
+  let lyst = mkListCode (map ckI [10, 20])
       lhd = App (Id "head") lyst
       ltl = App (Id "tail") lyst
       pats = [(Val DK (Cton "A" [Val DK (PatVar "a"), Val DK (PatVar "aa")]),
@@ -29,8 +28,8 @@ caseTest =
    in testGroup ""
         [ (eval stdLib $ App (Id "head") lyst) ~?= (CVal (kI 10))
         , (eval stdLib $ App (Id "tail") lyst) ~?= (CVal (Val DK (Cton "Cons" [kI 20, Val DK (Cton "Nil" [])])))
-        , (eval stdLib $ foo0) ~?= CVal (Val DK (Cton "Cons" [kI 20, Val DK (Cton "Cons" [kI 10, Val DK (Cton "Nil" [])])]))
-        , (eval stdLib $ foo1) ~?= CVal (Val DK (Cton "Cons" [kI 100, Val DK (Cton "Cons" [kI 30, Val DK (Cton "Nil" [])])]))
+        , (eval stdLib $ foo0) ~?= CVal (mkList (map kI [20, 10]))
+        , (eval stdLib $ foo1) ~?= CVal (mkList (map kI [100, 30]))
         ]
 
 caseTests :: TestTree

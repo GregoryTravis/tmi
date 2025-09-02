@@ -10,11 +10,13 @@ module Val
 , kI
 , kB
 , kS
+, ckI
+, ckB
+, ckS
 , Env(..)
 , Interp(..)
 , BuiltinDef(..)
-, BuiltinDefs(..)
-, app2 ) where
+, BuiltinDefs(..) ) where
 
 import qualified Data.Map.Strict as M
 
@@ -73,6 +75,15 @@ kB = dkv . VB
 kS :: String -> Val
 kS = dkv . VS
 
+ckI :: Int -> Code
+ckI = CVal . dkv . VI
+
+ckB :: Bool -> Code
+ckB = CVal . dkv . VB
+
+ckS :: String -> Code
+ckS = CVal . dkv . VS
+
 data Env = Env (M.Map Ident Val)
   deriving (Eq, Show)
 
@@ -81,6 +92,3 @@ data Interp = Interp Env BuiltinDefs
 data BuiltinDef = BuiltinDef Ident Int ([Val] -> Val)
 
 data BuiltinDefs = BuiltinDefs (M.Map Ident BuiltinDef)
-
-app2 :: Code -> Code -> Code -> Code
-app2 f a b = CVal $ Val DK (Code (App (App f a) b))

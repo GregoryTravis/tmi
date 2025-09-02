@@ -2,6 +2,7 @@ module StdLib (stdLib) where
 
 import qualified Data.Map.Strict as M
 
+import Awkward
 import Builtin
 import Env
 import Interp
@@ -27,16 +28,16 @@ builtinDefs =
 
 nonBuiltins = Env $ M.fromList $
   [ ("add1", Val (TFun TI (TFun TI TI))
-                 $ Code $ Lam "x" (app2 (Id "+") (Id "x") (CVal (kI 1))))
+                 $ Code $ Lam "x" (app2 (Id "+") (Id "x") (ckI 1)))
   , ("sub1", Val (TFun TI (TFun TI TI))
-                 $ Code $ Lam "x" (app2 (Id "-") (Id "x") (CVal (kI 1))))
+                 $ Code $ Lam "x" (app2 (Id "-") (Id "x") (ckI 1)))
   , ("fact", Val (TFun TI TI)
-                 $ Code $ Lam "x" (If (app2 (Id "==") (Id "x") (CVal (kI 0)))
-                                      (CVal (kI 1))
+                 $ Code $ Lam "x" (If (app2 (Id "==") (Id "x") (ckI 0))
+                                      (ckI 1)
                                       (app2 (Id "*") (Id "x")
-                                            (App (Id "fact")
-                                                 (app2 (Id "-") (Id "x")
-                                                       (CVal (kI 1)))))))
+                                            (app1 (Id "fact")
+                                                  (app2 (Id "-") (Id "x")
+                                                        (ckI 1))))))
   , ("head", Val DK $ Code $
       Lam "x" (Case (Id "x") [(Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]), Id "x"),
                               (Val DK (Cton "Nil" []), CVal (kS "error: head of empty list"))]))
@@ -46,7 +47,7 @@ nonBuiltins = Env $ M.fromList $
   , ("map", Val DK $ Code $
       Lam "f" (Lam "xs" (Case (Id "xs")
         [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-           App (App (Id "Cons") (App (Id "f") (Id "x"))) (App (App (Id "map") (Id "f")) (Id "xs")))
+           app2 (Id "Cons") (App (Id "f") (Id "x")) (App (App (Id "map") (Id "f")) (Id "xs")))
         , (Val DK (Cton "Nil" []), CVal (Val DK (Cton "Nil" [])))])))
   ]
 

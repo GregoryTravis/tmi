@@ -6,6 +6,7 @@ import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 
+import Awkward
 import Eval
 import StdLib
 import TestUtil
