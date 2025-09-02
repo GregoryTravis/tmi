@@ -30,3 +30,4 @@ main = do
   mspp $ eval stdLib ltltl
   mspp $ eval stdLib foo0
   mspp $ eval stdLib foo1
+  mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)

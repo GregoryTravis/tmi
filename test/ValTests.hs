@@ -12,7 +12,7 @@ import TestUtil
 import Util
 import Val
 
-addTest = 
+addTest =
   let main = app2 (Id "+") (App (Id "add1") (CVal (kI 10))) (App (Id "sub1") (CVal (kI 20)))
    in eval stdLib main ~?= CVal (Val DK (VI 30))
 

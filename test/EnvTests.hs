@@ -13,7 +13,7 @@ import TestUtil
 import Util
 import Val
 
-combineTest = 
+combineTest =
   let a = extend newEnv "x" (kI 10)
       b = extend newEnv "x" (kI 20)
       ab = a <> b

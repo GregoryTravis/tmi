@@ -13,7 +13,7 @@ import TestUtil
 import Util
 import Val
 
-caseTest = 
+caseTest =
   let lyst = App (App (Id "Cons") (CVal (kI 10)))
                  (App (App (Id "Cons") (CVal (kI 20)))
                       (Id "Nil"))
