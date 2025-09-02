@@ -4,6 +4,7 @@ module Val
 , UVal(..)
 , Code(..)
 , Ty(..)
+, TyCtor(..)
 , unCVal
 , unVI
 , dkv
@@ -52,8 +53,11 @@ data Ty =
   | TS
   | TB
   | TFun Ty Ty
-  | TCton Ident [Ty]
+  | TAdt Ident [TyCtor]
   | DK
+  deriving (Eq, Show)
+
+data TyCtor = TyCtor Ident [Ty]
   deriving (Eq, Show)
 
 data Val = Val Ty UVal

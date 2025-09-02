@@ -2,6 +2,7 @@ module StdLib (stdLib) where
 
 import qualified Data.Map.Strict as M
 
+import Adt
 import Awkward
 import Builtin
 import Env
@@ -9,18 +10,19 @@ import Interp
 import Util
 import Val
 
-mkCtor0 :: String -> Val
-mkCtor0 name = dkv $ Cton name []
-mkCtor1 :: String -> Val -> Val
-mkCtor1 name a = dkv $ Cton name [a]
-mkCtor2 :: String -> Val -> Val -> Val
-mkCtor2 name a b = dkv $ Cton name [a, b]
-
 iiiOp :: String -> (Int -> Int -> Int) -> BuiltinDef
 iiiOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kI)
 
 iibOp :: String -> (Int -> Int -> Bool) -> BuiltinDef
 iibOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kB)
+
+adts :: [Ty]
+adts =
+  [ TAdt "List" [TyCtor "Cons" [DK, DK], TyCtor "Nil" []]
+  ]
+
+adtCtorBuiltins :: [BuiltinDef]
+adtCtorBuiltins = concat $ map adtTyToBuiltinDefs adts
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =
@@ -33,8 +35,6 @@ builtinDefs =
   , iibOp "<" (<)
   , iibOp ">" (>)
   , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
-  , (BuiltinDef "Cons" 2 (lyft2 (mkCtor2 "Cons") id id id))
-  , (BuiltinDef "Nil" 0 (lyft0 (mkCtor0 "Nil") id))
   ]
 
 nonBuiltins = Env $ M.fromList $
@@ -71,9 +71,10 @@ nonBuiltins = Env $ M.fromList $
 
 stdLib :: Interp
 stdLib =
-  let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
+  let allBuiltins = builtinDefs ++ adtCtorBuiltins
+      builtinDefMap = BuiltinDefs $ M.fromList (map f allBuiltins)
         where f bd@(BuiltinDef name _ _) = (name, bd)
-      builtinEnv = Env $ M.fromList (map f builtinDefs)
+      builtinEnv = Env $ M.fromList (map f allBuiltins)
         where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
       globalEnv = combineNoClash nonBuiltins builtinEnv
    in mkInterp globalEnv builtinDefMap
