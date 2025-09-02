@@ -16,11 +16,22 @@ mkCtor1 name a = dkv $ Cton name [a]
 mkCtor2 :: String -> Val -> Val -> Val
 mkCtor2 name a b = dkv $ Cton name [a, b]
 
+iiiOp :: String -> (Int -> Int -> Int) -> BuiltinDef
+iiiOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kI)
+
+iibOp :: String -> (Int -> Int -> Bool) -> BuiltinDef
+iibOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kB)
+
 builtinDefs :: [BuiltinDef]
 builtinDefs =
   [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI kI))
   , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI kI))
   , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI kI))
+  , iiiOp "+" (+)
+  , iiiOp "-" (-)
+  , iiiOp "*" (*)
+  , iibOp "<" (<)
+  , iibOp ">" (>)
   , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
   , (BuiltinDef "Cons" 2 (lyft2 (mkCtor2 "Cons") id id id))
   , (BuiltinDef "Nil" 0 (lyft0 (mkCtor0 "Nil") id))
@@ -47,7 +58,14 @@ nonBuiltins = Env $ M.fromList $
   , ("map", Val DK $ Code $
       Lam "f" (Lam "xs" (Case (Id "xs")
         [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-           app2 (Id "Cons") (App (Id "f") (Id "x")) (App (App (Id "map") (Id "f")) (Id "xs")))
+           app2 (Id "Cons") (App (Id "f") (Id "x")) (app2 (Id "map") (Id "f") (Id "xs")))
+        , (Val DK (Cton "Nil" []), CVal (Val DK (Cton "Nil" [])))])))
+  , ("filter", Val DK $ Code $
+      Lam "f" (Lam "xs" (Case (Id "xs")
+        [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
+           (If (App (Id "f") (Id "x"))
+               (app2 (Id "Cons") (Id "x") (app2 (Id "filter") (Id "f") (Id "xs")))
+               (app2 (Id "filter") (Id "f") (Id "xs"))))
         , (Val DK (Cton "Nil" []), CVal (Val DK (Cton "Nil" [])))])))
   ]
 
