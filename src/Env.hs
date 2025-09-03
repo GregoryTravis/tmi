@@ -3,6 +3,7 @@ module Env
 , startEnv
 , extend
 , combineNoClash
+, combineManyNoClash
 , elookup ) where
 
 import qualified Data.Map.Strict as M
@@ -29,6 +30,9 @@ instance Monoid Env where
 combineNoClash :: Env -> Env -> Env
 combineNoClash (Env m0) (Env m1) = Env $ M.unionWithKey noClash m0 m1
   where noClash k _ _ = error $ "Env clash on " ++ k
+
+combineManyNoClash :: [Env] -> Env
+combineManyNoClash = foldl (<>) newEnv
 
 elookup :: Env -> Ident -> Maybe Val
 elookup (Env map) x = M.lookup x map

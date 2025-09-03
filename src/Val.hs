@@ -33,6 +33,7 @@ data Code =
   | If Code Code Code
   | Case Code [(Val, Code)]
   | Builtin Ident [Code]
+  | Ctor Ident [Code]
   | CVal Val
   deriving (Eq, Show)
 
@@ -57,7 +58,7 @@ data Ty =
   | DK
   deriving (Eq, Show)
 
-data TyCtor = TyCtor Ident [Ty]
+data TyCtor = TyCtor Ident [Ty] -- | TyCtorRec Ident [(Ident, Ty)]
   deriving (Eq, Show)
 
 data Val = Val Ty UVal

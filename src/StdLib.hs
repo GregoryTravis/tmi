@@ -21,8 +21,13 @@ adts =
   [ TAdt "List" [TyCtor "Cons" [DK, DK], TyCtor "Nil" []]
   ]
 
-adtCtorBuiltins :: [BuiltinDef]
-adtCtorBuiltins = concat $ map adtTyToBuiltinDefs adts
+ctorEnv :: Env
+ctorEnv = Env $ M.fromList $
+  let tyCtors = concat $ map getCtors adts
+      nameAndArities = map nameAndArity tyCtors
+   in map (\(name, arity) -> (name, Val DK $ Code $ mkCtor name arity)) nameAndArities
+  where getCtors (TAdt _ ctors) = ctors
+        nameAndArity (TyCtor name args) = (name, length args)
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =
@@ -71,10 +76,9 @@ nonBuiltins = Env $ M.fromList $
 
 stdLib :: Interp
 stdLib =
-  let allBuiltins = builtinDefs ++ adtCtorBuiltins
-      builtinDefMap = BuiltinDefs $ M.fromList (map f allBuiltins)
+  let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, bd)
-      builtinEnv = Env $ M.fromList (map f allBuiltins)
+      builtinEnv = Env $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
-      globalEnv = combineNoClash nonBuiltins builtinEnv
+      globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv]
    in mkInterp globalEnv builtinDefMap

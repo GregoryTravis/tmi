@@ -38,6 +38,8 @@ eval interp@(Interp initialEnv _) code =
           where app' = App (ep env f) (ep env x)
     e env (Builtin name args) =
         CVal $ evalBuiltin interp name (map (unCVal . (ep env)) args)
+    e env (Ctor name args) =
+        CVal $ Val DK $ Cton name (map (unCVal . (ep env)) args)
     e env (If be th el) =
         let b = e env be
          in case b of
