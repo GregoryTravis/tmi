@@ -19,6 +19,7 @@ iibOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kB)
 adts :: [Ty]
 adts =
   [ TAdt "List" [TyCtor "Cons" [DK, DK], TyCtor "Nil" []]
+  , TAdt "Yeah" [TyCtor "Boo" [DK], TyCtorRec "Loo" [("foo", DK), ("bar", DK)]]
   ]
 
 ctorEnv :: Env
@@ -28,6 +29,33 @@ ctorEnv = Env $ M.fromList $
    in map (\(name, arity) -> (name, Val DK $ Code $ mkCtor name arity)) nameAndArities
   where getCtors (TAdt _ ctors) = ctors
         nameAndArity (TyCtor name args) = (name, length args)
+        nameAndArity (TyCtorRec name args) = (name, length args)
+
+recDestructorEnv :: Env
+recDestructorEnv = Env $ M.fromList $
+  let tyCtorRecs = concat $ map getTyCtorRecs adts
+      fieldDestructors = concat $ map mkFieldDestructors tyCtorRecs
+   in fieldDestructors
+  where getTyCtorRecs (TAdt _ ctors) = filter isTyCtorRec ctors
+        isTyCtorRec (TyCtor _ _) = False
+        isTyCtorRec (TyCtorRec _ _) = True
+
+mkFieldDestructors :: TyCtor -> [(Ident, Val)]
+mkFieldDestructors (TyCtorRec ctorName fields) = zipWith (mk ctorName) indices fields
+  where mk ctorName index (fieldName, _) = (fieldName, Val DK $ Code $ mkCtonIndexGetter ctorName index nfields)
+        indices = [0..nfields - 1]
+        nfields = length fields
+
+mkCtonIndexGetter :: Ident -> Int -> Int -> Code
+mkCtonIndexGetter ctorName index nfields =
+  let pat = map dkOrPatVar [0..nfields-1]
+      patVar = "f" ++ show index
+      dkOrPatVar i | i == index = Val DK $ PatVar patVar
+                   | otherwise = Val DK $ Underscore
+      ctonPat = Val DK $ Cton ctorName pat
+      body = Id patVar
+      clauses = [(ctonPat, body)]
+   in Lam "x" (Case (Id "x") clauses)
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =
@@ -80,5 +108,5 @@ stdLib =
         where f bd@(BuiltinDef name _ _) = (name, bd)
       builtinEnv = Env $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
-      globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv]
+      globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv, esp $ recDestructorEnv]
    in mkInterp globalEnv builtinDefMap

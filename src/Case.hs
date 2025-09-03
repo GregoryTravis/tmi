@@ -37,6 +37,7 @@ umatch1 pat x = m pat x
     m :: UVal -> UVal -> Match
     -- TODO stripping the type out here
     m (PatVar v) x = Match $ startEnv v (Val DK x)
+    m Underscore _ = mempty
     m (VI a) (VI b) = checkEq a b
     m (VB a) (VB b) = checkEq a b
     m (VS a) (VS b) = checkEq a b

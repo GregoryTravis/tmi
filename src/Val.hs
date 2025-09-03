@@ -45,6 +45,7 @@ data UVal =
   | VB Bool
   | Cton Ident [Val]
   | PatVar Ident
+  | Underscore
   | Code Code
   | Closure Env Code
   deriving (Eq, Show)
@@ -58,7 +59,7 @@ data Ty =
   | DK
   deriving (Eq, Show)
 
-data TyCtor = TyCtor Ident [Ty] -- | TyCtorRec Ident [(Ident, Ty)]
+data TyCtor = TyCtor Ident [Ty] | TyCtorRec Ident [(Ident, Ty)]
   deriving (Eq, Show)
 
 data Val = Val Ty UVal

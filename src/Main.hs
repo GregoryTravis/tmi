@@ -24,6 +24,9 @@ main = do
       foo0 = Case (CVal (Val DK (Cton "A" [kI 10, kI 20]))) pats
       foo1 = Case (CVal (Val DK (Cton "B" [kI 10, kI 30]))) pats
       halfLyst2 = app2 (Id "filter") (Lam "x" (app2 (Id "<") (Id "x") (ckI 5))) lyst2
+      yeah0 = app2 (Id "Loo") (ckI 10) (ckI 20)
+      yeah0foo = App (Id "foo") yeah0
+      yeah0bar = App (Id "bar") yeah0
   mspp $ eval stdLib fact10
   mspp $ eval stdLib lyst
   mspp $ eval stdLib lhd
@@ -34,3 +37,5 @@ main = do
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
   mspp $ eval stdLib halfLyst2
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
+  mspp $ eval stdLib yeah0foo
+  mspp $ eval stdLib yeah0bar
