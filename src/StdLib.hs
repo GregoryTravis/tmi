@@ -108,5 +108,5 @@ stdLib =
         where f bd@(BuiltinDef name _ _) = (name, bd)
       builtinEnv = Env $ M.fromList (map f builtinDefs)
         where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
-      globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv, esp $ recDestructorEnv]
+      globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv, recDestructorEnv]
    in mkInterp globalEnv builtinDefMap
