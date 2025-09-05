@@ -16,6 +16,9 @@ iiiOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kI)
 iibOp :: String -> (Int -> Int -> Bool) -> BuiltinDef
 iibOp name f = BuiltinDef name 2 (lyft2 f unVI unVI kB)
 
+aabOp :: String -> (Val -> Val -> Bool) -> BuiltinDef
+aabOp name f = BuiltinDef name 2 (lyft2 f id id kB)
+
 adts :: [Ty]
 adts =
   [ TAdt "List" [TyCtor "Cons" [DK, DK], TyCtor "Nil" []]
@@ -59,15 +62,12 @@ mkCtonIndexGetter ctorName index nfields =
 
 builtinDefs :: [BuiltinDef]
 builtinDefs =
-  [ (BuiltinDef "+" 2 (lyft2 (+) unVI unVI kI))
-  , (BuiltinDef "-" 2 (lyft2 (-) unVI unVI kI))
-  , (BuiltinDef "*" 2 (lyft2 (*) unVI unVI kI))
-  , iiiOp "+" (+)
+  [ iiiOp "+" (+)
   , iiiOp "-" (-)
   , iiiOp "*" (*)
   , iibOp "<" (<)
   , iibOp ">" (>)
-  , (BuiltinDef "==" 2 (lyft2 (==) id id kB))
+  , aabOp "==" (==)
   ]
 
 nonBuiltins = Env $ M.fromList $
