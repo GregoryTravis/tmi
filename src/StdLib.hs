@@ -26,16 +26,18 @@ adts =
   ]
 
 ctorEnv :: Env
-ctorEnv = Env $ M.fromList $
+ctorEnv = MapLayer $ M.fromList $
   let tyCtors = concat $ map getCtors adts
-      nameAndArities = map nameAndArity tyCtors
-   in map (\(name, arity) -> (name, Val DK $ Code $ mkCtor name arity)) nameAndArities
+      names = map getName tyCtors
+      ctors = map (Val DK . Code . mkCtor) tyCtors
+   in zip names ctors
+      -- nameAndArities = map nameAndArity tyCtors
   where getCtors (TAdt _ ctors) = ctors
-        nameAndArity (TyCtor name args) = (name, length args)
-        nameAndArity (TyCtorRec name args) = (name, length args)
+        getName (TyCtor name _) = name
+        getName (TyCtorRec name _) = name
 
 recDestructorEnv :: Env
-recDestructorEnv = Env $ M.fromList $
+recDestructorEnv = MapLayer $ M.fromList $
   let tyCtorRecs = concat $ map getTyCtorRecs adts
       fieldDestructors = concat $ map mkFieldDestructors tyCtorRecs
    in fieldDestructors
@@ -60,8 +62,8 @@ mkCtonIndexGetter ctorName index nfields =
       clauses = [(ctonPat, body)]
    in Lam "x" (Case (Id "x") clauses)
 
-builtinDefs :: [BuiltinDef]
-builtinDefs =
+theBuiltinDefs :: [BuiltinDef]
+theBuiltinDefs =
   [ iiiOp "+" (+)
   , iiiOp "-" (-)
   , iiiOp "*" (*)
@@ -70,7 +72,7 @@ builtinDefs =
   , aabOp "==" (==)
   ]
 
-nonBuiltins = Env $ M.fromList $
+nonBuiltins = MapLayer $ M.fromList $
   [ ("add1", Val (TFun TI (TFun TI TI))
                  $ Code $ Lam "x" (app2 (Id "+") (Id "x") (ckI 1)))
   , ("sub1", Val (TFun TI (TFun TI TI))
@@ -104,9 +106,12 @@ nonBuiltins = Env $ M.fromList $
 
 stdLib :: Interp
 stdLib =
-  let builtinDefMap = BuiltinDefs $ M.fromList (map f builtinDefs)
+  let builtinDefMap = BuiltinDefs $ M.fromList (map f theBuiltinDefs)
         where f bd@(BuiltinDef name _ _) = (name, bd)
-      builtinEnv = Env $ M.fromList (map f builtinDefs)
+      builtinEnv = MapLayer $ M.fromList (map f theBuiltinDefs)
         where f bd@(BuiltinDef name _ _) = (name, dkv $ Code $ wrapBuiltin bd)
       globalEnv = combineManyNoClash [nonBuiltins, builtinEnv, ctorEnv, recDestructorEnv]
-   in mkInterp globalEnv builtinDefMap
+      values = CtonRec "Values" (M.toList (case globalEnv of MapLayer x -> x))
+      code = CtonRec "Code" [("values", Val DK values)]
+      root = CtonRec "Root" [("code", Val DK code)]
+   in mkInterp (History [Val DK root]) Outside { builtinDefs = builtinDefMap }

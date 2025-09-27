@@ -3,6 +3,7 @@ module Eval
 
 import Case
 import Env
+import History
 import Util
 import Val
 
@@ -11,8 +12,8 @@ import qualified Data.Map.Strict as M
 verbose = False
 
 eval :: Interp -> Code -> Code
-eval interp@(Interp initialEnv _) code =
-  ep initialEnv code
+eval interp@(Interp history _) code =
+  ep GlobalLayer code
   where
     ev :: Env -> Code -> Code
     ev env x =
@@ -23,7 +24,7 @@ eval interp@(Interp initialEnv _) code =
     e :: Env -> Code -> Code
     e env l@(Lam arg body) = CVal $ dkv $ Closure env l
     e env (Id id) =
-      case elookup env id of
+      case elookup history env id of
         Just x -> ep env $ CVal x
         Nothing ->
           error $ "Unknown identifier " ++ id
@@ -40,6 +41,11 @@ eval interp@(Interp initialEnv _) code =
         CVal $ evalBuiltin interp name (map (unCVal . (ep env)) args)
     e env (Ctor name args) =
         CVal $ Val DK $ Cton name (map (unCVal . (ep env)) args)
+    e env (CtorRec name pairs) =
+        let ids = map fst pairs
+            exps = map snd pairs
+            vals = map (unCVal . (ep env)) exps
+         in CVal $ Val DK $ CtonRec name (zip ids vals)
     e env (If be th el) =
         let b = e env be
          in case b of
@@ -58,7 +64,7 @@ eval interp@(Interp initialEnv _) code =
     -- e _ x = error $ "eval? " ++ show x
 
 evalBuiltin :: Interp -> Ident -> [Val] -> Val
-evalBuiltin (Interp _ (BuiltinDefs bs)) name args =
+evalBuiltin (Interp _ (Outside { builtinDefs = BuiltinDefs bs })) name args =
   case M.lookup name bs of
     Nothing -> error $ "Unknown builtin " ++ name
     Just (BuiltinDef _ _ f) -> f args

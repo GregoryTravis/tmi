@@ -42,4 +42,10 @@ umatch1 pat x = m pat x
     m (VB a) (VB b) = checkEq a b
     m (VS a) (VS b) = checkEq a b
     m (Cton na argsa) (Cton nb argsb) = checkEq na nb <> match1List argsa argsb
+    m (CtonRec na argsa) (CtonRec nb argsb) =
+      let fieldNamesA = map fst argsa
+          fieldNamesB = map fst argsb
+          valsa = map snd argsa
+          valsb = map snd argsb
+       in checkEq na nb <> checkEq fieldNamesA fieldNamesB <> match1List valsa valsb
     checkEq a b = if a == b then mempty else Failure

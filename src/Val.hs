@@ -14,10 +14,12 @@ module Val
 , ckI
 , ckB
 , ckS
-, Env(..)
 , Interp(..)
+, Outside(..)
 , BuiltinDef(..)
-, BuiltinDefs(..) ) where
+, BuiltinDefs(..)
+, History(..)
+, Env(..) ) where
 
 import qualified Data.Map.Strict as M
 
@@ -34,6 +36,7 @@ data Code =
   | Case Code [(Val, Code)]
   | Builtin Ident [Code]
   | Ctor Ident [Code]
+  | CtorRec Ident [(Ident, Code)]
   | CVal Val
   deriving (Eq, Show)
 
@@ -43,7 +46,7 @@ data UVal =
     VI Int
   | VS String
   | VB Bool
-  | Cton Ident [Val]
+  | Cton Ident [Val] | CtonRec Ident [(Ident, Val)]
   | PatVar Ident
   | Underscore
   | Code Code
@@ -90,11 +93,17 @@ ckB = CVal . dkv . VB
 ckS :: String -> Code
 ckS = CVal . dkv . VS
 
-data Env = Env (M.Map Ident Val)
-  deriving (Eq, Show)
-
-data Interp = Interp Env BuiltinDefs
+data Interp = Interp History Outside
 
 data BuiltinDef = BuiltinDef Ident Int ([Val] -> Val)
 
 data BuiltinDefs = BuiltinDefs (M.Map Ident BuiltinDef)
+
+data History = History [Val]
+
+data Outside = Outside {
+    builtinDefs :: BuiltinDefs
+  }
+
+data Env = MapLayer (M.Map Ident Val) | GlobalLayer | Layers Env Env | EmptyLayer
+  deriving (Eq, Show)

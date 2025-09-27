@@ -4,5 +4,5 @@ module Interp
 import Util
 import Val
 
-mkInterp :: Env -> BuiltinDefs -> Interp
+mkInterp :: History -> Outside -> Interp
 mkInterp = Interp
