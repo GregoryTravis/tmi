@@ -24,7 +24,7 @@ eval interp@(Interp history _) code =
       let pluses = intercalate "" (take level (repeat "+"))
           minuses = intercalate "" (take level (repeat "-"))
           r = e level env (eesp (pluses ++ " eval", pp x) x)
-       in eesp (minuses ++ " eval", pp x, r) r
+       in eesp (minuses ++ " eval", r, pp x) r
     e :: Int -> Env -> Code -> Code
     e l env lm@(Lam arg body) = CVal $ dkv $ Closure env lm
     e l env (Id id) =
