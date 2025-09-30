@@ -8,6 +8,7 @@ import Test.Tasty.HUnit
 
 import Env
 import Eval
+import History
 import StdLib
 import TestUtil
 import Util
@@ -18,9 +19,11 @@ combineTest =
       b = extend newEnv "x" (kI 20)
       ab = a <> b
       ba = b <> a
+      root = kI 10
+      history = mkHistory root
    in testGroup ""
-        [ elookup ab "x" ~?= Just (kI 20)
-        , elookup ba "x" ~?= Just (kI 10)
+        [ elookup history ab "x" ~?= Just (kI 10)
+        , elookup history ba "x" ~?= Just (kI 20)
         ]
 
 envTests :: TestTree

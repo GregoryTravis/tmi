@@ -24,6 +24,8 @@ extend :: Env -> Ident -> Val -> Env
 extend EmptyLayer id x = MapLayer (M.insert id x M.empty)
 extend env id x = Layers (MapLayer (M.insert id x M.empty)) env
 
+-- Search order is left-to-right.
+
 instance Semigroup Env where
   (<>) = Layers
 
