@@ -29,6 +29,7 @@ instance Pretty UVal where
   pp x@(Cton "Cons" _) = consListPP x
   pp x@(Cton "Nil" _) = consListPP x
   pp (Code c) = pp c
+  pp (Closure env body) = paren $ spaced ["(*+", pp body]
   pp x = show x
 
 spaced :: [String] -> String

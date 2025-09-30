@@ -27,15 +27,15 @@ main = do
       yeah0 = app2 (Id "Loo") (ckI 10) (ckI 20)
       yeah0foo = App (Id "foo") yeah0
       yeah0bar = App (Id "bar") yeah0
-  -- mspp $ eval stdLib fact10
-  -- mspp $ eval stdLib lyst
-  -- mspp $ eval stdLib lhd
-  -- mspp $ eval stdLib ltl
-  -- mspp $ eval stdLib ltltl
-  -- mspp $ eval stdLib foo0
-  -- mspp $ eval stdLib foo1
+  mspp $ eval stdLib fact10
+  mspp $ eval stdLib lyst
+  mspp $ eval stdLib lhd
+  mspp $ eval stdLib ltl
+  mspp $ eval stdLib ltltl
+  mspp $ eval stdLib foo0
+  mspp $ eval stdLib foo1
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
   mspp $ eval stdLib halfLyst2
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
-  mspp $ eval stdLib yeah0foo
-  mspp $ eval stdLib yeah0bar
+  --mspp $ eval stdLib yeah0foo
+  --mspp $ eval stdLib yeah0bar

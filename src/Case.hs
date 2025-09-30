@@ -48,4 +48,6 @@ umatch1 pat x = m pat x
           valsa = map snd argsa
           valsb = map snd argsb
        in checkEq na nb <> checkEq fieldNamesA fieldNamesB <> match1List valsa valsb
+    -- m a b = error $ "?? " ++ show a ++ " " ++ show b
+    m _ _ = Failure
     checkEq a b = if a == b then mempty else Failure

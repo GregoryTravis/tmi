@@ -11,7 +11,7 @@ import Val
 import Data.List (intercalate)
 import qualified Data.Map.Strict as M
 
-verbose = True
+verbose = False
 
 eval :: Interp -> Code -> Code
 eval interp@(Interp history _) code =
@@ -23,8 +23,8 @@ eval interp@(Interp history _) code =
     ev level env x =
       let pluses = intercalate "" (take level (repeat "+"))
           minuses = intercalate "" (take level (repeat "-"))
-          r = e level env (eesp (pluses ++ " eval", pp x) x)
-       in eesp (minuses ++ " eval", r, pp x) r
+          r = e level env (eesp (pluses ++ " eval", pp x, env) x)
+       in eesp (minuses ++ " eval", pp r, pp x) r
     e :: Int -> Env -> Code -> Code
     e l env lm@(Lam arg body) = CVal $ dkv $ Closure env lm
     e l env (Id id) =
@@ -58,10 +58,10 @@ eval interp@(Interp history _) code =
               _ -> error $ "If: not a bool" ++ show b
     e l env (Case xc cases) =
       let CVal x = ep (l+1) env xc
-       in case match x cases of
+       in case {-eeesp "match" $-} match x cases of
             Nothing -> error $ "Pattern match failure: " ++ show x ++ " " ++ show cases
             Just (matchEnv, body) ->
-              let env' = env <> matchEnv
+              let env' = matchEnv <> env
                in ep (l+1) env' body
     -- Eval to self
     e _ _ x@(CVal _) = x
