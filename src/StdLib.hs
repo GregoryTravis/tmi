@@ -46,18 +46,17 @@ recDestructorEnv = MapLayer $ M.fromList $
         isTyCtorRec (TyCtorRec _ _) = True
 
 mkFieldDestructors :: TyCtor -> [(Ident, Val)]
-mkFieldDestructors (TyCtorRec ctorName fields) = zipWith (mk ctorName) indices fields
-  where mk ctorName index (fieldName, _) = (fieldName, Val DK $ Code $ mkCtonIndexGetter ctorName index nfields)
-        indices = [0..nfields - 1]
-        nfields = length fields
+mkFieldDestructors (TyCtorRec ctorName fields) = map (mk ctorName) fields
+  where mk ctorName (fieldName, _) = (fieldName, Val DK $ Code $ mkCtonIndexGetter ctorName fieldName fieldNames)
+        fieldNames = map fst fields
 
-mkCtonIndexGetter :: Ident -> Int -> Int -> Code
-mkCtonIndexGetter ctorName index nfields =
-  let pat = map dkOrPatVar [0..nfields-1]
-      patVar = "f" ++ show index
-      dkOrPatVar i | i == index = Val DK $ PatVar patVar
-                   | otherwise = Val DK $ Underscore
-      ctonPat = Val DK $ Cton ctorName pat
+mkCtonIndexGetter :: Ident -> Ident -> [Ident] -> Code
+mkCtonIndexGetter ctorName field fields =
+  let pat = map dkOrPatVar fields
+      patVar = "f" ++ field
+      dkOrPatVar f | f == field = (f, Val DK $ PatVar patVar)
+                   | otherwise = (f, Val DK $ Underscore)
+      ctonPat = Val DK $ CtonRec ctorName pat
       body = Id patVar
       clauses = [(ctonPat, body)]
    in Lam "x" (Case (Id "x") clauses)

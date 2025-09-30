@@ -37,5 +37,5 @@ main = do
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
   mspp $ eval stdLib halfLyst2
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
-  --mspp $ eval stdLib yeah0foo
-  --mspp $ eval stdLib yeah0bar
+  mspp $ eval stdLib yeah0foo
+  mspp $ eval stdLib yeah0bar
