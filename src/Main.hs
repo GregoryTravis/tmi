@@ -27,6 +27,14 @@ main = do
       yeah0 = app2 (Id "Loo") (ckI 10) (ckI 20)
       yeah0foo = App (Id "foo") yeah0
       yeah0bar = App (Id "bar") yeah0
+      consfun = app2 (Id "cons") (ckI 0) (Id "Nil")
+      relist0 = app3 (Id "foldr") (Id "cons") (Id "Nil") lyst
+      relist1 = app3 (Id "foldr") (Id "cons") (Id "Nil") lyst2
+      relist2 = app3 (Id "foldl") (Id "snoc") (Id "Nil") lyst
+      relist3 = app3 (Id "foldl") (Id "snoc") (Id "Nil") lyst2
+      minus0 = app2 (Id "-") (ckI 10) (ckI 5)
+      minus0f = app2 (App (Id "flip") (Id "-")) (ckI 10) (ckI 5)
+      snoc0 = app2 (Id "snoc") (Id "Nil") (ckI 10)
   mspp $ eval stdLib fact10
   mspp $ eval stdLib lyst
   mspp $ eval stdLib lhd
@@ -39,3 +47,12 @@ main = do
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
   mspp $ eval stdLib yeah0foo
   mspp $ eval stdLib yeah0bar
+  mspp $ eval stdLib consfun
+  mspp $ eval stdLib (app2 (Id "cons") (ckI 10) (Id "Nil"))
+  mspp $ eval stdLib relist0
+  mspp $ eval stdLib relist1
+  mspp $ eval stdLib relist2
+  mspp $ eval stdLib relist3
+  mspp $ eval stdLib minus0
+  mspp $ eval stdLib minus0f
+  mspp $ eval stdLib snoc0

@@ -12,6 +12,9 @@ app1 = App
 app2 :: Code -> Code -> Code -> Code
 app2 f a b = CVal $ Val DK (Code (App (App f a) b))
 
+app3 :: Code -> Code -> Code -> Code -> Code
+app3 f a b c = CVal $ Val DK (Code (App (App (App f a) b) c))
+
 mkList :: [Val] -> Val
 mkList [] = Val DK (Cton "Nil" [])
 mkList (x : xs) = Val DK (Cton "Cons" [x, mkList xs])

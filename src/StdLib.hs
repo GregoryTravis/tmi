@@ -89,6 +89,25 @@ nonBuiltins = MapLayer $ M.fromList $
   , ("tail", Val DK $ Code $
       Lam "x" (Case (Id "x") [(Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]), Id "xs"),
                               (Val DK (Cton "Nil" []), CVal (kS "error: tail of empty list"))]))
+  -- foldl f z [x1, x2, ..., xn] == (...((z `f` x1) `f` x2) `f`...) `f` xn
+  -- foldr f z [x1, x2, ..., xn] == x1 `f` (x2 `f` ... (xn `f` z)...)
+  , ("flip", Val DK $ Code $
+      Lam "f" (Lam "x" (Lam "y" (app2 (Id "f") (Id "y") (Id "x")))))
+  , ("foldl", Val DK $ Code $
+      Lam "f" (Lam "z" (Lam "xs"
+        (Case (Id "xs")
+          [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
+             --app2 (Id "Cons") (app2 (Id "f") (Id "z") (Id "x")) (app3 (Id "foldl") (Id "f") (Id "z") (Id "xs")))
+             app3 (Id "foldl") (Id "f") (app2 (Id "f") (Id "z") (Id "x")) (Id "xs"))
+          , (Val DK (Cton "Nil" []), (Id "z"))]))))
+  , ("foldr", Val DK $ Code $
+      Lam "f" (Lam "z" (Lam "xs"
+        (Case (Id "xs")
+          [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
+             app2 (Id "f") (Id "x") (app3 (Id "foldr") (Id "f") (Id "z") (Id "xs")))
+          , (Val DK (Cton "Nil" []), (Id "z"))]))))
+  , ("cons", Val DK $ Code $ Id "Cons")
+  , ("snoc", Val DK $ Code $ App (Id "flip") (Id "cons"))
   , ("map", Val DK $ Code $
       Lam "f" (Lam "xs" (Case (Id "xs")
         [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),

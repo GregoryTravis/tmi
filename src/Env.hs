@@ -27,7 +27,9 @@ extend env id x = Layers (MapLayer (M.insert id x M.empty)) env
 -- Search order is left-to-right.
 
 instance Semigroup Env where
-  (<>) = Layers
+  EmptyLayer <> x = x
+  x <> EmptyLayer = x
+  x <> y = Layers x y
 
 instance Monoid Env where
   mempty = EmptyLayer

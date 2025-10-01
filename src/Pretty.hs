@@ -30,7 +30,8 @@ instance Pretty UVal where
   pp x@(Cton "Nil" _) = consListPP x
   pp (Code c) = pp c
   pp (Closure env body) = paren $ spaced ["(*+", pp body]
-  pp x = show x
+  pp (PatVar id) = id
+  --pp x = show x
 
 spaced :: [String] -> String
 spaced xs = intercalate " " (map pp xs)
@@ -45,12 +46,17 @@ instance Pretty Code where
   pp (CVal x) = pp x
   pp (Id x) = x
   pp (Lam x e) = paren $ spaced ["/.", pp x, pp e]
-  pp (App f x) = paren $ spaced [pp f, pp x]
+  pp a@(App f x) = ppApp a
   pp (If b t e) = paren $ spaced ["if", pp b, "then", pp t, "else", pp e]
   pp (Case e cases) = paren $ spaced (["case", pp e, "of"] ++ map ppCase cases)
   pp (Builtin name args) = paren $ spaced ((name ++ "#") : map pp args)
   pp (Ctor name args) = paren $ spaced (name : map pp args)
   pp (CtorRec name args) = paren $ spaced (name : map ppRecEntry args)
+
+ppApp :: Code -> String
+ppApp a = paren $ spaced (map pp (gather a))
+  where gather (App a@(App f x) y) = gather a ++ [y]
+        gather (App f x) = [f, x]
 
 ppRecEntry :: (Ident, Code) -> String
 ppRecEntry (name, value) = paren $ spaced [name, "=", pp value]
