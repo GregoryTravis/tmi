@@ -5,6 +5,7 @@ module Pretty
 , mspp ) where
 
 import Data.List (intercalate)
+import qualified Data.Map.Strict as M
 
 import Util
 import Val
@@ -29,9 +30,16 @@ instance Pretty UVal where
   pp x@(Cton "Cons" _) = consListPP x
   pp x@(Cton "Nil" _) = consListPP x
   pp (Code c) = pp c
-  pp (Closure env body) = paren $ spaced ["(*+", pp body]
+  pp (Closure env body) = paren $ spaced ["*+", pp body]
   pp (PatVar id) = id
   --pp x = show x
+
+instance Pretty Env where
+  pp GlobalLayer = "G"
+  pp EmptyLayer = "[]"
+  pp (MapLayer mp) = paren $ spaced (map ppsec (M.assocs mp))
+    where ppsec (id, v) = id ++ ":" ++ pp v
+  pp (Layers a b) = paren $ spaced [pp a, ",", pp b]
 
 spaced :: [String] -> String
 spaced xs = intercalate " " (map pp xs)

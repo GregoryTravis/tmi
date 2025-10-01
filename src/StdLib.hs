@@ -94,20 +94,27 @@ nonBuiltins = MapLayer $ M.fromList $
   , ("flip", Val DK $ Code $
       Lam "f" (Lam "x" (Lam "y" (app2 (Id "f") (Id "y") (Id "x")))))
   , ("foldl", Val DK $ Code $
-      Lam "f" (Lam "z" (Lam "xs"
+      Lam "f4" (Lam "z" (Lam "xs"
         (Case (Id "xs")
           [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-             --app2 (Id "Cons") (app2 (Id "f") (Id "z") (Id "x")) (app3 (Id "foldl") (Id "f") (Id "z") (Id "xs")))
-             app3 (Id "foldl") (Id "f") (app2 (Id "f") (Id "z") (Id "x")) (Id "xs"))
+             --app2 (Id "Cons") (app2 (Id "f4") (Id "z") (Id "x")) (app3 (Id "foldl") (Id "f") (Id "z") (Id "xs")))
+             app3 (Id "foldl") (Id "f4") (app2 (Id "f4") (Id "z") (Id "x")) (Id "xs"))
           , (Val DK (Cton "Nil" []), (Id "z"))]))))
   , ("foldr", Val DK $ Code $
-      Lam "f" (Lam "z" (Lam "xs"
+      Lam "fff" (Lam "z" (Lam "xs"
         (Case (Id "xs")
           [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-             app2 (Id "f") (Id "x") (app3 (Id "foldr") (Id "f") (Id "z") (Id "xs")))
+             app2 (Id "fff") (Id "x") (app3 (Id "foldr") (Id "fff") (Id "z") (Id "xs")))
           , (Val DK (Cton "Nil" []), (Id "z"))]))))
   , ("cons", Val DK $ Code $ Id "Cons")
   , ("snoc", Val DK $ Code $ App (Id "flip") (Id "cons"))
+  , ("map2", Val DK $ Code $
+      Lam "ff" (Lam "xs"
+        (app3 (Id "foldr")
+              (Lam "x" (Lam "xs"
+                (app2 (Id "cons") (App (Id "ff") (Id "x")) (Id "xs"))))
+              (Id "Nil")
+              (Id "xs"))))
   , ("map", Val DK $ Code $
       Lam "f" (Lam "xs" (Case (Id "xs")
         [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),

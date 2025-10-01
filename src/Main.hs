@@ -42,7 +42,6 @@ main = do
   mspp $ eval stdLib ltltl
   mspp $ eval stdLib foo0
   mspp $ eval stdLib foo1
-  mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
   mspp $ eval stdLib halfLyst2
   mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
   mspp $ eval stdLib yeah0foo
@@ -56,3 +55,6 @@ main = do
   mspp $ eval stdLib minus0
   mspp $ eval stdLib minus0f
   mspp $ eval stdLib snoc0
+  mspp $ eval stdLib lyst
+  mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
+  mspp $ eval stdLib (App (App (Id "map2") (Id "add1")) lyst)
