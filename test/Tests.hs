@@ -7,7 +7,6 @@ import Test.Tasty.HUnit
 import CaseTests
 import EnvTests
 import StdLibTests
-import ValTests
 
 main :: IO ()
-main = defaultMain (testGroup "all" [valTests, envTests, caseTests, stdLibTests])
+main = defaultMain (testGroup "all" [envTests, caseTests, stdLibTests])

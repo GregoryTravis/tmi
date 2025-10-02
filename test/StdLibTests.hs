@@ -27,6 +27,9 @@ stdLibTest =
                       (Id "Nil"))
       lyst2 = mkListCode (map ckI [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
       halfLyst2 = app2 (Id "filter") (Lam "x" (app2 (Id "<") (Id "x") (ckI 5))) lyst2
+      yeah0 = app2 (Id "Loo") (ckI 10) (ckI 20)
+      yeah0foo = App (Id "foo") yeah0
+      yeah0bar = App (Id "bar") yeah0
    in testGroup ""
         [ blah (eval stdLib $ (App (App (Id "map") (Id "add1")) lyst)) (CVal (Val DK (Cton "Cons" [kI 11, Val DK (Cton "Cons" [kI 21, Val DK (Cton "Nil" [])])])))
         , blah halfLyst2 (CVal (mkList (map kI [0, 1, 2, 3, 4])))
@@ -56,6 +59,8 @@ stdLibTest =
         , blah (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil"))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 10),Val DK (Cton "Cons" [Val DK (VI 20),Val DK (Cton "Nil" [])])])))
         , blah (App (App (Id "map") (Id "add1")) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil")))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 11),Val DK (Cton "Cons" [Val DK (VI 21),Val DK (Cton "Nil" [])])])))
         , blah (App (App (Id "map2") (Id "add1")) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil")))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 11),Val DK (Cton "Cons" [Val DK (VI 21),Val DK (Cton "Nil" [])])])))
+        , blah yeah0foo (ckI 10)
+        , blah yeah0bar (ckI 20)
         ]
 
 stdLibTests :: TestTree
