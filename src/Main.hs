@@ -9,6 +9,8 @@ import StdLib
 import Util
 import Val
 
+dump = False
+
 main = do
   let fact10 = App (Id "fact") (CVal (kI 10))
       lyst = mkListCode (map ckI [10, 20])
@@ -35,26 +37,13 @@ main = do
       minus0 = app2 (Id "-") (ckI 10) (ckI 5)
       minus0f = app2 (App (Id "flip") (Id "-")) (ckI 10) (ckI 5)
       snoc0 = app2 (Id "snoc") (Id "Nil") (ckI 10)
-  mspp $ eval stdLib fact10
-  mspp $ eval stdLib lyst
-  mspp $ eval stdLib lhd
-  mspp $ eval stdLib ltl
-  mspp $ eval stdLib ltltl
-  mspp $ eval stdLib foo0
-  mspp $ eval stdLib foo1
-  mspp $ eval stdLib halfLyst2
-  mspp $ eval stdLib (App (App (Id "map") (Id "add1")) halfLyst2)
-  mspp $ eval stdLib yeah0foo
-  mspp $ eval stdLib yeah0bar
-  mspp $ eval stdLib consfun
-  mspp $ eval stdLib (app2 (Id "cons") (ckI 10) (Id "Nil"))
-  mspp $ eval stdLib relist0
-  mspp $ eval stdLib relist1
-  mspp $ eval stdLib relist2
-  mspp $ eval stdLib relist3
-  mspp $ eval stdLib minus0
-  mspp $ eval stdLib minus0f
-  mspp $ eval stdLib snoc0
-  mspp $ eval stdLib lyst
-  mspp $ eval stdLib (App (App (Id "map") (Id "add1")) lyst)
-  mspp $ eval stdLib (App (App (Id "map2") (Id "add1")) lyst)
+      poo x = do
+        let r = eval stdLib x
+        if dump then 
+          smsp $ "        , blah (" ++ show x ++ ") (" ++ show r ++ ")"
+        else
+          mspp $ r
+  poo fact10
+  poo  lyst
+  poo  (App (App (Id "map") (Id "add1")) lyst)
+  poo  (App (App (Id "map2") (Id "add1")) lyst)
