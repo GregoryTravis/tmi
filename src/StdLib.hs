@@ -116,12 +116,14 @@ nonBuiltins = MapLayer $ M.fromList $
               (Id "Nil")
               (Id "xs"))))
   , ("filter", Val DK $ Code $
-      Lam "f" (Lam "xs" (Case (Id "xs")
-        [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-           (If (App (Id "f") (Id "x"))
-               (app2 (Id "Cons") (Id "x") (app2 (Id "filter") (Id "f") (Id "xs")))
-               (app2 (Id "filter") (Id "f") (Id "xs"))))
-        , (Val DK (Cton "Nil" []), CVal (Val DK (Cton "Nil" [])))])))
+      Lam "f" (Lam "xs"
+        (app3 (Id "foldr")
+              (Lam "x" (Lam "xs"
+                (If (App (Id "f") (Id "x"))
+                    (app2 (Id "cons") (Id "x") (Id "xs"))
+                    (Id "xs"))))
+              (Id "Nil")
+              (Id "xs"))))
   ]
 
 stdLib :: Interp
