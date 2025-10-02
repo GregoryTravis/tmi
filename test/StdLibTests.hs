@@ -58,7 +58,6 @@ stdLibTest =
         , blah (CVal (Val DK (Code (App (App (Id "snoc") (Id "Nil")) (CVal (Val DK (VI 10))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 10),Val DK (Cton "Nil" [])])))
         , blah (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil"))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 10),Val DK (Cton "Cons" [Val DK (VI 20),Val DK (Cton "Nil" [])])])))
         , blah (App (App (Id "map") (Id "add1")) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil")))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 11),Val DK (Cton "Cons" [Val DK (VI 21),Val DK (Cton "Nil" [])])])))
-        , blah (App (App (Id "map2") (Id "add1")) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 10)))) (CVal (Val DK (Code (App (App (Id "Cons") (CVal (Val DK (VI 20)))) (Id "Nil")))))))))) (CVal (Val DK (Cton "Cons" [Val DK (VI 11),Val DK (Cton "Cons" [Val DK (VI 21),Val DK (Cton "Nil" [])])])))
         , blah yeah0foo (ckI 10)
         , blah yeah0bar (ckI 20)
         ]

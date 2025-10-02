@@ -108,18 +108,13 @@ nonBuiltins = MapLayer $ M.fromList $
           , (Val DK (Cton "Nil" []), (Id "z"))]))))
   , ("cons", Val DK $ Code $ Id "Cons")
   , ("snoc", Val DK $ Code $ App (Id "flip") (Id "cons"))
-  , ("map2", Val DK $ Code $
+  , ("map", Val DK $ Code $
       Lam "ff" (Lam "xs"
         (app3 (Id "foldr")
               (Lam "x" (Lam "xs"
                 (app2 (Id "cons") (App (Id "ff") (Id "x")) (Id "xs"))))
               (Id "Nil")
               (Id "xs"))))
-  , ("map", Val DK $ Code $
-      Lam "f" (Lam "xs" (Case (Id "xs")
-        [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),
-           app2 (Id "Cons") (App (Id "f") (Id "x")) (app2 (Id "map") (Id "f") (Id "xs")))
-        , (Val DK (Cton "Nil" []), CVal (Val DK (Cton "Nil" [])))])))
   , ("filter", Val DK $ Code $
       Lam "f" (Lam "xs" (Case (Id "xs")
         [ (Val DK (Cton "Cons" [Val DK (PatVar "x"), Val DK (PatVar "xs")]),

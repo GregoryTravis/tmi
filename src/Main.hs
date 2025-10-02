@@ -46,4 +46,3 @@ main = do
   poo fact10
   poo  lyst
   poo  (App (App (Id "map") (Id "add1")) lyst)
-  poo  (App (App (Id "map2") (Id "add1")) lyst)
