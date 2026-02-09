@@ -61,6 +61,8 @@ module Util
 , transfer
 , readFile'
 , transpose
+, headF
+, tailF
 ) where
 
 import Control.Exception
@@ -293,7 +295,7 @@ hist :: (Ord a) => [a] -> [(Int, a)]
 hist xs = zip lens reps
   where grouped = group $ sort xs
         lens = map length grouped
-        reps = map head grouped
+        reps = map headF grouped
 
 -- What on earth is wrong with me
 replaceInList :: [a] -> Int -> a -> [a]
@@ -389,4 +391,14 @@ readFile' filePath = do
 -- Does not check that they are all the same length
 transpose :: [[a]] -> [[a]]
 transpose ([] : _) = []
-transpose ases = (map head ases) : (transpose (map tail ases))
+transpose ases = (map headF ases) : (transpose (map tailF ases))
+
+-- Throw an overt error
+headF :: [a] -> a
+headF [] = error $ "head of empty list!"
+headF (x:xs) = x
+
+-- Throw an overt error
+tailF :: [a] -> [a]
+tailF [] = error $ "tail of empty list!"
+tailF (x:xs) = xs
