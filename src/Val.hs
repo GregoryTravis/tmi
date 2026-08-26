@@ -94,16 +94,23 @@ ckS :: String -> Code
 ckS = CVal . dkv . VS
 
 data Interp = Interp History Outside
+  deriving Show
 
 data BuiltinDef = BuiltinDef Ident Int ([Val] -> Val)
 
+instance Show BuiltinDef where
+  show (BuiltinDef name arity _) = "#<builtin " ++ name ++ " " ++ show arity ++ ">"
+
 data BuiltinDefs = BuiltinDefs (M.Map Ident BuiltinDef)
+  deriving Show
 
 data History = History [Val]
+  deriving Show
 
 data Outside = Outside {
     builtinDefs :: BuiltinDefs
   }
+  deriving Show
 
 data Env = MapLayer (M.Map Ident Val) | GlobalLayer | Layers Env Env | EmptyLayer
   deriving (Eq, Show)
