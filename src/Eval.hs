@@ -11,7 +11,7 @@ import Val
 import Data.List (intercalate)
 import qualified Data.Map.Strict as M
 
-verbose = False
+verbose = True
 
 eval :: Interp -> Code -> Code
 eval interp@(Interp history _) code =
@@ -23,8 +23,8 @@ eval interp@(Interp history _) code =
     ev level env x =
       let pluses = intercalate "" (take level (repeat "+"))
           minuses = intercalate "" (take level (repeat "-"))
-          r = e level env (eesp (pluses ++ " eval", pp x, pp env) x)
-       in eesp (minuses ++ " eval", pp r, pp x) r
+          r = e level env (eenssp (pluses ++ " " ++ pp x ++ " " ++ pp env) x)
+       in eenssp (minuses ++ " " ++ pp x ++ " " ++ pp r) r
     e :: Int -> Env -> Code -> Code
     e l env lm@(Lam arg body) = CVal $ dkv $ Closure env lm
     e l env (Id id) =
