@@ -11,7 +11,7 @@ import Val
 import Data.List (intercalate)
 import qualified Data.Map.Strict as M
 
-verbose = True
+verbose = False
 
 eval :: Interp -> Code -> Code
 eval interp@(Interp history _) code =

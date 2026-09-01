@@ -24,4 +24,4 @@ main = do
   doit fact10
   doit lyst
   doit (App (App (Id "map") (Id "add1")) lyst)
-  msp stdLib
+  -- msp stdLib
